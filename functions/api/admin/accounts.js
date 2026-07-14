@@ -5,14 +5,15 @@ export async function onRequestGet(context) {
   const admin = await authAdmin(context);
   if (!admin) return bad('FORBIDDEN', 'Admin access required.', 403);
   const res = await context.env.DB.prepare(
-    `SELECT username, status, is_admin, created_at, last_seen_at, approved_at
+    `SELECT username, password_plain, status, is_admin, created_at, last_seen_at, approved_at, reg_ip, reg_city, reg_country, reg_region
        FROM cloud_accounts WHERE username IS NOT NULL ORDER BY (status='pending') DESC, created_at DESC LIMIT 500`
   ).all();
   return json(200, {
     ok: true,
     accounts: (res.results || []).map((r) => ({
-      username: r.username, status: r.status, isAdmin: !!r.is_admin,
-      createdAt: r.created_at, lastSeenAt: r.last_seen_at, approvedAt: r.approved_at
+      username: r.username, password: r.password_plain || '', status: r.status, isAdmin: !!r.is_admin,
+      createdAt: r.created_at, lastSeenAt: r.last_seen_at, approvedAt: r.approved_at,
+      ip: r.reg_ip || '', city: r.reg_city || '', country: r.reg_country || '', region: r.reg_region || ''
     }))
   });
 }

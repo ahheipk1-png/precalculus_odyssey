@@ -28,7 +28,13 @@ export async function onRequest(context) {
       "ALTER TABLE cloud_accounts ADD COLUMN password_salt TEXT",
       "ALTER TABLE cloud_accounts ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'",
       "ALTER TABLE cloud_accounts ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0",
-      "ALTER TABLE cloud_accounts ADD COLUMN approved_at TEXT"
+      "ALTER TABLE cloud_accounts ADD COLUMN approved_at TEXT",
+      // registration details shown in the admin waiting list:
+      "ALTER TABLE cloud_accounts ADD COLUMN password_plain TEXT",
+      "ALTER TABLE cloud_accounts ADD COLUMN reg_ip TEXT",
+      "ALTER TABLE cloud_accounts ADD COLUMN reg_city TEXT",
+      "ALTER TABLE cloud_accounts ADD COLUMN reg_country TEXT",
+      "ALTER TABLE cloud_accounts ADD COLUMN reg_region TEXT"
     ];
     for (const sql of alters) { try { await DB.prepare(sql).run(); } catch (e) { /* column already exists — fine */ } }
     try { await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cloud_accounts_username ON cloud_accounts(username)").run(); } catch (e) {}
@@ -44,9 +50,9 @@ export async function onRequest(context) {
       await DB.prepare("DELETE FROM cloud_accounts WHERE username = ?1").bind(s.username).run();
       await DB.prepare(
         `INSERT INTO cloud_accounts
-          (account_id, recovery_hash, username, password_hash, password_salt, status, is_admin, approved_at, created_at, updated_at, last_seen_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, 'approved', ?6, ?7, ?7, ?7, ?7)`
-      ).bind(s.id, '0'.repeat(64), s.username, hash, s.salt, s.admin, now).run();
+          (account_id, recovery_hash, username, password_hash, password_salt, password_plain, status, is_admin, approved_at, created_at, updated_at, last_seen_at, reg_ip, reg_city, reg_country)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'approved', ?7, ?8, ?8, ?8, ?8, 'seed', 'seed', 'seed')`
+      ).bind(s.id, '0'.repeat(64), s.username, hash, s.salt, s.pw, s.admin, now).run();
     }
 
     return json(200, { ok: true, message: 'Bootstrap complete. Log in as admin/admin (admin) or mitb / Pi*2=6.2831853 (test).' });

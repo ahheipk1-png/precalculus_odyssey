@@ -139,16 +139,47 @@
     var list = document.getElementById('adminList'); if (!list) return;
     if (!(r.ok && r.data.ok)){ list.innerHTML = '<p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load accounts.') + '</p>'; return; }
     if (!r.data.accounts.length){ list.innerHTML = '<p class="admin-empty">No accounts yet.</p>'; return; }
-    list.innerHTML = r.data.accounts.map(function (a){
-      return '<div class="admin-row">' +
-        '<div class="admin-who"><b>' + esc(a.username) + '</b> <span class="admin-status admin-' + esc(a.status) + '">' + esc(a.status) + (a.isAdmin ? ' · admin' : '') + '</span></div>' +
+
+    var pending = r.data.accounts.filter(function (a){ return a.status === 'pending'; });
+    var others  = r.data.accounts.filter(function (a){ return a.status !== 'pending'; });
+
+    function loc(a){
+      var parts = [a.city, a.region, a.country].filter(function (x){ return x && x !== 'seed'; });
+      return (parts.join(', ') || '—') + (a.ip && a.ip !== 'seed' ? ' · ' + esc(a.ip) : '');
+    }
+    function when(a){ return a.createdAt ? esc(String(a.createdAt).replace('T', ' ').replace(/\..*/, '') + ' UTC') : '—'; }
+
+    // Waiting list — full details + prominent Approve / Reject.
+    var waitHtml = '<div class="admin-section-title">⏳ Waiting for approval (' + pending.length + ')</div>';
+    waitHtml += pending.length ? pending.map(function (a){
+      return '<div class="admin-wait">' +
+        '<div class="admin-wait-head"><b>' + esc(a.username) + '</b> <span class="admin-status admin-pending">pending</span></div>' +
+        '<div class="admin-wait-meta">' +
+          '<div>🔑 Password: <code>' + esc(a.password || '—') + '</code></div>' +
+          '<div>📍 ' + loc(a) + '</div>' +
+          '<div>🕒 ' + when(a) + '</div>' +
+        '</div>' +
         '<div class="admin-actions">' +
-          (a.status !== 'approved' ? '<button class="btn btn-ghost admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'approve\')">✓ Approve</button>' : '') +
+          '<button class="btn btn-primary admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'approve\')">✓ Approve — let them play</button>' +
+          '<button class="btn btn-ghost admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'reject\')">✕ Reject</button>' +
+        '</div></div>';
+    }).join('') : '<p class="admin-empty">No accounts waiting. 🎉</p>';
+
+    // All other accounts — compact.
+    var othHtml = '<div class="admin-section-title">All accounts (' + others.length + ')</div>';
+    othHtml += others.map(function (a){
+      return '<div class="admin-row">' +
+        '<div class="admin-who"><b>' + esc(a.username) + '</b> ' +
+          '<span class="admin-status admin-' + esc(a.status) + '">' + esc(a.status) + (a.isAdmin ? ' · admin' : '') + '</span> ' +
+          '<span class="admin-small">🔑 ' + esc(a.password || '—') + ' · 📍 ' + loc(a) + '</span></div>' +
+        '<div class="admin-actions">' +
           (a.status === 'approved' && !a.isAdmin ? '<button class="btn btn-ghost admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'disable\')">Disable</button>' : '') +
-          (a.status === 'pending' ? '<button class="btn btn-ghost admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'reject\')">✕ Reject</button>' : '') +
+          (a.status !== 'approved' ? '<button class="btn btn-ghost admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'approve\')">✓ Approve</button>' : '') +
           '<button class="btn btn-ghost admin-btn" onclick="authAdminSetPw(\'' + esc(a.username) + '\')">🔑 Set password</button>' +
         '</div></div>';
     }).join('');
+
+    list.innerHTML = waitHtml + othHtml;
   }
   window.authAdminAction = async function (username, action){
     var r = await api('/api/admin/account', { body: { username: username, action: action }, auth: true });

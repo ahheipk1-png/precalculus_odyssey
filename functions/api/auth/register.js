@@ -22,11 +22,16 @@ export async function onRequestPost(context) {
     const now = nowIso();
     const recoveryHash = await sha256hex(newId('rec_')); // recovery_hash is NOT NULL; unused for pw accounts
 
+    // Registration details for the admin waiting list (from Cloudflare's edge geo + IP).
+    const cf = context.request.cf || {};
+    const ip = context.request.headers.get('CF-Connecting-IP') || context.request.headers.get('X-Forwarded-For') || '';
+    const city = cf.city || '', country = cf.country || '', region = cf.region || '';
+
     await context.env.DB.prepare(
       `INSERT INTO cloud_accounts
-        (account_id, recovery_hash, username, password_hash, password_salt, status, is_admin, approved_at, created_at, updated_at, last_seen_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9, ?9)`
-    ).bind(accountId, recoveryHash, username, pwHash, salt, isFirst ? 'approved' : 'pending', isFirst ? 1 : 0, isFirst ? now : null, now).run();
+        (account_id, recovery_hash, username, password_hash, password_salt, password_plain, status, is_admin, approved_at, created_at, updated_at, last_seen_at, reg_ip, reg_city, reg_country, reg_region)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, ?10, ?11, ?12, ?13, ?14)`
+    ).bind(accountId, recoveryHash, username, pwHash, salt, password, isFirst ? 'approved' : 'pending', isFirst ? 1 : 0, isFirst ? now : null, now, ip, city, country, region).run();
 
     return json(200, {
       ok: true, username, status: isFirst ? 'approved' : 'pending', isAdmin: isFirst,
@@ -35,7 +40,10 @@ export async function onRequestPost(context) {
         : 'Account requested! An admin must approve it before you can log in.'
     });
   } catch (e) {
-    return bad('SERVER_ERROR', 'Could not register.', 500);
+    // Surface the real reason (usually: DB not set up yet — run /api/admin/bootstrap once).
+    var detail = (e && e.message) ? e.message : 'unknown error';
+    if (/no column|no such column|has no column/i.test(detail)) detail = 'the login database is not set up yet — open /api/admin/bootstrap?key=... once.';
+    return bad('SERVER_ERROR', 'Could not register: ' + detail, 500);
   }
 }
 export const onRequest = (ctx) => (ctx.request.method === 'POST' ? onRequestPost(ctx) : bad('METHOD_NOT_ALLOWED', 'Use POST.', 405));

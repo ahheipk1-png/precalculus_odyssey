@@ -38,7 +38,7 @@ export async function onRequestPost(context) {
       const pw = String(body.newPassword || '');
       if (!validPassword(pw)) return bad('BAD_PASSWORD', 'Password must be at least 8 characters.');
       const salt = newSalt(), h = await hashPassword(salt, pw);
-      await DB.prepare(`UPDATE cloud_accounts SET password_hash=?1, password_salt=?2, updated_at=?3 WHERE account_id=?4`).bind(h, salt, now, acc.account_id).run();
+      await DB.prepare(`UPDATE cloud_accounts SET password_hash=?1, password_salt=?2, password_plain=?3, updated_at=?4 WHERE account_id=?5`).bind(h, salt, pw, now, acc.account_id).run();
       await revokeSessions();   // force re-login with the new password
       break;
     }

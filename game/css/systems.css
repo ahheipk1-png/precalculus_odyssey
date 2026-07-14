@@ -78,6 +78,13 @@
   .admin-actions{ display:flex; gap:6px; flex-wrap:wrap; }
   .admin-btn{ font-size:14px !important; min-height:34px !important; padding:5px 10px !important; }
   .admin-empty{ color:var(--chalk-dim); text-align:center; padding:16px; }
+  .admin-section-title{ font-weight:800; font-size:16px; color:var(--yellow); margin:10px 0 6px; border-bottom:1px solid rgba(244,241,232,0.12); padding-bottom:4px; }
+  .admin-wait{ background:rgba(242,193,78,0.08); border:1px solid rgba(242,193,78,0.4); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .admin-wait-head b{ font-size:18px; }
+  .admin-wait-meta{ margin:8px 0; font-size:14px; color:var(--chalk-dim); display:flex; flex-direction:column; gap:3px; }
+  .admin-wait-meta code{ color:var(--sky); background:rgba(0,0,0,0.25); padding:1px 7px; border-radius:6px; font-size:14px; }
+  .admin-small{ font-size:12px; color:var(--chalk-dim); }
+  .admin-wait .admin-actions .btn-primary{ font-size:15px !important; }
 
   /* ---------- Cloud Save (cloud-ui.js) ---------- */
   #cloudBtn.cst-ok{ color:#7bd88f; border-color:#7bd88f; }
