@@ -40,6 +40,8 @@ js/30-bodyart.js           window.bodyArtSVG — universal shaded-sphere art for
 js/31-graph.js             coordinate-geometry graphs: buildGraphSVG + interactive tap-a-point / draw-a-line (#graphPanel)
 js/32-tooltip.js           global cursor-following tooltip (#gameTooltip): data-tooltip + auto-upgrades native title=; keyboard/touch aware
 js/33-variety.js           question-variety engine: buildArenaTrial(n) composes a 10-Q trial of mixed styles derived from the arena's own verified answer
+js/34-wonder-games.js      Wonderland carnival games (Bullseye Numbers, Gone Fishin', Merry Math-Go-Round) + shared wg* mini-game helpers + wgStopAll
+js/35-block-forge.js       Quantum Block Forge — original turn-based block-placement puzzle (pure qbfCanPlace/qbfClearLines/qbfAnyPlaceable)
 js/cloud-save.js           OPT-IN cloud layer around localStorage: account/recovery, debounced sync, revision/conflict, offline retry (window.Cloud)
 js/cloud-ui.js             Cloud Save panel + header status chip (openCloudPanel, updateCloudStatusUI, export/import, conflict UI)
 --- server (Cloudflare, deployed from repo ROOT, not game/) — see CLOUD_SETUP.md ---

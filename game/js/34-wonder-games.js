@@ -243,6 +243,7 @@
     if (typeof bullStop === 'function') bullStop();
     if (typeof fishStop === 'function') fishStop();
     if (typeof mgrStop === 'function') mgrStop();
+    if (typeof qbfStop === 'function') qbfStop();
   }
 
   // ===========================================================================

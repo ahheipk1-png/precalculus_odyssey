@@ -245,7 +245,13 @@
             '<div class="wond-card-icon">🎲</div>' +
             '<div class="wond-card-name">Hoo Hey How</div>' +
             '<div class="wond-card-desc">Bet Cash on lucky symbols and roll three dice!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openHooHey()">Play! (Cash 💵)</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openHooHey()" data-tooltip="Bet Cash on symbols; three dice roll under the bowl.">Play! (Cash 💵)</button>' +
+          '</div>' +
+          '<div class="wond-card">' +
+            '<div class="wond-card-icon">🧩</div>' +
+            '<div class="wond-card-name">Quantum Block Forge</div>' +
+            '<div class="wond-card-desc">Place blocks to fill rows &amp; columns — clear lines for combos!</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openBlockForge()" data-tooltip="An original block-placement puzzle. Free to play.">Play! (Free)</button>' +
           '</div>' +
           locked +
         '</div>' +

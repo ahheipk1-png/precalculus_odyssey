@@ -367,4 +367,30 @@ are documented above (mcOnly style cap; balance/graph not auto-solved; no screen
   Merry Math-Go-Round) are all complete + playable.**
 - **Next:** MG-4 spec games (Quantum Block Forge first), as far as feasible.
 
+---
+
+## MG-4a — Quantum Block Forge 🧩 (spec game #1)
+
+- **Date/time:** 2026-07-14
+- **Files changed:** NEW `game/js/35-block-forge.js`; `game/js/34-wonder-games.js` (`qbfStop` in
+  `wgStopAll`); `game/js/17-wonderland.js` (lobby card); `game/css/wonderland.css` (`.qbf-*`);
+  `game/index.html`.
+- **Backup:** `game_backup_before_block_forge/`
+- **Summary:** An original **block-placement puzzle** (1010!-genre, turn-based — no timers/gravity, so
+  robust + fully testable). A tray of 3 original "quantum block" shapes; click a shape then a grid
+  cell to place it; a full **row OR column clears**; consecutive line-clearing placements build a
+  **combo multiplier**. **Game over** when no tray piece fits anywhere. 3 board sizes (Easy 9×9 /
+  Normal 8×8 / Hard 7×7). High score persists in `state.miniGames.blockForge`; Cash reward scaled by
+  score with a beat-your-best bonus. Pure core `qbfCanPlace/qbfClearLines/qbfAnyPlaceable`.
+- **Tests (live browser):** pure core — canPlace (bounds/overlap), row clear, column clear, row+col
+  cross = 2 lines, game-over detection (full board), reward scaling — all correct; UI flow — start
+  (64 cells + 3 pieces), place (score+tray-consumed), line clear (row emptied + combo + score jump +
+  line count), end (high score 260 + Cash 51 + result), save→reload keeps high score; console clean.
+- **Results:** PASS.
+- **Next (honest):** the remaining 5 spec games (Archive Tank Assault, Starbeat Protocol, Archive Maze
+  Runner, Five-Phase Defense, Riftwing Squadron) are large real-time action games (enemy AI, waves,
+  bosses, rAF loops) — each a substantial build the spec requires done one-at-a-time. NOT started this
+  session; recommended as dedicated follow-up runs. Framework (`state.miniGames`, `wg*` helpers,
+  `wgStopAll`, view-active self-checks) is in place for them.
+
 
