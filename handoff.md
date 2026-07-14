@@ -447,13 +447,21 @@ Creating a player named **`mitb`** (case-insensitive; the old long spellings
 user's own cheat account for fast playtesting. Effects:
 - **One question per room, then the room is DONE**: `handleSolved()` (in `05-render.js`) has a
   `state.testMode` branch at the top of its gate logic — after the *first* solve it calls
-  `advanceToNextLevel(true)` to jump straight to the next room (instead of the normal 6-solve
-  gate / 9-solve auto-advance). Blasts through the whole curriculum one question at a time.
+  `advanceToNextLevel(true)` to jump straight to the next room (instead of the normal
+  `ARENA_GOAL`-solve gate). Blasts through the whole curriculum one question at a time.
 - **Boss Gate always open**: since one question auto-advances (so the post-solve gate screen
   never fires), `loadProblem()` shows the persistent "⚔️ Boss Gate Open!" button
   (`gateEnterBtn`) on **every** room when `state.testMode` — clicking it opens the gate menu
   (Challenge Boss / Visit Shop / Keep Training) so the tester can drop into boss/shop/battle in
-  any room, any time. (Normal players still only see it after earning the 6-solve gate.)
+  any room, any time. (Normal players still only see it after earning the gate.)
+
+> **Boss Gate requirement = `ARENA_GOAL` (currently 10), single source of truth** in `01-data.js`.
+> Set 2026-07-14 (was 6). `handleSolved()` opens the gate (`gatePending = bossGateUnlocked = true`,
+> `showGateScreen`) only when `levelSolves >= ARENA_GOAL`; the old "skip the boss at 9 solves"
+> auto-advance was **removed** (the gate now opens only after the finale question). Progress shows
+> `Arena Progress: N / ARENA_GOAL` via `updateLevelProgress()`; `#progressDots` has `ARENA_GOAL`
+> dots. New state fields (`bossGateUnlocked`, `bossRoomEntered`, `bossDefeated{}`) are declared in
+> `01-data.js` defaults; their reset-on-leave + persistence is Phase 3 (not yet wired).
 - **Effectively-infinite coins & gems**: `updateStats()` re-pins `state.coins = state.gems =
   999999` on every refresh when `testMode`, so spending never runs them down. (Gems have no
   built system yet — the field is set for when the materials/trading-store system lands.)

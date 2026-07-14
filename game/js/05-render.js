@@ -141,19 +141,18 @@
   }
 
   function updateLevelProgress(forceFilled){
-    var filled = (typeof forceFilled === 'number') ? forceFilled : Math.min(6, state.levelSolves);
+    var filled = (typeof forceFilled === 'number') ? forceFilled : Math.min(ARENA_GOAL, state.levelSolves);
     var dots = el.progressDots.querySelectorAll('.progress-dot');
     for (var i = 0; i < dots.length; i++){
       dots[i].classList.toggle('filled', i < filled);
     }
     if (state.level >= state.maxLevel) {
-      el.levelProgressText.textContent = 'Max planet! Keep the streak going \uD83D\uDD25';
-    } else if (state.levelSolves < 6) {
-      var toGo = 6 - state.levelSolves;
-      el.levelProgressText.textContent = toGo + ' more to open Boss Gate!';
+      el.levelProgressText.textContent = 'Arena Progress: ' + Math.min(ARENA_GOAL, state.levelSolves) + ' / ' + ARENA_GOAL + ' \u2014 max planet! \uD83D\uDD25';
+    } else if (state.levelSolves < ARENA_GOAL) {
+      el.levelProgressText.textContent = 'Arena Progress: ' + state.levelSolves + ' / ' + ARENA_GOAL +
+        (state.levelSolves === ARENA_GOAL - 1 ? ' \u2014 final challenge next!' : '');
     } else {
-      var extraToGo = 9 - state.levelSolves;
-      el.levelProgressText.textContent = 'Boss Gate Open! Solve ' + extraToGo + ' more to skip Boss!';
+      el.levelProgressText.textContent = 'Arena Progress: ' + ARENA_GOAL + ' / ' + ARENA_GOAL + ' \u2014 Boss Gate open! Challenge the boss.';
     }
   }
 
@@ -571,7 +570,7 @@
     addHeroXp(xpEarned);
     updateStats();
     updateLevelProgress();
-    renderSceneForLevel(oldLevel, Math.min(1, state.levelSolves / 6));
+    renderSceneForLevel(oldLevel, Math.min(1, state.levelSolves / ARENA_GOAL));
 
     el.beamGroup.classList.add('balanced');
     burst(8);
@@ -587,14 +586,11 @@
       setTimeout(function() {
         advanceToNextLevel(true);
       }, reduceMotion ? 150 : 900);
-    } else if (state.levelSolves >= 9 && state.level < state.maxLevel) {
-      // Training mastery: solved 9 on this room, auto-advance
-      setTimeout(function() {
-        advanceToNextLevel(true);
-      }, reduceMotion ? 150 : 1300);
-    } else if (state.levelSolves === 6 && state.level < state.maxLevel) {
-      // Exactly 6 solves — trigger the gate screen once
+    } else if (state.levelSolves >= ARENA_GOAL && state.level < state.maxLevel) {
+      // Reached the arena goal (10) — open the Boss Gate. The gate opens ONLY after the
+      // finale question; there is no "skip the boss" shortcut (removed).
       state.gatePending = true;
+      state.bossGateUnlocked = true;
       setTimeout(showGateScreen, reduceMotion ? 150 : 1300);
     } else {
       setTimeout(loadProblem, reduceMotion ? 150 : 1300);

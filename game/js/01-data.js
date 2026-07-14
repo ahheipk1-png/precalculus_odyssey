@@ -3,6 +3,12 @@
   // work as aliases. See 07-main.js (sets state.testMode) and 05-render.js (effects).
   var TEST_NAMES = ['MITB', 'MICHAELISTHEBEST', 'MICHEALISTHEBEST'];
 
+  // Single source of truth for the Boss Gate requirement: the player must answer this many
+  // questions correctly in an arena before the Boss Gate opens (question ARENA_GOAL is the
+  // arena finale). All progress labels, dots, and gate logic route through this — never a
+  // bare literal. See handleSolved / updateLevelProgress (05-render.js).
+  var ARENA_GOAL = 10;
+
   var state = {
     level: 1,
     score: 0,
@@ -34,6 +40,12 @@
     locked: false,
     resetPending: false,
     gatePending: false,
+    // Boss Gate state model (see section 9 / Phase 3). bossGateUnlocked = temporary access this
+    // visit; bossRoomEntered = player stepped into the boss room; bossDefeated = PERSISTENT map of
+    // arenaN -> true for bosses actually beaten. levelSolves is the arenaQuestionsCompleted counter.
+    bossGateUnlocked: false,
+    bossRoomEntered: false,
+    bossDefeated: {},
     equippedWeapon: 'wood_sword',
     equippedShield: 'leather_buckler',
     equippedArmor: 'cloth_tunic',
