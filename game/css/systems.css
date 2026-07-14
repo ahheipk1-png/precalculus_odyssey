@@ -298,7 +298,53 @@
   .hh-tile{ background:rgba(244,241,232,0.05); border:2px solid rgba(244,241,232,0.14); border-radius:14px; padding:10px; text-align:center; }
   .hh-tile.hh-hit{ border-color:var(--yellow); box-shadow:0 0 14px rgba(242,193,78,.4); }
   .hh-icon{ font-size:40px; } .hh-name{ font-size:15px; font-weight:700; } .hh-bet{ font-size:14px; color:var(--yellow); margin:3px 0; }
-  .hh-betbtns{ display:flex; gap:4px; justify-content:center; } .hh-roll-row{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-weight:700; }
+  .hh-betbtns{ display:flex; gap:6px; justify-content:center; } .hh-roll-row{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-weight:700; gap:12px; flex-wrap:wrap; }
+
+  /* ---- Phase 5: bigger controls ---- */
+  .hh-icon{ font-size:46px; } .hh-name{ font-size:var(--font-ui-large); font-weight:700; }
+  .hh-bet{ font-size:var(--font-ui-small); color:var(--yellow); margin:4px 0; font-weight:700; }
+  .hh-tile .shop-btn{ font-size:var(--font-ui-small) !important; min-height:var(--button-min-height) !important; padding:8px 12px !important; }
+  .hh-totalbet{ font-size:var(--font-ui-large); }
+  .hh-roll-btn{ font-size:var(--font-ui-large) !important; min-height:52px !important; padding:12px 26px !important; }
+  .hh-result{ font-size:30px; }
+  .hh-intro{ font-size:var(--font-ui-small) !important; }
+
+  /* ---- Phase 5: layout with a history sidebar ---- */
+  .hh-layout{ display:flex; gap:16px; align-items:flex-start; }
+  .hh-main{ flex:1 1 auto; min-width:0; }
+  .hh-history{ flex:0 0 244px; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.14);
+    border-radius:14px; padding:10px; max-height:520px; display:flex; flex-direction:column; }
+  .hh-hist-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .hh-hist-head h3{ margin:0; font-size:var(--font-heading-small); color:var(--yellow); }
+  .hh-hist-clear{ font-size:14px !important; min-height:32px !important; padding:4px 10px !important; }
+  .hh-hist-list{ overflow-y:auto; flex:1 1 auto; display:flex; flex-direction:column; gap:5px; padding-right:3px; }
+  .hh-hist-empty{ font-size:14px; color:var(--chalk-dim); text-align:center; padding:16px 4px; }
+  .hh-hist-row{ display:grid; grid-template-columns:auto 1fr auto; gap:6px; align-items:center;
+    background:rgba(255,255,255,0.03); border-radius:9px; padding:6px 8px; font-size:15px; }
+  .hh-hist-n{ color:var(--chalk-dim); font-weight:700; }
+  .hh-hist-dice{ font-size:19px; letter-spacing:1px; grid-column:2; }
+  .hh-hist-bet{ grid-column:1 / -1; font-size:13px; color:var(--chalk-dim); }
+  .hh-hist-net{ font-weight:700; grid-column:3; grid-row:1; }
+  .hh-hist-win{ color:#7bd88f; } .hh-hist-lose{ color:var(--coral); } .hh-hist-even{ color:var(--chalk-dim); }
+
+  /* ---- Phase 5: the bowl that covers, shakes and lifts ---- */
+  .hh-dice-stage{ position:relative; min-height:120px; display:flex; align-items:center; justify-content:center; }
+  .hh-bowl{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transform:translateY(-150px); opacity:0; transition:transform .2s ease, opacity .2s ease; z-index:3; pointer-events:none; }
+  .hh-bowl-body{ font-size:92px; line-height:1; filter:drop-shadow(0 8px 14px rgba(0,0,0,.5)); }
+  .hh-bowl-label{ font-family:'Patrick Hand',cursive; font-size:var(--font-ui-normal); color:var(--yellow); margin-top:2px; }
+  .hh-bowl.hh-bowl-cover{ transform:translateY(0); opacity:1; }
+  .hh-bowl.hh-bowl-shake{ transform:translateY(0); opacity:1; animation:hhBowlShake .16s ease-in-out infinite; }
+  .hh-bowl.hh-bowl-lift{ transform:translateY(-170px); opacity:0; transition:transform .4s ease, opacity .4s ease; }
+  @keyframes hhBowlShake{
+    0%,100%{ transform:translateY(0) translateX(0) rotate(0); }
+    25%{ transform:translateY(-4px) translateX(-7px) rotate(-4deg); }
+    50%{ transform:translateY(0) translateX(6px) rotate(3deg); }
+    75%{ transform:translateY(-3px) translateX(-4px) rotate(-2deg); }
+  }
+  @media (prefers-reduced-motion: reduce){ .hh-bowl.hh-bowl-shake{ animation:none; } }
+
+  @media (max-width:760px){ .hh-layout{ flex-direction:column; } .hh-history{ flex:1 1 auto; width:100%; max-height:260px; } }
   @media (max-width:640px){ .prof-grid{ grid-template-columns:repeat(2,1fr); } .tr-row{ grid-template-columns:1fr 1fr; } .tr-spark{ display:none; } .hh-grid{ grid-template-columns:repeat(2,1fr); } }
 
   /* ---- Planet-info strip sits compactly at the top of the main quest panel ---- */

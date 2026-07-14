@@ -114,3 +114,60 @@ Architecture preserved: ordered classic scripts, one global scope, no ES modules
 
 ---
 
+## Phase 2 — Answer-panel stability (VERIFIED — no risky change needed)
+
+- **Date/time:** 2026-07-14
+- **Files changed:** none (verification pass; behaviour already correct after the earlier graph fix).
+- **Summary / findings:**
+  - `#equationView.active` is a CSS **grid** (`minmax(0,1.58fr) minmax(330px,.62fr)`), so the answer
+    (`.quest-control-panel`) is pinned to the **right column** with a stable min-width regardless of
+    question style. Verified across numeric/mcOnly/directInput/graph/bracket: control panel always
+    `onRight`, `sameRow` (never below), width stable (352px @1366, 310px @1024), no horizontal overflow.
+  - The panels stay two-column at desktop + tablet and only stack (`display:block`) at the mobile
+    breakpoint (~≤ the 1823 media query) — standard responsive reflow.
+  - **Planet Info** (`openPlanetInfo`, 25-nav.js) opens the Star Atlas as a **separate view** and
+    returns via `atlasBackToPlanet` — it never replaces the in-arena answer panel. The in-arena astro
+    card is also early-returned (hidden). Requirement met.
+  - Earlier Arena-169 rearrangement bug (graphPanel orphaned) was fixed previously (graphPanel in
+    08-layout mainIds + centering). Confirmed 169/171 keep the panel stable.
+  - Confirmed arenas 1–3 are the "Numbers" curriculum (`mcOnly` integer questions), not a mode bug;
+    balance `numeric` mode is a later chapter (ARENA_GENS 47–54 → generateBalanceQuestProblem).
+- **Deferred (documented, not done):** section 8 also lists feedback + arena-progress *inside* the
+  right panel. Today feedback lives in the main-panel status row and progress in the top HUD by the
+  existing (user-tuned) design. Moving them is cosmetic, not a bug, and risks destabilizing a layout
+  the user has iterated heavily — left as an explicit follow-up rather than an unilateral restructure.
+- **Results:** PASS (core "always right / stable / never jumps / not replaced by Planet Info" all hold).
+- **Next:** Phase 5 (Hoo Hey How).
+
+---
+
+## Phase 5 — Hoo Hey How (bowl animation + bigger controls + history)
+
+- **Date/time:** 2026-07-14
+- **Files changed:** `game/js/27-hoohey.js` (rewrite), `game/css/systems.css` (bowl/layout/history/size CSS).
+- **Backup:** `game_backup_before_hoo_hey_how/`
+- **Summary:**
+  - **Bowl roll sequence:** on Roll the three dice are covered by a bowl (🥣) that drops (cover
+    200ms) → shakes with sound (1500ms) → holds (pause 300ms) → lifts away (400ms) → dice + payout
+    reveal. Driven by phase timers toggling `.hh-bowl-cover/.hh-bowl-shake/.hh-bowl-lift`; the cover
+    class persists through shake+pause so the bowl stays down until the lift. Roll is disabled during
+    the animation (and bet/clear are guarded). Reduced-motion path skips to a short quiet reveal.
+  - **Bigger controls:** symbol names → --font-ui-large, bet/roll buttons enlarged (roll 52px min),
+    total bet + result text bigger, bet buttons meet the 44px touch target.
+  - **History panel:** a scrollable right sidebar (`.hh-history`) shows roll #, the three dice,
+    the bets, and net win/loss; newest first, capped at 60; persisted to localStorage
+    (`poHooHeyHistory`) so it survives reloads; a confirmed **Clear** button empties it.
+  - Added data-tooltip to the roll/bet/close controls (works with the Phase 4 tooltip engine).
+- **Tests (live browser):**
+  - Open HHH → history panel + two-column layout present.
+  - Bet 50 on Deer, Roll → stake deducted (50), Roll disabled, bowl present.
+  - After ~2.4s → dice revealed (3), Roll re-enabled, result shown.
+  - Payout math verified: dice [deer,deer,rooster], 2 matches → 50×(1+2)=150 winnings, net +100.
+  - History recorded + persisted; survives a full page reload (row still present).
+  - Clear (confirm stubbed) empties rows + localStorage + shows empty state.
+  - Console: no errors.
+- **Results:** PASS.
+- **Next:** Phase 1b — variety infrastructure (the big one); then Phase 7 playthrough.
+
+---
+

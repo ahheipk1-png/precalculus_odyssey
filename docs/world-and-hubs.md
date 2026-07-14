@@ -30,13 +30,18 @@ costing 1 pass. `wonderRewardForScore(f)` (pure) pays materials + an item by cle
 
 **Hoo Hey How** (`js/27-hoohey.js`, `#hooHeyView`) — Bầu Cua dice betting for Cash. Bet on the six
 symbols, then three dice roll: each match pays your stake back **plus** the same again. The roll is
-**animated** — `hhRoll` decides the final faces up front, sets `_hhRolling`, and runs a 90 ms interval
-that tumbles random symbols on the three `.hh-die-rolling` faces (shake keyframes) while the Roll
-button is disabled; after ~1.15 s a `setTimeout` reveals the final dice (`.hh-die-land` pop-in) and
-tags the row `.hh-dice-{win|lose|even}` + the result line `.hh-result-{…}` for the win/lose reaction
-(`_hhOutcome`). `closeHooHey` clears `_hhRollTimer` so navigation mid-roll can't strand the interval.
-CSS lives in `systems.css` (`.hh-die*`, `hhTumble`/`hhLand`/`hhWinBounce`/`hhShake`, reduced-motion
-aware).
+**animated with a bowl** (Phase 5) — `hhRoll` decides the final faces up front, deducts the stake,
+sets `_hhRolling`, and runs a phase-timer sequence (`_hhPhaseTimers`) that toggles the bowl classes:
+`.hh-bowl-cover` (drop over dice, 200 ms) → `.hh-bowl-shake` (wobble + shake sound, 1500 ms; the
+cover class stays so the bowl holds down) → pause (300 ms) → `.hh-bowl-lift` (400 ms) → reveal the
+final dice (`.hh-die-land`) tagged `.hh-dice-{win|lose|even}` + the `.hh-result-{…}` line. Roll (and
+bet/clear) are disabled during the animation; reduced-motion skips to a short quiet reveal.
+**History:** each roll is recorded newest-first (`_hhHistory`, capped 60) — roll #, the three dice,
+the bets, and net win/loss — rendered in a scrollable right sidebar (`.hh-history`) and **persisted
+to localStorage** (`poHooHeyHistory`) so it survives reloads; a confirmed **Clear** button
+(`hhClearHistory`) empties it. `closeHooHey` clears all timers so navigation mid-roll can't strand
+them. Controls were enlarged (shared `--font-ui-*` tokens, 44px touch targets). CSS lives in
+`systems.css` (`.hh-bowl*` + `hhBowlShake`, `.hh-die*`, `.hh-hist-*`, `.hh-layout`, reduced-motion aware).
 
 **Pass economy** (`awardWonderPasses` in `09-items.js`, called from `advanceToNextLevel`): first-ever
 clear of a planet = **5 passes**; perfect replays (0 wrong) pay on a diminishing schedule **4 (×4) →
