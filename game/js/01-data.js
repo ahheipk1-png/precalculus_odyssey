@@ -1,0 +1,79 @@
+  // Secret test/dev account: creating a player named "mitb" (case-insensitive) turns on test
+  // mode — one question per room + effectively-infinite coins/gems. The old long spellings still
+  // work as aliases. See 07-main.js (sets state.testMode) and 05-render.js (effects).
+  var TEST_NAMES = ['MITB', 'MICHAELISTHEBEST', 'MICHEALISTHEBEST'];
+
+  var state = {
+    level: 1,
+    score: 0,
+    coins: 0,          // "Cash 💵" — the spendable currency (internal name kept)
+    currencies: { gold: 0, silver: 0 }, // tradeable metals (Trading Room). See economy.config.js.
+    chips: {},         // AI chips/components (id -> count) — spent to upgrade gear. See economy.config.js.
+    gems: 0,           // retired; migrated to gold + a quantum chip on load
+    materials: {},     // legacy (pre-chips); kept empty for back-compat / migration
+    schemaVersion: 2,  // save-migration version (see migrateSave in 03-save.js)
+    codex: { bodies: {}, fragments: {} }, // Star Log: unlocked astronomy bodies + boss memory fragments. See 14-lore.js.
+    wonderPasses: 0,   // Wonderland entry tickets (earned by finishing rooms; see awardWonderPasses in 09-items.js)
+    passEarns: {},     // level -> { first: bool, perfects: n } — drives the diminishing pass schedule
+    inventory: {},     // consumables/ingredients: item id -> count (see ITEMS in 09-items.js)
+    poisonArmed: false,// a Poison Vial was used — the NEXT battle's monster takes poison damage
+    solveClock: 0,     // total problems ever solved — the farm's growth clock ("1 planet of practice" = 9 solves)
+    roomFails: 0,      // wrong answers in the CURRENT room; 5 = game over (room restarts). Perfect room = 0.
+    farm: { plots: [], animals: [], houses: 1 }, // see 18-farm.js
+    testMode: false,
+    streak: 0,
+    levelSolves: 0,
+    maxLevel: 10,
+    mode: 'numeric',
+    problem: null,
+    eq: null,
+    bracketEq: null,
+    bracketCorrect: null,
+    movesTaken: 0,
+    currentOp: '+',
+    locked: false,
+    resetPending: false,
+    gatePending: false,
+    equippedWeapon: 'wood_sword',
+    equippedShield: 'leather_buckler',
+    equippedArmor: 'cloth_tunic',
+    equippedShoes: 'basic_boots',
+    socketedChips: {}, // gearId -> [chipId, ...] installed AI chips
+    heroLvl: 1,
+    heroXp: 0,
+    playerMaxHp: 100,
+    playerHp: 100,
+    playerMaxMp: 20,
+    playerMp: 20,
+    // Gear is built from the config catalogue (game/config/gear.config.js); a save
+    // stores each item's owned/upgradeLvl, reconciled with the catalogue on load so
+    // new config gear appears automatically. Shallow copies so config stays pristine.
+    weapons: WEAPONS.map(function(g){ return Object.assign({}, g); }),
+    shields: SHIELDS.map(function(g){ return Object.assign({}, g); }),
+    armor:   ARMOR.map(function(g){ return Object.assign({}, g); }),
+    shoes:   SHOES.map(function(g){ return Object.assign({}, g); }),
+    defeatedMonsters: {},
+    trophies: []
+  };
+  // levelTitles, formulaBank, sceneCaptions \u2192 game/config/rooms.config.js (loaded first).
+  // The `chapters` registry \u2192 game/config/worlds.config.js. The chapter room-range
+  // computation + getChapterForLevel() below stay here (logic that reads the config).
+  (function computeChapterRoomRanges(){
+    var cursor = 1;
+    chapters.forEach(function(ch, i){
+      ch.chapterIndex = i;
+      ch.startRoom = cursor;
+      ch.endRoom = cursor + ch.roomCount - 1;
+      cursor = ch.endRoom + 1;
+    });
+  })();
+  state.maxLevel = chapters[chapters.length - 1].endRoom;
+
+  function getChapterForLevel(level){
+    for (var i = 0; i < chapters.length; i++){
+      if (level <= chapters[i].endRoom) return { chapter: chapters[i], roomInChapter: level - chapters[i].startRoom + 1 };
+    }
+    var last = chapters[chapters.length - 1];
+    return { chapter: last, roomInChapter: last.roomCount };
+  }
+

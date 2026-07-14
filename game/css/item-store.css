@@ -1,0 +1,188 @@
+﻿/* ---------- Item Store ðŸŽ’ (Trader Nova's Supplies) ----------
+   All classes are prefixed istr- to avoid collisions. Uses the global design tokens
+   (--ink/--chalk/--yellow/--coral/--sky/--wood) and the global .btn styles; this file
+   only adds the shelf/backpack layout on top. */
+
+.istr-wrap{
+  padding: 4px 2px 10px;
+}
+
+/* Header: back button (top-left), big Patrick Hand title, cash chip */
+.istr-header{
+  position: relative;
+  text-align: center;
+  margin-bottom: 16px;
+  padding-top: 4px;
+}
+.istr-back{
+  position: absolute;
+  top: 0; left: 0;
+  font-size: 14px;
+}
+.istr-title{
+  font-family: 'Patrick Hand', cursive;
+  font-size: clamp(26px, 6vw, 38px);
+  margin: 30px 0 2px;
+  color: var(--chalk);
+  text-shadow: 0 0 12px rgba(244,241,232,0.15);
+}
+.istr-tagline{
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--chalk-dim);
+  font-style: italic;
+}
+.istr-cash-chip{
+  display: inline-block;
+  background: rgba(242,193,78,0.14);
+  border: 1px solid var(--yellow);
+  color: var(--yellow);
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+/* Shop shelf: responsive card grid */
+.istr-shelf{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.istr-card{
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  background: rgba(244,241,232,0.06);
+  border: 1px solid rgba(244,241,232,0.14);
+  border-radius: 14px;
+  padding: 14px 10px 12px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.istr-card:hover{
+  transform: translateY(-3px);
+  border-color: var(--sky);
+}
+.istr-icon{
+  font-size: 42px;
+  line-height: 1;
+}
+.istr-name{
+  font-family: 'Patrick Hand', cursive;
+  font-size: 21px;
+  color: var(--chalk);
+}
+.istr-desc{
+  font-size:14px;
+  font-weight: 600;
+  color: var(--chalk-dim);
+  min-height: 32px;
+}
+.istr-owned{
+  position: absolute;
+  top: 8px; right: 8px;
+  background: var(--sky);
+  color: var(--ink);
+  font-size:14px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.istr-buy-row{
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.istr-buy, .istr-buy5{
+  font-size: 15px;
+  padding: 8px 14px;
+}
+.istr-buy:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.istr-short{
+  font-size:14px;
+  font-weight: 700;
+  color: var(--coral);
+}
+
+/* Backpack: one row per owned item */
+.istr-section-title{
+  font-family: 'Patrick Hand', cursive;
+  font-size: 24px;
+  color: var(--chalk);
+  margin: 0 0 8px;
+  border-bottom: 1px dashed rgba(244,241,232,0.25);
+  padding-bottom: 4px;
+}
+.istr-backpack{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.istr-pack-row{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(244,241,232,0.05);
+  border: 1px solid rgba(244,241,232,0.12);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+.istr-pack-icon{
+  font-size: 26px;
+  line-height: 1;
+}
+.istr-pack-name{
+  flex: 1;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--chalk);
+}
+.istr-pack-count{
+  color: var(--yellow);
+  margin-left: 4px;
+}
+.istr-use{
+  font-size: 14px;
+  padding: 6px 16px;
+}
+.istr-note{
+  font-size:14px;
+  font-weight: 700;
+  color: var(--chalk-dim);
+}
+.istr-armed{
+  color: var(--coral);
+}
+.istr-empty{
+  text-align: center;
+  color: var(--chalk-dim);
+  font-weight: 600;
+  padding: 14px 6px;
+}
+
+/* Narrow screens: tighter grid, stacked backpack rows stay readable */
+@media (max-width: 640px){
+  .istr-shelf{
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+  }
+  .istr-icon{ font-size: 34px; }
+  .istr-title{ margin-top: 38px; }
+  .istr-back{ font-size:14px; padding: 6px 10px; }
+  .istr-pack-row{ flex-wrap: wrap; }
+}
+
+/* Respect reduced-motion: no hover lift */
+@media (prefers-reduced-motion: reduce){
+  .istr-card{ transition: none; }
+  .istr-card:hover{ transform: none; }
+}

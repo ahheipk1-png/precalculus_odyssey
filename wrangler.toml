@@ -1,0 +1,21 @@
+# Cloudflare Pages + Functions + D1 config for Precalculus Odyssey.
+# The static site lives in game/ ; the server code lives in /functions (project root).
+# The D1 database id is filled in AFTER you create the database (see CLOUD_SETUP.md).
+# You can also set the D1 binding purely in the Pages dashboard and skip database_id here.
+
+name = "precalculus-odyssey"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "game"
+
+# --- D1 binding named DB (production) ---
+[[d1_databases]]
+binding = "DB"
+database_name = "precalculus-odyssey"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# --- Optional: a separate D1 for preview deployments (uncomment + fill in) ---
+# [env.preview]
+# [[env.preview.d1_databases]]
+# binding = "DB"
+# database_name = "precalculus-odyssey-preview"
+# database_id = "REPLACE_WITH_PREVIEW_D1_ID"

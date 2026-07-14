@@ -1,0 +1,197 @@
+﻿/* ============================================================================
+   Wonderland (17-wonderland.js) â€” carnival lobby + Tile Ball minigame.
+   Every class is prefixed wond- to avoid collisions; colors/fonts come from
+   the design tokens in styles.css (--ink/--chalk/--yellow/--coral/--sky/...).
+   Buttons reuse the global .btn .btn-primary / .btn-ghost classes.
+   ============================================================================ */
+
+.wond-board{ padding: 6px 2px 10px; }
+
+.wond-head{ text-align: center; margin-bottom: 14px; }
+.wond-title{
+  font-family: 'Patrick Hand', cursive;
+  font-size: clamp(30px, 7vw, 44px);
+  margin: 0 0 4px;
+  letter-spacing: 0.5px;
+  color: var(--chalk);
+  text-shadow: 0 0 14px rgba(244,241,232,0.15);
+}
+.wond-title-sm{ font-size: clamp(24px, 5vw, 30px); margin: 0; }
+.wond-sub{
+  margin: 0;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--chalk-dim);
+}
+.wond-sub b{ color: var(--yellow); }
+
+/* The ferris wheel gently spins (decorative only â€” disabled for reduced motion) */
+.wond-wheel{ display: inline-block; animation: wond-spin 16s linear infinite; }
+@keyframes wond-spin{
+  from{ transform: rotate(0deg); }
+  to{ transform: rotate(360deg); }
+}
+
+/* ---- Pass counter banner ---- */
+.wond-passrow{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: rgba(242,193,78,0.10);
+  border: 1px dashed rgba(242,193,78,0.45);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+.wond-passes{ font-size: 18px; font-weight: 700; color: var(--yellow); }
+.wond-hint{ font-size:15px; font-weight: 600; color: var(--chalk-dim); }
+
+/* ---- Minigame card grid ---- */
+.wond-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.wond-card{
+  background: rgba(244,241,232,0.06);
+  border: 1px solid rgba(244,241,232,0.12);
+  border-radius: 14px;
+  padding: 16px 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.wond-card:not(.wond-locked):hover{
+  transform: translateY(-3px);
+  border-color: var(--yellow);
+}
+.wond-card-icon{ font-size: 42px; line-height: 1; }
+.wond-card-name{
+  font-family: 'Patrick Hand', cursive;
+  font-size: 22px;
+  color: var(--chalk);
+}
+.wond-card-desc{
+  font-size:15px;
+  font-weight: 600;
+  color: var(--chalk-dim);
+  min-height: 36px;
+}
+.wond-play{ margin-top: auto; }
+.wond-locked{ opacity: 0.55; }
+.wond-soon{
+  font-size:14px;
+  font-weight: 700;
+  color: var(--chalk-dim);
+  border: 1px solid rgba(244,241,232,0.25);
+  border-radius: 8px;
+  padding: 4px 10px;
+  margin-top: auto;
+}
+
+.wond-footer{
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---- Tile Ball game screen ---- */
+.wond-game-top{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.wond-hud{
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.wond-chip{
+  background: rgba(244,241,232,0.08);
+  border: 1px solid rgba(244,241,232,0.15);
+  border-radius: 10px;
+  padding: 5px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--chalk);
+}
+.wond-chip b{ color: var(--yellow); }
+
+.wond-canvas-wrap{ display: flex; justify-content: center; }
+.wond-canvas{
+  /* Fixed 480x340 logical size; CSS scales to container width, height:auto
+     preserves the aspect ratio. touch-action:none lets pointermove drag the
+     paddle on touch screens without scrolling the page. */
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  display: block;
+  background: #142a1f;
+  border: 2px solid rgba(244,241,232,0.18);
+  border-radius: 12px;
+  touch-action: none;
+  cursor: pointer;
+}
+.wond-tip{
+  text-align: center;
+  color: var(--chalk-dim);
+  font-size:15px;
+  font-weight: 600;
+  margin: 10px 0 0;
+}
+
+/* ---- Reward screen ---- */
+.wond-result-card{
+  background: rgba(244,241,232,0.06);
+  border: 1px solid rgba(244,241,232,0.12);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.wond-result-label{
+  font-family: 'Patrick Hand', cursive;
+  font-size: 20px;
+  color: var(--chalk);
+  margin-bottom: 10px;
+}
+.wond-prizes{
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.wond-prize-chip{
+  font-size: 15px;
+  padding: 8px 12px;
+  border-color: rgba(242,193,78,0.5);
+}
+.wond-item-chip{ border-color: var(--sky); }
+
+/* ---- Narrow screens ---- */
+@media (max-width: 640px){
+  .wond-grid{ grid-template-columns: 1fr 1fr; gap: 10px; }
+  .wond-card-desc{ min-height: 0; }
+  .wond-passrow{ flex-direction: column; gap: 4px; }
+  .wond-passes{ font-size: 16px; }
+  .wond-chip{ font-size:14px; padding: 4px 8px; }
+  .wond-tip{ font-size:14px; }
+}
+
+/* ---- Reduced motion: no decorative animation ---- */
+@media (prefers-reduced-motion: reduce){
+  .wond-wheel{ animation: none; }
+  .wond-card{ transition: none; }
+  .wond-card:not(.wond-locked):hover{ transform: none; }
+}

@@ -1,0 +1,266 @@
+﻿  /* ---------- World Map Hub (15-map.js, view #mapView) ----------
+     All classes are prefixed wmap- to avoid collisions. Uses the global design tokens
+     (--ink/--chalk/--yellow/--coral/--sky/--wood) and the shared .btn button styles.
+     The scene is a chalk night sky; buildings sit at % coordinates so the layout scales. */
+
+  .wmap-wrap{ position: relative; }
+
+  .wmap-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .wmap-title{
+    font-family: 'Patrick Hand', cursive;
+    font-size: clamp(28px, 6vw, 38px);
+    margin: 0;
+    color: var(--chalk);
+    text-shadow: 0 0 12px rgba(244,241,232,0.15);
+  }
+
+  /* status strip: ðŸ’µ Â· â¤ï¸ Â· ðŸ’§ Â· ðŸŽŸï¸ â€” the "why visit the hotel" row */
+  .wmap-status{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .wmap-chip{
+    background: rgba(244,241,232,0.06);
+    border: 1px solid rgba(244,241,232,0.14);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--chalk-dim);
+  }
+  .wmap-chip b{ color: var(--chalk); font-weight: 700; }
+
+  /* ---------- the scene ---------- */
+  .wmap-scene{
+    position: relative;
+    width: 100%;
+    aspect-ratio: 100 / 62;          /* matches the SVG's 1000Ã—620 box */
+    min-height: 340px;
+    border-radius: 14px;
+    border: 1px solid rgba(244,241,232,0.14);
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 72% 10%, rgba(110,193,228,0.10) 0, transparent 45%),
+      radial-gradient(circle at 18% 85%, rgba(242,193,78,0.06) 0, transparent 50%),
+      linear-gradient(180deg, #12251b 0%, var(--ink) 68%, var(--ink-light) 100%);
+  }
+  .wmap-sky{
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .wmap-star{
+    fill: rgba(244,241,232,0.8);
+    animation: wmapTwinkle 3s ease-in-out infinite;
+  }
+  @keyframes wmapTwinkle{
+    0%, 100%{ opacity: 0.25; }
+    50%     { opacity: 0.95; }
+  }
+  .wmap-path{
+    fill: none;
+    stroke: rgba(244,241,232,0.4);
+    stroke-width: 7;
+    stroke-linecap: round;
+    stroke-dasharray: 0.5 24;        /* dotted chalk trail */
+  }
+  .wmap-deco{
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: clamp(28px, 5vw, 44px);
+    pointer-events: none;
+    filter: drop-shadow(0 0 10px rgba(244,241,232,0.25));
+  }
+  .wmap-deco-sm{ font-size: clamp(16px, 3vw, 26px); }
+
+  /* ---------- buildings ---------- */
+  .wmap-building{
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 122px;
+    padding: 18px 14px 10px;
+    background: rgba(244,241,232,0.07);
+    border: 1px solid rgba(244,241,232,0.22);
+    border-radius: 10px;
+    color: var(--chalk);
+    font-family: 'Quicksand', sans-serif;
+    cursor: pointer;
+    z-index: 4;
+    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  }
+  .wmap-building::before{               /* little roof, tinted per building */
+    content: '';
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 54px solid transparent;
+    border-right: 54px solid transparent;
+    border-bottom: 20px solid var(--wmap-accent, var(--wood));
+    opacity: 0.85;
+    pointer-events: none;
+  }
+  .wmap-building:hover,
+  .wmap-building:focus-visible{
+    transform: translate(-50%, -52%) scale(1.06);
+    background: rgba(244,241,232,0.13);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  }
+  .wmap-building:focus-visible{ outline: 3px solid var(--sky); outline-offset: 3px; }
+  .wmap-sign{ font-size: 46px; line-height: 1.1; }
+  .wmap-bname{ font-size: 17px; font-weight: 700; color: var(--chalk); white-space: nowrap; }
+  .wmap-badge{
+    position: absolute;
+    top: -22px;
+    right: -14px;
+    background: var(--yellow);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size:14px;
+    font-weight: 700;
+    z-index: 5;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  }
+
+  /* ---------- the walking avatar ---------- */
+  .wmap-avatar{
+    position: absolute;
+    transform: translate(-50%, -88%);   /* feet on the path point */
+    font-size: 32px;
+    z-index: 6;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45));
+    transition: left var(--dur, 0.7s) ease-in-out, top var(--dur, 0.7s) ease-in-out;
+  }
+  .wmap-avatar-flip{ display: inline-block; }
+  .wmap-avatar-emoji{ display: inline-block; }
+  .wmap-avatar.wmap-flip .wmap-avatar-flip{ transform: scaleX(-1); }
+  .wmap-avatar.wmap-walking .wmap-avatar-emoji{ animation: wmapBob 0.35s ease-in-out infinite; }
+  @keyframes wmapBob{
+    0%, 100%{ transform: translateY(0); }
+    50%     { transform: translateY(-6px) rotate(-4deg); }
+  }
+
+  .wmap-hint{
+    margin: 10px 2px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--chalk-dim);
+    text-align: center;
+  }
+
+  /* ---------- hotel panel (modal over the map) ---------- */
+  .wmap-hotel-overlay{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 22, 16, 0.66);
+    border-radius: 14px;
+    z-index: 30;
+  }
+  .wmap-hotel-overlay[hidden]{ display: none; }  /* author display:flex would beat [hidden] otherwise */
+  .wmap-hotel{
+    position: relative;
+    width: min(360px, 92%);
+    background: linear-gradient(170deg, var(--ink-light), var(--ink));
+    border: 1px solid rgba(244,241,232,0.25);
+    border-radius: 16px;
+    padding: 20px 18px 18px;
+    text-align: center;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+    transition: filter 0.4s ease;
+  }
+  .wmap-hotel-emoji{ font-size: 44px; line-height: 1; }
+  .wmap-hotel-title{
+    font-family: 'Patrick Hand', cursive;
+    font-size: 30px;
+    margin: 6px 0 4px;
+    color: var(--yellow);
+  }
+  .wmap-hotel-desc{
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--chalk-dim);
+  }
+  .wmap-hotel-now{
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--chalk);
+    background: rgba(244,241,232,0.07);
+    border: 1px solid rgba(244,241,232,0.14);
+    border-radius: 10px;
+    padding: 7px 10px;
+    margin-bottom: 12px;
+  }
+  .wmap-sleep-btn{ width: 100%; }
+  .wmap-sleep-btn[disabled]{ opacity: 0.45; cursor: not-allowed; }
+  .wmap-hotel-reason{
+    margin-top: 8px;
+    font-size:15px;
+    font-weight: 700;
+    color: var(--coral);
+  }
+  .wmap-hotel-leave{ margin-top: 12px; }
+
+  /* ðŸ˜´ lights-out: card dims and ðŸ’¤ floats up while the panel says goodnight */
+  .wmap-zzz{
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 28px;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .wmap-hotel.wmap-sleeping{ filter: brightness(0.55); }
+  .wmap-hotel.wmap-sleeping .wmap-zzz{ animation: wmapZzz 1.1s ease-in-out infinite; }
+  @keyframes wmapZzz{
+    0%  { opacity: 0;   transform: translateY(4px)   scale(0.8); }
+    35% { opacity: 1; }
+    100%{ opacity: 0;   transform: translateY(-20px) scale(1.15); }
+  }
+
+  /* ---------- small screens ---------- */
+  @media (max-width: 640px){
+    .wmap-head{ flex-direction: column; align-items: flex-start; gap: 6px; }
+    .wmap-scene{ aspect-ratio: 4 / 5; min-height: 300px; }
+    .wmap-building{ min-width: 62px; padding: 10px 6px 5px; }
+    .wmap-building::before{
+      top: -10px;
+      border-left-width: 26px;
+      border-right-width: 26px;
+      border-bottom-width: 11px;
+    }
+    .wmap-sign{ font-size: 22px; }
+    .wmap-bname{ font-size:13px; }
+    .wmap-badge{ top: -18px; right: -8px; font-size:13px; padding: 1px 6px; }
+    .wmap-avatar{ font-size: 26px; }
+    .wmap-chip{ font-size:15px; padding: 4px 9px; }
+  }
+
+  /* ---------- reduced motion: no twinkle, no bob, no walk (JS also teleports) ---------- */
+  @media (prefers-reduced-motion: reduce){
+    .wmap-avatar{ transition: none; }
+    .wmap-star,
+    .wmap-avatar.wmap-walking .wmap-avatar-emoji,
+    .wmap-hotel.wmap-sleeping .wmap-zzz{ animation: none; }
+    .wmap-hotel.wmap-sleeping .wmap-zzz{ opacity: 1; }
+    .wmap-building,
+    .wmap-hotel{ transition: none; }
+  }

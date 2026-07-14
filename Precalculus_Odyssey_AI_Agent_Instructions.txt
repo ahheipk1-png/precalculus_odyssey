@@ -1,0 +1,548 @@
+PRECALCULUS ODYSSEY — MASTER INSTRUCTIONS FOR AI AGENTS
+=======================================================
+
+The project has accumulated overlapping plans, partially completed systems, and older requirements that are no longer fully valid. Before writing more code, treat this document as the latest source of truth.
+
+PRIORITY OF INSTRUCTIONS
+------------------------
+
+When requirements conflict, follow this order:
+
+1. The user's latest direct instructions
+2. handoff.md for the current architecture and completed systems
+3. knowledge.md for environment, testing, backup, and workflow rules
+4. ROOMS_AND_CODES.md for the current room structure and Worm Hole codes
+5. Older design documents only when they do not conflict with the above
+
+The user's latest requirements override older plans involving Monster Essence, Star Village, old navigation, and incomplete economy systems.
+
+The project is already modularized and must continue using ordered classic scripts so it works through both file:// and localhost. Do not convert it to ES modules. Do not add a build system unless the user explicitly requests one.
+
+DO NOT BEGIN WITH ANOTHER VISUAL REDESIGN
+-----------------------------------------
+
+Before coding, first provide all of the following:
+
+A. CURRENT-STATE AUDIT
+
+Identify which requested systems are:
+
+- Already working
+- Partially implemented
+- Mentioned in documents but not implemented
+- Implemented in an outdated form
+- Completely missing
+
+Do not assume that something exists merely because it appears in handoff.md. Confirm it in the actual code.
+
+B. CONFLICT AND MIGRATION REPORT
+
+Explicitly identify old systems that must be replaced.
+
+Examples:
+
+- Monster Essence and biological-style drops → AI chips and robotic components
+- Star Village → Earth
+- Star Log → expanded Star Atlas where appropriate
+- Basic profile display → full inventory and equipment interface
+- Small text-based shop → large illustrated weapon catalogue
+- Existing healing-only spells → offensive, status-effect, and Wu Xing spells
+
+The newest requirement replaces enemy essence drops with AI chips, CPUs, GPUs, neural processors, quantum chips, robotic alloys, and energy cores.
+
+C. PAGE AND NAVIGATION MAP
+
+Show the proposed structure before coding.
+
+Suggested structure:
+
+Global Navigation
+├── Player Profile
+├── Star Atlas
+├── Current Planet
+├── Go Back to Earth
+├── Missions
+├── Music
+└── Settings
+
+Earth Hub
+├── Weapon Room
+├── Trading Room
+├── Equipment / AI Chip Lab
+├── Wonderland
+│   └── Hoo Hey How
+├── Mission Center
+└── Star Atlas
+
+Star Atlas
+├── Star-System Map
+│   └── Selected Star System
+│       └── Planet List
+│           └── Planet Question Page
+└── Current Location Indicator
+
+Player Profile
+├── Character Stats
+├── Currencies
+├── Equipped Gear
+├── Inventory
+├── AI Chips
+├── Spells
+└── Quest Items
+
+D. DATA MODEL PROPOSAL
+
+Show the proposed JavaScript state structure and save migration before modifying the live save format.
+
+Suggested structure:
+
+state = {
+  location: {
+    starSystemId: "sol",
+    planetId: "earth"
+  },
+
+  currencies: {
+    cash: 0,
+    gold: 0,
+    silver: 0,
+    gems: 0
+  },
+
+  inventory: {
+    weapons: [],
+    shields: [],
+    armor: [],
+    shoes: [],
+    accessories: [],
+    chips: [],
+    consumables: [],
+    questItems: []
+  },
+
+  equipment: {
+    weaponId: null,
+    shieldId: null,
+    armorId: null,
+    shoesId: null,
+    accessoryIds: [],
+    installedChipIds: []
+  },
+
+  trading: {
+    prices: {},
+    history: {},
+    transactions: []
+  }
+};
+
+Preserve old player saves through migration. Do not silently discard or reset existing profiles.
+
+REQUIRED FEATURE DECISIONS
+--------------------------
+
+1. ALL ENEMIES ARE AI ROBOTS
+
+The word "monster" may remain as casual player-facing language, but technically every enemy is an AI robot, guardian, drone, evolved machine, or corrupted Archive construct.
+
+Enemy drops should become:
+
+- AI Chip
+- CPU
+- GPU
+- Neural Processor
+- Quantum Chip
+- Alien Processor
+- Robotic Alloy
+- Energy Core
+
+These components should upgrade:
+
+- Weapons
+- Shields
+- Armor
+- Shoes
+- Spell devices
+- Elemental equipment
+
+Remove Monster Essence from new gameplay. If older saves contain Essence, migrate it into an appropriate chip or component.
+
+2. STAR ATLAS MUST BE GLOBAL
+
+The Star Atlas button must remain available from almost every major screen.
+
+The first Star Atlas page should show star systems, not every planet at once.
+
+Each star-system card should show:
+
+- Name
+- Current-player-location marker
+- Locked or unlocked status
+- Number of planets
+- Short interesting fact
+- Travel availability
+
+Clicking a star system should open its planet list.
+
+Reuse and extend the existing Star Log, astronomy data, stylized planets, Sol-system room theming, and Archive Minds story instead of rebuilding them from nothing.
+
+3. PLANET PAGES MUST REMAIN QUESTION-FOCUSED
+
+The planet page should devote most of its area to:
+
+- Math question
+- Equation tiles
+- Operation controls
+- Progress
+- Essential battle or mission controls
+
+Planet facts must live behind a compact Planet Info button, modal, drawer, or side panel.
+
+Do not surround the equation with every RPG system.
+
+4. EARTH REPLACES STAR VILLAGE
+
+Earth becomes the permanent home hub.
+
+Add a global "Go Back to Earth" button whenever the player is away from Earth.
+
+During combat, clicking it should open a confirmation such as:
+
+"Return to Earth and retreat from this battle? The current enemy's health will reset."
+
+Earth should contain all facilities previously associated with Star Village.
+
+5. PROFILE AND INVENTORY
+
+The player profile should remain visible globally.
+
+Double-clicking the profile must open a large dedicated inventory and equipment interface, not a tiny tooltip.
+
+Also provide a normal single-click or button alternative for touch devices and accessibility.
+
+The profile interface must show:
+
+Character information:
+- Player name
+- Level
+- Experience
+- Health
+- Mana
+- Attack
+- Defense
+- Speed
+- Elemental affinities
+
+Currencies:
+- Cash
+- Gold
+- Silver
+- Gems
+
+Equipped items:
+- Weapon
+- Shield
+- Armor
+- Shoes
+- Accessories
+- Installed AI chips
+
+Inventory:
+- Weapons
+- Shields
+- Shoes
+- Armor
+- Consumables
+- AI chips
+- Materials
+- Quest items
+- Spells
+- Elemental items
+
+Actions:
+- Equip
+- Unequip
+- Inspect
+- Compare
+- Upgrade
+- Sell
+
+6. WONDERLAND AND HOO HEY HOW
+
+Wonderland must exist on Earth.
+
+Hoo Hey How must appear inside Wonderland and have an obvious entrance.
+
+Do not leave this only in a design document.
+
+7. TRADING ROOM
+
+The Trading Room must support exchange among:
+
+- Cash
+- Gold
+- Silver
+- Gems
+
+It must include:
+
+- Buy price
+- Sell price
+- Current change
+- Historical chart
+- Holdings
+- Transaction history
+- Changing prices
+
+Preserve the prior rule that prices change only after completing a review question, unless the user later changes that rule.
+
+The review-question pool should include all math learned up to the player's current room.
+
+8. LARGE WEAPON CATALOGUE
+
+Create a large data-driven weapon catalogue, not five text entries.
+
+Each weapon needs:
+
+- Illustrated SVG or image
+- Name
+- Category
+- Rarity
+- Attack
+- Speed
+- Accuracy
+- Critical chance
+- Wu Xing element
+- Special effect
+- Upgrade level
+- AI-chip slots
+- Price
+- Description
+
+Suggested categories:
+
+- Swords
+- Daggers
+- Spears
+- Bows
+- Staffs
+- Scepters
+- Hammers
+- Axes
+- Energy blades
+- Laser weapons
+- Plasma weapons
+- Quantum weapons
+- Ancient AI weapons
+
+Do not use emoji as final weapon art.
+
+Use reusable deterministic SVG generators where possible instead of manually drawing hundreds of unrelated assets.
+
+9. WU XING SYSTEM
+
+Implement:
+
+- Wood
+- Fire
+- Earth
+- Metal
+- Water
+
+Generating cycle:
+
+Wood → Fire → Earth → Metal → Water → Wood
+
+Overcoming cycle:
+
+Wood → Earth → Water → Fire → Metal → Wood
+
+Do not reduce Wu Xing to a simple rock-paper-scissors damage multiplier.
+
+Support:
+
+- Weapon element
+- Shield element
+- Armor resistance
+- Planet affinity
+- Enemy affinity
+- Spell affinity
+- Chip affinity
+- Generating bonuses
+- Overcoming bonuses
+- Weaknesses
+- Resistance
+- Elemental status effects
+
+10. SPELL SYSTEM
+
+Required spell categories:
+
+- Freeze
+- Poison
+- Burn
+- Armor break
+- Shield
+- Healing
+- Speed boost
+- Accuracy reduction
+- AI hacking
+- Chip disruption
+- Wood attack
+- Fire attack
+- Earth attack
+- Metal attack
+- Water attack
+
+Each spell should define fields similar to:
+
+{
+  id,
+  name,
+  icon,
+  element,
+  manaCost,
+  targetType,
+  power,
+  duration,
+  cooldown,
+  statusEffect,
+  description
+}
+
+Freeze and poison must be real turn-based status effects, not cosmetic animations.
+
+IMPLEMENTATION ORDER
+--------------------
+
+PHASE 0 — STABILIZE DOCUMENTATION
+
+- Update handoff.md with the new source-of-truth decisions
+- Add a clearly labeled "Superseded Requirements" section
+- Update knowledge.md only when new implementation lessons are discovered
+- Update ROOMS_AND_CODES.md only if room assignments or Worm Hole codes change
+- Make a backup before code changes
+
+PHASE 1 — NAVIGATION AND WORLD STRUCTURE
+
+Build:
+
+- Global navigation
+- Star Atlas
+- Star-system page
+- Planet-selection page
+- Planet Info
+- Go Back to Earth
+- Earth hub
+
+Do not rebuild combat or the economy in this phase.
+
+PHASE 2 — PROFILE AND INVENTORY
+
+Build:
+
+- Profile modal or page
+- Inventory
+- Equipment slots
+- Currency display
+- AI-chip inventory
+- Save migration
+
+PHASE 3 — ECONOMY
+
+Build:
+
+- Trading Room
+- Cash/gold/silver/gem exchange
+- Price history
+- Review-to-refresh mechanic
+- Transaction history
+
+PHASE 4 — EQUIPMENT AND ART
+
+Build:
+
+- Long weapon list
+- Weapon SVG artwork
+- Shields
+- Shoes
+- Armor
+- AI-chip slots
+- Upgrade interface
+
+PHASE 5 — WU XING
+
+Build:
+
+- Element data
+- Generating and overcoming relationships
+- Elemental UI indicators
+- Damage and resistance logic
+- Equipment affinities
+
+PHASE 6 — COMBAT AND SPELLS
+
+Build:
+
+- Freeze
+- Poison
+- Burn
+- Wu Xing attacks
+- Offensive spells
+- Status durations
+- Enemy AI responses
+- Combat-log explanations
+
+PHASE 7 — WONDERLAND
+
+Build:
+
+- Wonderland entrance
+- Hoo Hey How
+- Associated minigames or rewards
+
+IMPLEMENTATION RULES
+--------------------
+
+1. Do not delete working systems merely because the UI is changing.
+2. Do not redesign unrelated pages in the same feature pass.
+3. Keep the main math screen uncluttered.
+4. Keep deterministic content deterministic.
+5. Preserve existing saves through migration.
+6. Back up before nontrivial changes.
+7. Update handoff.md during every code-changing turn.
+8. Test through the real browser.
+9. Check the browser console for errors.
+10. Re-run the complete math regression harness after any change to problem generation, equation logic, or solving functions.
+11. Confirm that files on disk actually contain the claimed changes before reporting completion.
+12. Do not claim that a feature works unless it was tested in the live browser.
+13. Do not replace the current modular architecture with a monolithic file.
+14. Keep classic script load order compatible with file:// usage.
+15. Preserve current player profiles and autosave behavior.
+
+REQUIRED RESPONSE BEFORE CODING
+-------------------------------
+
+Before implementation begins, respond with:
+
+1. A requirements gap table
+2. A page-navigation diagram
+3. A proposed state and data model
+4. A save-migration plan
+5. The files that each phase will modify
+6. Risks and conflicts
+7. Acceptance tests for each phase
+8. Confirmation that no implementation will begin until the plan is approved
+
+Do not reply only with "understood."
+
+Demonstrate that every requested feature has a specific place in the architecture.
+
+FINAL GOAL
+----------
+
+The game should remain primarily a mathematics-learning experience.
+
+The RPG, astronomy, economy, inventory, combat, AI-chip, and Wu Xing systems should support the learning loop rather than bury it.
+
+The main question screen must remain clear, spacious, and focused on the mathematics.

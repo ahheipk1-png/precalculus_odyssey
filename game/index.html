@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Precalculus Odyssey — Knowledge Is Humanity's Strongest Weapon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Patrick+Hand&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/styles.css?v=20260713q" />
+<link rel="stylesheet" href="css/map.css?v=20260713q" />
+<link rel="stylesheet" href="css/chest.css?v=20260713q" />
+<link rel="stylesheet" href="css/wonderland.css?v=20260713q" />
+<link rel="stylesheet" href="css/farm.css?v=20260713q" />
+<link rel="stylesheet" href="css/alchemy.css?v=20260713q" />
+<link rel="stylesheet" href="css/item-store.css?v=20260713q" />
+<link rel="stylesheet" href="css/systems.css?v=20260713q" />
+</head>
+<body>
+
+  <div class="stage">
+    <div class="frame">
+      <div class="board">
+        <div id="startScreen" class="start-screen-overlay">
+          <div class="start-screen-card">
+            <h2 class="start-screen-title">Precalculus Odyssey</h2>
+            <p class="start-screen-tagline">Knowledge Is Humanity's Strongest Weapon</p>
+            <p class="start-screen-sub">Choose how to begin</p>
+
+            <div class="new-player-row">
+              <input type="text" id="newPlayerNameInput" class="new-player-input" maxlength="16" placeholder="Enter your name" autocomplete="off" />
+              <button class="btn btn-primary" id="newPlayerBtn" type="button">🆕 Start</button>
+            </div>
+            <p class="start-screen-error" id="newPlayerError" hidden></p>
+
+            <div class="saved-players-panel" id="savedPlayersPanel" hidden>
+              <p class="start-screen-sub" id="savedPlayersHeading" style="margin:16px 0 8px;">Saved Players</p>
+              <div id="savedPlayersList" class="saved-players-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="gameOverOverlay" class="gameover-overlay" hidden>
+          <div class="gameover-card">
+            <div class="gameover-emoji">💥</div>
+            <h2 class="gameover-title">Game Over!</h2>
+            <p class="gameover-text">5 wrong answers — this planet's guardians pushed you back.<br>This planet restarts from the beginning.</p>
+            <button class="btn btn-primary" type="button" onclick="restartAfterGameOver()">🔄 Try This Planet Again</button>
+          </div>
+        </div>
+
+        <div id="narrationOverlay" class="narration-overlay" hidden>
+          <div class="narration-stars" aria-hidden="true"></div>
+          <div class="narration-inner">
+            <h2 class="narration-title">Precalculus Odyssey</h2>
+            <p class="narration-tagline">Knowledge Is Humanity's Strongest Weapon</p>
+            <div id="narrationText" class="narration-text"></div>
+            <div class="narration-actions">
+              <button class="btn btn-primary" id="narrationBeginBtn" type="button" onclick="hideOpeningNarration()">Begin the Odyssey ✨</button>
+            </div>
+          </div>
+        </div>
+        <header class="board-header">
+          <div class="header-actions">
+            <button class="reset-btn" type="button" title="Profile — your stats, gear and inventory" onclick="if(typeof openProfile==='function')openProfile()" style="background:rgba(110,193,228,0.14); border-color:var(--sky); color:var(--sky);">🎒 Profile</button>
+            <button class="reset-btn" id="cloudBtn" type="button" title="Cloud Save — sync your progress across devices" onclick="if(typeof openCloudPanel==='function')openCloudPanel()"><span id="cloudStatusIcon">☁</span> Cloud</button>
+            <button class="reset-btn" type="button" title="Earth Hub — the home base with all your buildings" onclick="if(typeof travelToEarthHub==='function')travelToEarthHub();else if(typeof openMapHub==='function')openMapHub()">🌍 Earth Hub</button>
+            <button class="reset-btn" type="button" title="Star Atlas — travel between star systems and planets" onclick="if(typeof openStarAtlas==='function')openStarAtlas();else if(typeof openCodex==='function')openCodex('atlas')">🪐 Atlas</button>
+            <button class="reset-btn" id="codexLogBtn" type="button" title="Star Log — story chapters and the astronomy codex you've unlocked" onclick="openCodex()" style="background:rgba(242,193,78,0.14); border-color:var(--yellow); color:var(--yellow);">📖 Star Log</button>
+            <button class="reset-btn" id="muteBtn" type="button" title="Toggle game sound on/off" onclick="toggleMute()">🔊 Sound</button>
+            <button class="reset-btn" id="resetBtn" type="button" title="Reset — wipe this profile and start over">↺ Reset</button>
+            <button class="reset-btn" id="warpDoorBtn" type="button" title="Worm Hole — enter a planet code to jump straight there" style="background:rgba(74,147,179,0.2); border-color:var(--sky); color:var(--sky);">🌀 Worm Hole</button>
+          </div>
+          <h1 class="title">Precalculus Odyssey</h1>
+          <p class="tagline">Chapter 1: <span class="x-emph">Balance Quest</span> — do the same move to both sides until x stands alone!</p>
+          <p class="player-name-tag" id="playerNameTag" hidden></p>
+        </header>
+
+        <div id="warpPanel" class="warp-panel" style="display:none;">
+          <input type="text" id="warpInput" maxlength="4" placeholder="CODE" class="warp-input" />
+          <button id="applyWarpBtn" class="warp-btn" type="button">Jump!</button>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat stat-planet" title="View this star system" onclick="if(typeof openPlanetInfo==='function')openPlanetInfo()">
+            <span class="stat-label">Arena <span id="levelValue">1</span> · <span id="planetSystem">The Sol System</span></span>
+            <span class="stat-value" id="planetName">Earth</span>
+            <span class="stat-sub">Code: <span id="levelCodeVal" style="color:var(--yellow); font-weight:bold;">SEED</span> · 🔭 tap for star map</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Streak</span>
+            <span class="stat-value" id="streakValue">0</span>
+            <span class="stat-sub">🔥 solved</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Passes</span>
+            <span class="stat-value" id="passValue">0</span>
+            <span class="stat-sub">🎟️ Wonderland</span>
+          </div>
+        </div>
+
+        <div class="currency-bar" id="currencyBar"></div>
+
+        <div class="hero-stats-row" style="display:flex; justify-content:space-between; gap:10px; margin: 4px 0 6px; background: rgba(244,241,232,0.03); border: 1px dashed rgba(244,241,232,0.15); border-radius: 12px; padding: 8px 12px; align-items: center;">
+          <div style="font-family:'Patrick Hand', cursive; font-size: 24px; color: var(--yellow); display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+            <span>Hero: <span id="heroLvlText" style="font-weight:bold; color:var(--sky);">Lv. 1</span></span>
+            <span id="trophiesBtn" style="font-size:16px; color:#ffd200; cursor:pointer; text-decoration:underline;" onclick="window.rpgActions.toggleTrophies()">🏆 Trophies: <span id="trophiesCount">0</span></span>
+          </div>
+          <div style="flex:1; margin: 0 15px; font-size:16px; color:var(--chalk-dim); text-align:left;">
+            XP: <span id="heroXpText">0/100</span>
+            <div style="background:rgba(255,255,255,0.08); height:8px; border-radius:4px; margin-top:4px; overflow:hidden; width: 100%;">
+              <div id="heroXpBar" style="background:var(--sky); width:0%; height:100%; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+          <div style="font-family:'Patrick Hand', cursive; font-size: 24px; color: var(--chalk); display: flex; gap: 14px;">
+            <span>HP: <span id="heroHpText" style="color:#ff6b6b; font-weight:bold;">100/100</span></span>
+            <span>MP: <span id="heroMpText" style="color:var(--sky); font-weight:bold;">20/20</span></span>
+          </div>
+        </div>
+
+        <!-- Trophies Collapsible Panel -->
+        <div id="trophiesPanel" style="display:none; margin: 6px 0 12px; padding: 10px; background: rgba(255,210,0,0.04); border: 1px dashed rgba(255,210,0,0.25); border-radius: 12px; text-align: left;">
+          <h4 style="font-family:'Patrick Hand', cursive; font-size:18px; color:#ffd200; margin:0 0 6px;">🏆 Collected Trophies</h4>
+          <div id="trophiesList" style="display:flex; flex-wrap:wrap; gap:6px; font-size:12px; color:var(--chalk);">
+            <em style="color:var(--chalk-dim);">No trophies collected yet. Defeat arena monsters!</em>
+          </div>
+        </div>
+
+        <div class="level-progress">
+          <div class="progress-dots" id="progressDots">
+            <span class="progress-dot"></span>
+            <span class="progress-dot"></span>
+            <span class="progress-dot"></span>
+            <span class="progress-dot"></span>
+            <span class="progress-dot"></span>
+            <span class="progress-dot"></span>
+          </div>
+          <span class="level-progress-text" id="levelProgressText">6 more to open Boss Gate!</span>
+          <span class="lives-row" id="livesRow" title="Tries left on this planet">❤️❤️❤️❤️❤️</span>
+        </div>
+
+        <div id="equationView" class="view-container active">
+          <div id="astroCard" class="astro-card" hidden></div>
+          <p class="formula-caption" id="formulaCaption" hidden></p>
+
+          <div class="scale-wrap" id="scaleWrap">
+            <div class="chalkboard-scale" id="chalkboardScale">
+              <div class="pan-text left-pan-text" id="leftExpr"></div>
+              <div class="pan-text right-pan-text" id="rightExpr"></div>
+            </div>
+            <div class="particles" id="particles"></div>
+          </div>
+
+          <!-- Identify / Compute / Coming-soon prompt (shown instead of the scale for those styles) -->
+          <div class="question-prompt" id="questionPrompt" hidden></div>
+
+          <!-- Coordinate-geometry graph (static plot, or interactive click-a-point / draw-a-line) -->
+          <div class="graph-panel" id="graphPanel" hidden></div>
+
+          <p class="feedback" id="feedbackMsg" aria-live="polite"></p>
+          <p class="moves-info" id="movesInfo">Moves: 0</p>
+
+          <p class="move-label" id="moveLabel">Pick a move, then apply it to both sides</p>
+          <div class="op-row" id="opRow">
+            <button class="op-btn active" type="button" data-op="+" aria-pressed="true">+</button>
+            <button class="op-btn" type="button" data-op="-" aria-pressed="false">−</button>
+            <button class="op-btn" type="button" data-op="*" aria-pressed="false">×</button>
+            <button class="op-btn" type="button" data-op="/" aria-pressed="false">÷</button>
+          </div>
+
+          <form class="apply-row" id="applyForm">
+            <span class="both-sides-label">both sides by</span>
+            <input type="text" inputmode="numeric" id="numberInput" class="number-input" autocomplete="off" placeholder="?" />
+            <button type="submit" class="btn btn-primary" id="applyBtn">Apply</button>
+          </form>
+
+          <div class="expand-panel" id="expandPanel" hidden>
+            <button class="btn btn-primary" id="expandBtn" type="button">🔎 Expand the brackets</button>
+            <div class="mc-choices" id="mcChoices" hidden></div>
+          </div>
+
+          <!-- Compute style: type one positive integer + Submit -->
+          <form class="direct-answer-panel" id="directAnswerPanel" hidden>
+            <input type="text" inputmode="numeric" id="directInput" class="number-input" autocomplete="off" placeholder="answer" />
+            <button type="submit" class="btn btn-primary" id="directSubmitBtn">Submit ✓</button>
+          </form>
+
+          <div class="combat-actions" id="levelGateActions" style="display:none; margin: 15px 0 10px;">
+            <button class="btn btn-primary" id="gateBattleBtn" type="button">⚔️ Challenge Planet Boss</button>
+            <button class="btn btn-secondary" id="gateBackBtn" type="button" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.12); color:#ddd;">📝 Keep Training</button>
+          </div>
+
+          <div class="secondary-actions" id="eqActions">
+            <button class="btn btn-ghost" id="tutorialBtn" type="button" title="How to play — a walkthrough of this planet's question style" onclick="if(typeof openTutorial==='function')openTutorial()">📖 How to play</button>
+            <button class="btn btn-ghost" id="hintBtn" type="button" title="Hint — reveal a clue for the current question">💡 Hint</button>
+            <button class="btn btn-ghost" id="roomRestartBtn" type="button" title="Restart Arena — reset this arena's progress to zero" onclick="restartRoom()">🔄 Restart Arena</button>
+            <button class="btn btn-primary" id="gateEnterBtn" title="Boss Gate is open — challenge the planet boss!" style="display:none; background:linear-gradient(135deg, #ff9800, #f57c00); border-color:#e65100; color:#fff; box-shadow:0 3px 8px rgba(245,124,0,0.3); font-size:12px; padding:4px 10px;" type="button">⚔️ Boss Gate Open!</button>
+          </div>
+
+          <p class="hint-text" id="hintText" hidden></p>
+
+          <div class="scene-panel">
+            <svg viewBox="0 0 320 120" class="scene-svg" id="sceneSvg" aria-hidden="true">
+              <line x1="20" y1="100" x2="300" y2="100" stroke="var(--chalk-dim)" stroke-width="2" stroke-dasharray="4 4" />
+
+              <g class="scene-group" data-scene="0">
+                <path class="draw-path" d="M160 100 L160 55" />
+                <path class="draw-path" d="M160 80 Q142 72 146 58" />
+                <path class="draw-path" d="M160 68 Q178 60 176 46" />
+                <g class="scene-celebrate">
+                  <circle cx="160" cy="50" r="7" fill="var(--yellow)" />
+                  <circle cx="148" cy="50" r="6" fill="var(--coral)" />
+                  <circle cx="172" cy="50" r="6" fill="var(--coral)" />
+                  <circle cx="160" cy="38" r="6" fill="var(--coral)" />
+                  <circle cx="160" cy="62" r="6" fill="var(--coral)" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="1" style="display:none">
+                <path class="draw-path" d="M160 100 L160 78" />
+                <path class="draw-path" style="stroke:var(--sky)" d="M160 30 C144 30 138 46 142 58 C146 72 154 78 160 78 C166 78 174 72 178 58 C182 46 176 30 160 30 Z" />
+                <g class="scene-celebrate">
+                  <path d="M132 45 L134 50 L139 52 L134 54 L132 59 L130 54 L125 52 L130 50 Z" fill="var(--yellow)" />
+                  <path d="M192 40 L194 44 L198 46 L194 48 L192 52 L190 48 L186 46 L190 44 Z" fill="var(--yellow)" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="2" style="display:none">
+                <path class="draw-path" d="M110 100 L110 65" />
+                <path class="draw-path" d="M210 100 L210 65" />
+                <path class="draw-path" d="M105 65 L215 65" />
+                <g class="scene-celebrate">
+                  <line x1="160" y1="65" x2="160" y2="40" class="scene-static" />
+                  <path d="M160 40 L178 46 L160 52 Z" fill="var(--coral)" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="3" style="display:none">
+                <path class="draw-path" style="stroke:var(--yellow)" d="M120 100 L120 78 L200 78 L200 100" />
+                <path class="draw-path" style="stroke:var(--yellow)" d="M145 78 L145 55 L175 55 L175 78" />
+                <g class="scene-celebrate">
+                  <line x1="160" y1="55" x2="160" y2="38" class="scene-static" />
+                  <path d="M160 38 L174 43 L160 48 Z" fill="var(--coral)" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="4" style="display:none">
+                <path class="draw-path" style="stroke:var(--coral)" d="M75 100 A85 85 0 0 1 245 100" />
+                <path class="draw-path" style="stroke:var(--yellow)" d="M95 100 A65 65 0 0 1 225 100" />
+                <path class="draw-path" style="stroke:var(--sky)" d="M115 100 A45 45 0 0 1 205 100" />
+                <g class="scene-celebrate">
+                  <ellipse cx="75" cy="100" rx="14" ry="8" fill="rgba(244,241,232,0.4)" />
+                  <ellipse cx="245" cy="100" rx="14" ry="8" fill="rgba(244,241,232,0.4)" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="5" style="display:none">
+                <path class="draw-path" d="M130 95 Q125 60 160 55 Q195 60 190 95 Q190 100 160 100 Q130 100 130 95 Z" />
+                <path class="draw-path" d="M140 60 Q135 45 145 42" />
+                <path class="draw-path" d="M180 60 Q185 45 175 42" />
+                <circle cx="148" cy="72" r="5" fill="var(--chalk)" />
+                <circle cx="172" cy="72" r="5" fill="var(--chalk)" />
+                <circle cx="148" cy="73" r="2" fill="var(--ink)" />
+                <circle cx="172" cy="73" r="2" fill="var(--ink)" />
+                <path d="M148 88 Q160 96 172 88" class="scene-static" />
+                <g class="scene-celebrate">
+                  <path d="M148 42 L160 20 L172 42 Z" fill="var(--sky)" />
+                  <circle cx="160" cy="20" r="4" fill="var(--yellow)" />
+                  <path d="M112 55 L115 62 L122 65 L115 68 L112 75 L109 68 L102 65 L109 62 Z" fill="var(--yellow)" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="6" style="display:none">
+                <path class="draw-path" style="stroke:var(--coral)" d="M125 100 L125 65 L195 65 L195 100" />
+                <path class="draw-path" d="M160 65 L160 100" />
+                <path class="draw-path" d="M125 82 L195 82" />
+                <g class="scene-celebrate">
+                  <path d="M160 65 L148 52 L160 58 L172 52 Z" fill="var(--yellow)" />
+                  <circle cx="160" cy="58" r="4" fill="var(--coral)" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="7" style="display:none">
+                <path class="draw-path" d="M115 92 Q125 82 135 92 Q145 82 155 92 Q165 82 175 92 Q185 82 195 92" />
+                <path class="draw-path" d="M115 92 Q110 85 105 80" />
+                <g class="scene-celebrate">
+                  <ellipse cx="192" cy="52" rx="10" ry="15" fill="var(--sky)" transform="rotate(-25 192 52)" />
+                  <ellipse cx="212" cy="52" rx="10" ry="15" fill="var(--coral)" transform="rotate(25 212 52)" />
+                  <line x1="202" y1="42" x2="202" y2="64" class="scene-static" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="8" style="display:none">
+                <path class="draw-path" style="stroke:var(--yellow)" d="M110 55 L110 35 M110 55 L125 42 M110 55 L95 42 M110 55 L122 65 M110 55 L98 65" />
+                <path class="draw-path" style="stroke:var(--coral)" d="M210 50 L210 30 M210 50 L225 37 M210 50 L195 37 M210 50 L222 60 M210 50 L198 60" />
+                <g class="scene-celebrate">
+                  <path d="M160 45 L160 25 M160 45 L175 32 M160 45 L145 32 M160 45 L172 55 M160 45 L148 55 M160 45 L178 48 M160 45 L142 48" style="fill:none;stroke:var(--yellow);stroke-width:3;stroke-linecap:round" />
+                </g>
+              </g>
+
+              <g class="scene-group" data-scene="9" style="display:none">
+                <path class="draw-path" d="M150 95 L150 65 Q150 45 160 35 Q170 45 170 65 L170 95 Z" />
+                <path class="draw-path" style="stroke:var(--coral)" d="M154 95 Q160 112 166 95 Q160 104 154 95 Z" />
+                <g class="scene-celebrate">
+                  <path d="M118 40 L120 45 L125 47 L120 49 L118 54 L116 49 L111 47 L116 45 Z" fill="var(--yellow)" />
+                  <path d="M202 30 L204 35 L209 37 L204 39 L202 44 L200 39 L195 37 L200 35 Z" fill="var(--yellow)" />
+                  <path d="M212 60 L213 63 L216 64 L213 65 L212 68 L211 65 L208 64 L211 63 Z" fill="var(--sky)" />
+                </g>
+              </g>
+            </svg>
+            <p class="scene-caption" id="sceneCaption">A tiny seed is planted...</p>
+          </div>
+        </div>
+
+        <div id="shopView" class="view-container">
+          <div class="rpg-header">
+            <h2 class="rpg-title">🛒 Weapon & Shield Store</h2>
+            <button class="btn btn-ghost" id="shopBackBtn" type="button">← Back to Earth</button>
+          </div>
+          <div id="materialsBar" class="materials-bar"></div>
+          <div class="shop-grid">
+            <div class="shop-section">
+              <h3 class="shop-sec-title">Weapons (Increases Attack Power - AP)</h3>
+              <div id="weaponsList" class="shop-list"></div>
+            </div>
+            <div class="shop-section">
+              <h3 class="shop-sec-title">Shields (Increases Defense Power - DP)</h3>
+              <div id="shieldsList" class="shop-list"></div>
+            </div>
+            <div class="shop-section">
+              <h3 class="shop-sec-title">Armor (Increases DEF & max HP)</h3>
+              <div id="armorList" class="shop-list"></div>
+            </div>
+            <div class="shop-section">
+              <h3 class="shop-sec-title">Shoes (Increases Speed - SPD)</h3>
+              <div id="shoesList" class="shop-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="battleView" class="view-container">
+          <div class="rpg-header">
+            <h2 class="rpg-title">⚔️ Monster Challenge Arena</h2>
+            <div class="arena-header-actions">
+              <button class="btn btn-ghost" id="battleFleeBtn" type="button">📝 Keep Training</button>
+              <button class="btn btn-ghost" id="battleShopBtn" type="button">🛒 Weapon Store</button>
+            </div>
+          </div>
+          
+          <div id="monsterSelectScreen">
+            <div id="bountyListContainer" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 12px; padding: 12px 15px; margin-bottom: 15px; text-align: left;">
+              <h3 style="font-family:'Patrick Hand', cursive; font-size:18px; color:var(--yellow); margin:0 0 6px;">🎯 Arena <span id="bountyLvlText">1</span> Bounty Checklist</h3>
+              <div id="bountyChecklist" style="display:flex; flex-wrap:wrap; gap:15px; font-family:'Patrick Hand', cursive; font-size:16px;">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+            <p class="arena-caption">Choose an unlocked monster. Stronger monsters unlock as your planet and hero level rise.</p>
+            <div id="monsterChoices" class="monster-choices-grid"></div>
+            <div id="arenaAdvanceRow" style="display:none; text-align:center; margin-top:20px; width: 100%;">
+              <button class="btn btn-primary" id="arenaAdvanceBtn" type="button" style="background:linear-gradient(135deg, #4caf50, #2e7d32); border-color:#2e7d32; color:#fff; min-width: 200px; box-shadow: 0 4px 15px rgba(76,175,80,0.3);">🚀 Advance to Arena <span id="advanceLvlText">2</span>!</button>
+            </div>
+          </div>
+
+          <div id="combatArenaScreen" style="display:none">
+            <div class="arena-combatants">
+              <!-- Player Card -->
+              <div class="combat-card" id="playerCombatCard">
+                <div class="combat-card-title">You</div>
+                <div class="sprite-wrap">
+                  <div class="player-sprite" id="playerSprite">
+                    <div class="hero-character" aria-label="Purple mage hero">
+  <span class="hero-aura"></span>
+  <svg class="character-svg" viewBox="0 0 190 225" role="img" aria-hidden="true">
+    <defs>
+      <linearGradient id="heroRobe" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a873ff"/><stop offset=".48" stop-color="#7b45dc"/><stop offset="1" stop-color="#3c237f"/></linearGradient>
+      <linearGradient id="heroCape" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#6f36c8"/><stop offset="1" stop-color="#29195f"/></linearGradient>
+      <linearGradient id="heroBoot" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8e6646"/><stop offset="1" stop-color="#3f2a24"/></linearGradient>
+      <radialGradient id="heroOrb"><stop stop-color="#fff"/><stop offset=".24" stop-color="#d9c3ff"/><stop offset=".58" stop-color="#9b73ff"/><stop offset="1" stop-color="#5a2ad0"/></radialGradient>
+      <filter id="heroGlow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <ellipse cx="94" cy="207" rx="56" ry="10" fill="#070a17" opacity=".42"/>
+    <path d="M54 111Q42 141 42 188L77 193L91 117Z" fill="url(#heroCape)"/>
+    <path d="M87 174L69 201Q64 209 76 212L95 210L102 176Z" fill="url(#heroBoot)" stroke="#2d1c1c" stroke-width="4"/>
+    <path d="M112 174L111 203Q111 212 122 211L143 207Q151 204 141 198L131 192L131 174Z" fill="url(#heroBoot)" stroke="#2d1c1c" stroke-width="4"/>
+    <path d="M61 105Q94 83 129 106L143 180Q112 195 62 180Z" fill="url(#heroRobe)" stroke="#402375" stroke-width="4"/>
+    <path d="M61 128Q95 143 140 128" fill="none" stroke="#d6bbff" stroke-width="5" opacity=".36"/>
+    <path d="M61 151Q98 164 141 150" fill="none" stroke="#3a226e" stroke-width="5" opacity=".55"/>
+    <path d="M62 173Q98 186 141 172" fill="none" stroke="#d6bbff" stroke-width="4" opacity=".28"/>
+    <path d="M62 115Q49 119 43 136Q38 149 48 155Q57 158 61 144L68 125Z" fill="url(#heroRobe)" stroke="#402375" stroke-width="4"/>
+    <circle cx="47" cy="153" r="9" fill="#e3a574" stroke="#7a432f" stroke-width="3"/>
+    <path d="M129 111Q143 111 151 126L158 145Q160 154 150 157Q141 157 138 147L132 127Z" fill="url(#heroRobe)" stroke="#402375" stroke-width="4"/>
+    <circle cx="151" cy="154" r="9" fill="#e3a574" stroke="#7a432f" stroke-width="3"/>
+    <circle cx="99" cy="76" r="39" fill="#e8ad79" stroke="#744432" stroke-width="4"/>
+    <path d="M65 70Q68 30 99 32Q132 31 139 72Q125 58 111 49Q89 69 65 70Z" fill="#51301e"/>
+    <path d="M63 70Q75 48 97 43Q121 40 138 70Q132 39 103 31Q72 31 63 70Z" fill="#673a23"/>
+    <path d="M80 56Q89 50 97 47M104 46Q118 49 127 57" fill="none" stroke="#8d593a" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+    <circle cx="84" cy="78" r="13" fill="#d8f7ff" fill-opacity=".22" stroke="#6746a7" stroke-width="4"/>
+    <circle cx="115" cy="78" r="13" fill="#d8f7ff" fill-opacity=".22" stroke="#6746a7" stroke-width="4"/>
+    <path d="M97 78H102" stroke="#6746a7" stroke-width="4"/>
+    <circle cx="86" cy="79" r="3" fill="#39221f"/><circle cx="114" cy="79" r="3" fill="#39221f"/>
+    <path d="M91 97Q100 106 111 96" fill="none" stroke="#713829" stroke-width="4" stroke-linecap="round"/>
+    <path d="M75 111Q98 127 124 111L118 127Q98 140 79 127Z" fill="#efe9ff" stroke="#9f80d8" stroke-width="3"/>
+    <rect x="58" y="143" width="82" height="13" rx="5" fill="#4f2b2b" stroke="#2b171d" stroke-width="3"/>
+    <rect x="93" y="142" width="20" height="16" rx="4" fill="#ffd86b" stroke="#8f5d15" stroke-width="3"/>
+    <g transform="rotate(7 157 105)">
+      <rect x="151" y="55" width="10" height="143" rx="5" fill="#714b30" stroke="#2f211b" stroke-width="4"/>
+      <path d="M151 64Q146 48 156 43Q168 45 163 62" fill="none" stroke="#714b30" stroke-width="8" stroke-linecap="round"/>
+      <circle class="staff-orb" cx="157" cy="40" r="16" fill="url(#heroOrb)" stroke="#e5d6ff" stroke-width="3" filter="url(#heroGlow)" style="transform-origin:157px 40px"/>
+      <circle cx="152" cy="35" r="4" fill="#fff" opacity=".9"/>
+    </g>
+  </svg>
+</div>
+                    <span class="sprite-weapon" id="playerWeaponSprite">⚔️</span>
+                    <span class="sprite-shield" id="playerShieldSprite">🛡️</span>
+                  </div>
+                </div>
+                <div class="combat-stat-line">HP: <span id="playerHpText">100/100</span></div>
+                <div class="hp-bar-outer"><div class="hp-bar-inner" id="playerHpBar" style="width: 100%"></div></div>
+                <div class="combat-stat-line" style="margin-top: 4px;">MP: <span id="playerMpText">20/20</span></div>
+                <div class="mp-bar-outer"><div class="mp-bar-inner" id="playerMpBar" style="width: 100%"></div></div>
+                <div class="combat-gear-desc" style="margin-top: 4px;">
+                  AP: <span id="playerApVal">1</span> &nbsp;|&nbsp; DP: <span id="playerDpVal">0</span>
+                </div>
+              </div>
+
+              <!-- VS Divider -->
+              <div class="vs-divider">VS</div>
+
+              <!-- Monster Card -->
+              <div class="combat-card" id="monsterCombatCard">
+                <div class="combat-card-title" id="monsterNameText">Monster</div>
+                <div class="sprite-wrap">
+                  <div class="monster-sprite" id="monsterSprite"><div class="ice-character" aria-label="Ice monster">
+  <span class="monster-aura"></span>
+  <svg class="character-svg" viewBox="0 0 230 205" role="img" aria-hidden="true">
+    <defs>
+      <linearGradient id="iceBody" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e9fbff"/><stop offset=".32" stop-color="#b9efff"/><stop offset=".7" stop-color="#64bce7"/><stop offset="1" stop-color="#2872b0"/></linearGradient>
+      <linearGradient id="iceDark" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#63c9ed"/><stop offset="1" stop-color="#245b96"/></linearGradient>
+      <radialGradient id="iceCore"><stop stop-color="#fff"/><stop offset=".35" stop-color="#9af3ff"/><stop offset="1" stop-color="#3ba8e7"/></radialGradient>
+      <filter id="iceGlow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <ellipse cx="116" cy="191" rx="72" ry="11" fill="#020817" opacity=".42"/>
+    <path d="M53 122Q29 126 19 151Q9 174 31 182Q47 186 55 171L71 140Z" fill="url(#iceBody)" stroke="#286da7" stroke-width="5"/>
+    <path d="M177 122Q201 126 211 151Q221 174 199 182Q183 186 175 171L159 140Z" fill="url(#iceBody)" stroke="#286da7" stroke-width="5"/>
+    <path d="M75 155Q61 173 55 190L96 190L104 157Z" fill="url(#iceBody)" stroke="#286da7" stroke-width="5"/>
+    <path d="M155 155Q169 173 175 190L134 190L126 157Z" fill="url(#iceBody)" stroke="#286da7" stroke-width="5"/>
+    <path d="M60 91Q61 53 91 43Q115 34 139 43Q169 53 170 91L164 147Q151 173 115 174Q79 173 66 147Z" fill="url(#iceBody)" stroke="#286da7" stroke-width="5"/>
+    <path d="M72 72L45 53L72 48L73 24L91 45" fill="url(#iceDark)" stroke="#286da7" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M158 72L185 53L158 48L157 24L139 45" fill="url(#iceDark)" stroke="#286da7" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M88 39L101 10L113 37L126 5L139 42" fill="url(#iceBody)" stroke="#286da7" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M69 78Q82 54 113 52Q145 52 162 78Q150 101 116 103Q83 101 69 78Z" fill="#dff9ff" opacity=".88"/>
+    <path d="M74 78Q84 62 102 66L91 84Z" fill="#183f70"/><path d="M156 78Q146 62 128 66L139 84Z" fill="#183f70"/>
+    <circle cx="91" cy="74" r="4" fill="#fff"/><circle cx="139" cy="74" r="4" fill="#fff"/>
+    <path d="M79 103Q114 121 152 102Q150 138 116 143Q82 139 79 103Z" fill="#102c50" stroke="#286da7" stroke-width="4"/>
+    <path d="M88 108L97 124L105 111L115 129L126 111L136 124L145 107" fill="#fff" stroke="#bcefff" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M54 119L31 105L49 94L30 78L58 82" fill="url(#iceBody)" stroke="#286da7" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M176 119L199 105L181 94L200 78L172 82" fill="url(#iceBody)" stroke="#286da7" stroke-width="5" stroke-linejoin="round"/>
+    <circle class="ice-core" cx="116" cy="150" r="12" fill="url(#iceCore)" filter="url(#iceGlow)" style="transform-origin:116px 150px" opacity=".92"/>
+    <path d="M49 156L25 145L34 166L18 174L47 177" fill="url(#iceDark)" stroke="#286da7" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M181 156L205 145L196 166L212 174L183 177" fill="url(#iceDark)" stroke="#286da7" stroke-width="4" stroke-linejoin="round"/>
+  </svg>
+</div></div>
+                </div>
+                <div class="combat-stat-line">HP: <span id="monsterHpText">100/100</span></div>
+                <div class="hp-bar-outer"><div class="hp-bar-inner" id="monsterHpBar" style="width: 100%"></div></div>
+                <div class="combat-stat-line" style="margin-top: 4px;">MP: <span id="monsterMpText">40/40</span></div>
+                <div class="mp-bar-outer"><div class="mp-bar-inner" id="monsterMpBar" style="width: 100%"></div></div>
+                <div class="combat-gear-desc" style="margin-top: 4px;">
+                  AP: <span id="monsterApVal">5</span> &nbsp;|&nbsp; DP: <span id="monsterDpVal">2</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Battle Journal -->
+            <div class="combat-log-wrapper">
+              <h4 class="combat-log-title">Battle Journal</h4>
+              <div class="combat-log" id="combatLog"></div>
+            </div>
+
+            <div class="combat-actions" style="flex-direction: column; align-items: center; gap: 8px;">
+              <div style="display: flex; gap: 8px; justify-content: center; width: 100%; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="startCombatBtn" type="button">✨ Cast & Strike!</button>
+                <button class="btn btn-secondary" id="openSpellsBtn" type="button" style="background:rgba(186,104,200,0.25); border-color:#ba68c8; color:#ba68c8;">✨ Spell</button>
+                <button class="btn btn-ghost" id="combatEscapeBtn" type="button" style="background:rgba(255, 152, 0, 0.15); border-color:#ff9800; color:#ff9800;">🏃 Escape</button>
+                <button class="btn btn-ghost" id="postCombatBtn" style="display:none" type="button">Next</button>
+                <button class="btn btn-primary" id="keepFightingBtn" style="display:none; background:rgba(76,175,80,0.25); border-color:#4caf50; color:#4caf50;" type="button">⚔️ Keep Fighting</button>
+              </div>
+              <div class="spells-panel" id="spellsPanel" style="display:none; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; padding: 6px; background:rgba(244,241,232,0.03); border: 1px solid rgba(244,241,232,0.08); border-radius: 8px; width: 100%; max-width: 420px;">
+                <!-- Spell buttons rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="codexView" class="view-container">
+          <div class="rpg-header">
+            <h2 class="rpg-title">📖 Star Log</h2>
+            <button class="btn btn-ghost" id="codexBackBtn" type="button" onclick="closeCodex()">← Back to Quest</button>
+          </div>
+          <div class="codex-tabs">
+            <button class="codex-tab active" data-tab="story" type="button" onclick="setCodexTab('story')">📜 Story</button>
+            <button class="codex-tab" data-tab="atlas" type="button" onclick="setCodexTab('atlas')">🪐 Star Atlas</button>
+          </div>
+          <div id="codexBody" class="codex-body"></div>
+        </div>
+
+        <!-- Star-system map / hub + its destinations (each module renders itself into its container;
+             see js/15-map.js, 17-wonderland.js, 18-farm.js, 19-alchemy.js, 20-item-store.js) -->
+        <div id="mapView" class="view-container"></div>
+        <div id="wonderlandView" class="view-container"></div>
+        <div id="farmView" class="view-container"></div>
+        <div id="alchemyView" class="view-container"></div>
+        <div id="itemStoreView" class="view-container"></div>
+        <div id="tradingView" class="view-container"></div>
+        <div id="starAtlasView" class="view-container"></div>
+        <div id="hooHeyView" class="view-container"></div>
+
+        <div id="profileView" class="view-container">
+          <div class="rpg-header">
+            <h2 class="rpg-title">🎒 Profile</h2>
+            <button class="btn btn-ghost" type="button" onclick="closeProfile()">← Back</button>
+          </div>
+          <div class="prof-tabs">
+            <button class="prof-tab active" data-tab="stats" type="button" onclick="setProfileTab('stats')">📊 Stats</button>
+            <button class="prof-tab" data-tab="gear" type="button" onclick="setProfileTab('gear')">⚔️ Gear</button>
+            <button class="prof-tab" data-tab="inventory" type="button" onclick="setProfileTab('inventory')">🎒 Inventory</button>
+          </div>
+          <div id="profileBody" class="prof-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="levelToast"></div>
+
+
+  <!-- Game modules: classic scripts sharing one global scope, loaded in dependency order.
+       (Not ES modules, so double-clicking this file from disk still works.) -->
+  <!-- Config = pure content data (star systems, planets, story, …). Loads FIRST so the
+       logic modules below read from it. Add content by editing these — see CONFIG_GUIDE.md. -->
+  <script src="config/worlds.config.js?v=20260713q"></script>
+  <script src="config/curriculum.config.js?v=20260713q"></script>
+  <script src="config/tutorials.config.js?v=20260713q"></script>
+  <script src="config/astro.config.js?v=20260713q"></script>
+  <script src="config/rooms.config.js?v=20260713q"></script>
+  <script src="config/planets.config.js?v=20260713q"></script>
+  <script src="config/story.config.js?v=20260713q"></script>
+  <script src="config/economy.config.js?v=20260713q"></script>
+  <script src="config/elements.config.js?v=20260713q"></script>
+  <script src="config/gear.config.js?v=20260713q"></script>
+  <script src="config/spells.config.js?v=20260713q"></script>
+  <script src="js/01-data.js?v=20260713q"></script>
+  <script src="js/02-dom.js?v=20260713q"></script>
+  <script src="js/03-save.js?v=20260713q"></script>
+  <script src="js/04-logic.js?v=20260713q"></script>
+  <script src="js/09-items.js?v=20260713q"></script>
+  <script src="js/21-catalogue.js?v=20260713q"></script>
+  <script src="js/14-lore.js?v=20260713q"></script>
+  <script src="js/05-render.js?v=20260713q"></script>
+  <script src="js/06-rpg-battle.js?v=20260713q"></script>
+  <script src="js/13-audio.js?v=20260713q"></script>
+  <script src="js/15-map.js?v=20260713q"></script>
+  <script src="js/16-chest.js?v=20260713q"></script>
+  <script src="js/17-wonderland.js?v=20260713q"></script>
+  <script src="js/18-farm.js?v=20260713q"></script>
+  <script src="js/19-alchemy.js?v=20260713q"></script>
+  <script src="js/20-item-store.js?v=20260713q"></script>
+  <script src="js/26-spells.js?v=20260713q"></script>
+  <script src="js/22-profile.js?v=20260713q"></script>
+  <script src="js/24-trading.js?v=20260713q"></script>
+  <script src="js/25-nav.js?v=20260713q"></script>
+  <script src="js/27-hoohey.js?v=20260713q"></script>
+  <script src="js/28-arena-generators.js?v=20260713q"></script>
+  <script src="js/29-tutorial.js?v=20260713q"></script>
+  <script src="js/30-bodyart.js?v=20260713q"></script>
+  <script src="js/31-graph.js?v=20260713q"></script>
+  <script src="js/cloud-save.js?v=20260713q"></script>
+  <script src="js/cloud-ui.js?v=20260713q"></script>
+  <script src="js/07-main.js?v=20260713q"></script>
+  <script src="js/08-layout.js?v=20260713q"></script>
+
+</body>
+</html>

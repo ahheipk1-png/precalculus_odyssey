@@ -1,0 +1,8 @@
+# Local dev backups and scratch — never deploy these
+backups/
+game_backup_*/
+Game_0.*.html
+*.output
+.wrangler/
+node_modules/
+.DS_Store

@@ -1,0 +1,317 @@
+﻿  /* ============================================================
+     systems.css â€” UI for the RPG systems (currencies, catalogue,
+     profile, trading, nav/Earth/Star Atlas, Hoo Hey How, Wu Xing).
+     Uses the shared design tokens from styles.css.
+     ============================================================ */
+
+  /* ---------- Cloud Save (cloud-ui.js) ---------- */
+  #cloudBtn.cst-ok{ color:#7bd88f; border-color:#7bd88f; }
+  #cloudBtn.cst-busy{ color:var(--sky); border-color:var(--sky); }
+  #cloudBtn.cst-warn{ color:var(--yellow); border-color:var(--yellow); }
+  #cloudBtn.cst-err{ color:var(--coral); border-color:var(--coral); }
+  #cloudBtn.cst-dim{ color:var(--chalk-dim); }
+  .cloud-overlay{ position:fixed; inset:0; background:rgba(8,16,28,0.72); display:none; align-items:center; justify-content:center; z-index:120; padding:16px; }
+  .cloud-card{ width:min(460px,94vw); max-height:88vh; overflow:auto; background:linear-gradient(170deg,var(--ink-light),var(--ink)); border:1px solid rgba(244,241,232,0.22); border-radius:16px; padding:18px 18px 16px; box-shadow:0 20px 50px rgba(0,0,0,0.5); }
+  .cl-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+  .cl-head h2{ font-family:'Patrick Hand',cursive; font-size:24px; color:var(--yellow); margin:0; }
+  .cl-status{ font-size:15px; font-weight:700; padding:7px 10px; border-radius:10px; margin:6px 0 12px; background:rgba(244,241,232,0.06); }
+  .cl-status.cst-ok{ color:#7bd88f; } .cl-status.cst-busy{ color:var(--sky); } .cl-status.cst-warn{ color:var(--yellow); } .cl-status.cst-err{ color:var(--coral); } .cl-status.cst-dim{ color:var(--chalk-dim); }
+  .cl-row{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+  .cl-note{ font-size:14px; color:var(--chalk-dim); line-height:1.45; margin:6px 0; }
+  .cl-note code, .cl-check code{ background:rgba(244,241,232,0.1); padding:1px 5px; border-radius:5px; font-size:13px; }
+  .cl-hr{ border:none; border-top:1px dashed rgba(244,241,232,0.16); margin:14px 0 10px; }
+  .cl-sub{ font-size:13px; text-transform:uppercase; letter-spacing:0.06em; color:var(--sky); font-weight:700; margin:6px 0; }
+  .cl-check{ display:flex; align-items:flex-start; gap:8px; font-size:14px; color:var(--chalk-dim); margin-top:8px; line-height:1.4; }
+  .cl-profiles{ margin-top:10px; }
+  .cl-prof{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border:1px solid rgba(244,241,232,0.14); border-radius:10px; margin:6px 0; }
+  .cl-prof-main{ display:flex; flex-direction:column; } .cl-prof-main b{ color:var(--chalk); font-size:16px; } .cl-prof-meta{ font-size:12px; color:var(--chalk-dim); }
+  .cl-code-card .cl-code{ font-family:'Cinzel',serif; font-size:26px; letter-spacing:2px; color:var(--yellow); text-align:center; background:rgba(0,0,0,0.28); border:1px dashed var(--yellow); border-radius:12px; padding:14px; margin:10px 0; word-break:break-all; }
+
+  /* ---------- Coordinate-geometry graph (31-graph.js, #graphPanel) ---------- */
+  .graph-panel{ display:flex; flex-direction:column; align-items:center; margin:6px 0 4px; }
+  .graph-panel[hidden]{ display:none; }
+  .coord-graph{ width:min(340px, 86vw); height:auto; touch-action:manipulation; }
+  .cg-grid{ stroke:rgba(244,241,232,0.10); stroke-width:0.5; }
+  .cg-axis{ stroke:rgba(244,241,232,0.55); stroke-width:1.4; }
+  .cg-num{ fill:var(--chalk-dim); font-size:11px; font-family:'Quicksand',sans-serif; text-anchor:middle; }
+  .cg-num-y{ text-anchor:end; }
+  .cg-plot{ stroke:var(--sky); stroke-width:2.6; fill:none; }
+  .cg-seg{ stroke:var(--yellow); stroke-width:2.2; }
+  .cg-dash{ stroke-dasharray:4 4; }
+  .cg-point{ fill:var(--coral); stroke:#fff; stroke-width:1.5; }
+  .cg-plabel{ fill:var(--chalk); font-size:13px; font-family:'Quicksand',sans-serif; font-weight:700; }
+  .cg-hit{ fill:transparent; cursor:pointer; }
+  .cg-hit:hover{ fill:rgba(110,193,228,0.28); }
+  .cg-pick{ fill:var(--sky); stroke:#fff; stroke-width:1.6; }
+  .cg-userline{ stroke:var(--sky); stroke-width:2.8; stroke-linecap:round; }
+  .cg-controls{ margin-top:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .cg-tip{ color:var(--chalk-dim); font-size:14px; font-weight:600; }
+  .cg-clear{ padding:4px 12px; font-size:13px; }
+
+  /* ---- Currency HUD strip (Cash Â· Gold Â· Silver Â· Chips) ---- */
+  .currency-bar{
+    display:flex; flex-wrap:wrap; gap:8px; margin:6px 0; justify-content:center;
+  }
+  .cur-chip{
+    display:inline-flex; align-items:center; gap:5px;
+    background:rgba(244,241,232,0.06); border:1px solid rgba(244,241,232,0.14);
+    border-radius:999px; padding:4px 12px; font-size:14px; color:var(--chalk-dim);
+    font-family:'Quicksand', sans-serif;
+  }
+  .cur-chip b{ color:var(--chalk); font-weight:800; font-variant-numeric:tabular-nums; }
+  .cur-chip.cur-cash{ background:rgba(242,193,78,0.14); border-color:rgba(242,193,78,0.4); }
+  .cur-chip.cur-cash b{ color:var(--yellow); }
+
+  /* ---- Rarity frame colors (weapon catalogue) ---- */
+  .rar-common   { --rar:#9fb0c0; }
+  .rar-legendary{ --rar:#f2c14e; }
+  .rar-archive  { --rar:#b56cff; }
+  .rar-stellar  { --rar:#5aa9ff; }
+  .rar-rift     { --rar:#ff5a5a; }
+  .rar-odyssey  { --rar:#ff9e3d; }
+
+  @media (max-width:640px){
+    .cur-chip{ font-size:14px; padding:3px 9px; }
+  }
+
+  /* ---- Weapon/gear catalogue rows (SVG art + rarity frames) ---- */
+  .shop-item{ display:flex; align-items:center; gap:10px; border-left:4px solid var(--rar,transparent) !important; }
+  .shop-item-art{ width:48px; height:50px; flex:0 0 48px; }
+  .gear-art{ width:100%; height:100%; display:block; }
+  .gear-art.gear-lvl3{ filter:drop-shadow(0 0 4px var(--rar,#fff)); }
+  .shop-item-info{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .gear-el{ font-size:15px; }
+  .gear-rarity{ font-size:14px; color:var(--rar,#9fb0c0); font-weight:800; letter-spacing:.3px; }
+  .gear-sockets{ color:#8aa0ff; letter-spacing:2px; font-size:13px; }
+  .shop-item.equipped{ box-shadow: inset 0 0 0 1px var(--rar, var(--sky)); }
+
+  /* ---- Spell menu buttons ---- */
+  .spell-btn{
+    display:inline-flex; flex-direction:column; align-items:center; gap:1px;
+    background:rgba(244,241,232,0.05); border:1.5px solid var(--sky);
+    border-radius:9px; padding:5px 9px; font-family:'Quicksand',sans-serif;
+    font-weight:700; font-size:14px; cursor:pointer; min-width:78px;
+  }
+  .spell-btn small{ font-size:13px; opacity:0.85; font-weight:600; }
+  .spell-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .spell-btn:not(:disabled):hover{ background:rgba(244,241,232,0.12); }
+
+  /* ---- Generic view helpers ---- */
+  .prof-tabs, .codex-tabs{ display:flex; gap:8px; margin:0 0 14px; flex-wrap:wrap; }
+  .prof-tab{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:14px;
+    background:rgba(244,241,232,0.05); border:1px solid rgba(244,241,232,0.14);
+    color:var(--chalk-dim); border-radius:999px; padding:7px 16px; cursor:pointer; }
+  .prof-tab.active{ background:rgba(110,193,228,0.16); border-color:var(--sky); color:var(--sky); }
+  .prof-body{ text-align:left; }
+  .prof-sub{ font-family:'Patrick Hand',cursive; font-size:22px; color:var(--yellow); margin:18px 0 8px; }
+  .prof-sub-note{ font-family:'Quicksand',sans-serif; font-size:15px; font-weight:600; color:var(--chalk-dim); margin-left:8px; }
+  .prof-hint{ font-size:15px; color:var(--chalk-dim); margin:8px 0; }
+
+  /* ---- Profile ---- */
+  .prof-card{ background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-radius:14px; padding:18px; }
+  /* Player name â€” a clean, bold sans (not the chalk cursive) so usernames read clearly. */
+  .prof-h{ font-family:'Quicksand',sans-serif; font-weight:800; letter-spacing:.5px; font-size:32px; color:var(--chalk); margin:0 0 10px; }
+  .prof-lvl{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:19px; color:var(--sky); letter-spacing:0; }
+  .prof-line{ display:flex; justify-content:space-between; font-size:17px; color:var(--chalk-dim); margin-top:10px; }
+  .prof-line span{ color:var(--chalk); font-weight:700; }
+  .prof-bar{ height:12px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; margin-top:5px; }
+  .prof-bar-fill{ height:100%; border-radius:6px; }
+  .prof-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
+  .prof-stat{ background:rgba(244,241,232,0.05); border:1px solid rgba(244,241,232,0.12); border-radius:12px; padding:12px 10px; text-align:center; display:flex; flex-direction:column; gap:3px; }
+  .prof-stat span{ font-size:14px; color:var(--chalk-dim); }
+  .prof-stat b{ font-size:26px; color:var(--chalk); font-variant-numeric:tabular-nums; }
+  .prof-worth{ font-size:14px; color:var(--sky); line-height:1.25; }
+  .prof-worth em{ display:block; font-style:normal; font-size:14px; color:var(--chalk-dim); }
+  .prof-slot{ display:flex; align-items:center; gap:10px; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-left:4px solid var(--rar,transparent); border-radius:12px; padding:8px 10px; margin-bottom:8px; }
+  .prof-slot-lbl{ width:64px; font-size:14px; color:var(--chalk-dim); font-weight:700; }
+  .prof-slot-empty{ color:var(--chalk-dim); font-style:italic; }
+  .prof-slot-art{ width:40px; height:42px; }
+  .prof-slot-info b{ font-size:14px; color:var(--chalk); } .prof-slot-info small{ display:block; font-size:14px; color:var(--rar,#9fb0c0); }
+  .prof-owned-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .prof-owned{ display:flex; align-items:center; gap:6px; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.1); border-left:3px solid var(--rar,transparent); border-radius:10px; padding:6px; }
+  .prof-owned-art{ width:32px; height:34px; flex:0 0 32px; } .prof-owned-name{ flex:1; font-size:14px; }
+  .prof-inv-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .prof-inv-item{ display:flex; align-items:center; gap:6px; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.1); border-radius:10px; padding:6px 8px; }
+  .prof-inv-icon{ font-size:20px; } .prof-inv-name{ flex:1; font-size:15px; } .prof-inv-note{ font-size:14px; color:var(--chalk-dim); }
+
+  /* ---- Trading ---- */
+  .tr-intro,.atlas-intro,.hh-intro{ font-size:14px; color:var(--chalk-dim); text-align:center; margin:6px 0 12px; }
+  .tr-row{ display:grid; grid-template-columns:1.4fr 1fr auto 1.6fr; align-items:center; gap:10px; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-radius:12px; padding:10px; margin-bottom:8px; }
+  .tr-good b{ color:var(--chalk); } .tr-have{ display:block; font-size:14px; color:var(--chalk-dim); }
+  .tr-price{ font-size:16px; color:var(--yellow); font-weight:800; } .tr-chg{ font-size:14px; margin-left:4px; }
+  .tr-up{ color:#57b45a; } .tr-down{ color:#f0705e; }
+  .tr-spark{ width:120px; height:30px; } .tr-actions{ display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+  .tr-review{ text-align:center; margin:14px 0; padding:14px; background:rgba(110,193,228,0.06); border:1px dashed rgba(110,193,228,0.3); border-radius:12px; }
+  .tr-review .number-input{ max-width:110px; margin:0 8px; }
+  .tr-review-q{ font-weight:700; color:var(--chalk); margin:0 0 4px; font-size:16px; }
+  .tr-review-src{ font-size:13px; color:var(--chalk-dim); margin-bottom:8px; }
+  .tr-review-prompt{ font-family:'Cinzel',serif; font-size:22px; color:var(--yellow); margin:6px 0 12px; line-height:1.35; }
+  .tr-review-choices{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; max-width:420px; margin:0 auto; }
+  .tr-review-choice{ font-size:20px; padding:12px; }
+  .tr-review-answer{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+  .tr-h{ font-family:'Patrick Hand',cursive; color:var(--yellow); font-size:17px; margin:14px 0 6px; }
+  .tr-log{ display:flex; flex-direction:column; gap:4px; } .tr-tx{ font-size:14px; color:var(--chalk-dim); background:rgba(255,255,255,0.03); padding:4px 8px; border-radius:6px; }
+
+  /* ---- Star Atlas ---- */
+  .atlas-intro{ font-size:16px; color:var(--chalk-dim); margin:6px 0 14px; }
+  .atlas-sys-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+  .atlas-sys{ background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-radius:16px; padding:18px 16px; text-align:center; }
+  .atlas-sys.unlocked{ cursor:pointer; } .atlas-sys.unlocked:hover{ border-color:var(--sky); transform:translateY(-3px); transition:.15s; }
+  .atlas-sys.locked{ opacity:0.6; } .atlas-sys.here{ box-shadow:0 0 0 2px var(--yellow); }
+  .atlas-sys-star{ width:84px; height:84px; margin:0 auto 8px; } .atlas-star-dot{ width:64px; height:64px; border-radius:50%; margin:10px auto; box-shadow:0 0 18px rgba(255,180,60,.6); }
+  .atlas-sys-name{ font-family:'Patrick Hand',cursive; font-size:26px; color:var(--chalk); } .atlas-here{ font-size:15px; color:var(--yellow); }
+  .atlas-sys-topic{ font-size:16px; font-weight:700; color:var(--yellow); margin-top:3px; }
+  .atlas-sys-meta,.atlas-sys-star-name{ font-size:15px; color:var(--chalk-dim); margin-top:2px; } .atlas-sys-fact{ font-size:15px; color:var(--sky); margin:8px 0; font-style:italic; line-height:1.4; }
+  .atlas-sys-status{ font-size:15px; font-weight:700; margin-top:6px; }
+  .atlas-planet-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
+  .atlas-planet{ background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-top:4px solid var(--astro-accent,var(--sky)); border-radius:16px; padding:16px 14px; text-align:center; display:flex; flex-direction:column; }
+  .atlas-planet.current{ box-shadow:0 0 0 2px var(--yellow); } .atlas-planet-art{ width:104px; height:104px; margin:0 auto 6px; }
+  .atlas-planet-name{ font-family:'Patrick Hand',cursive; font-size:22px; color:var(--chalk); } .atlas-planet-kind{ font-size:14px; color:var(--astro-accent,var(--sky)); margin-bottom:6px; }
+  .atlas-planet-fact{ font-size:14px; color:var(--chalk-dim); margin-bottom:12px; }
+  .atlas-planet-topic{ font-size:15px; color:var(--chalk); margin:4px 0 2px; line-height:1.3; }
+  .atlas-planet-style{ font-size:14px; font-weight:700; color:var(--astro-accent,var(--sky)); margin-bottom:10px; }
+  .atlas-planet.imagined{ opacity:0.9; }
+  /* buttons pinned to the BOTTOM so every card's Enter button lines up */
+  .atlas-planet-btns{ margin-top:auto; display:flex; flex-direction:column; gap:8px; }
+  .atlas-planet .btn{ width:100%; font-size:16px; padding:11px 10px; }
+  /* Enter uses the game's standard .btn-primary look (no override). */
+  .atlas-planet .atlas-about{ font-size:14px; padding:8px 10px; }
+
+  /* ---- "About this planet" info modal ---- */
+  .body-info-modal{ position:fixed; inset:0; z-index:120; display:none; }
+  .body-info-modal.open{ display:block; }
+  .bim-backdrop{ position:absolute; inset:0; background:rgba(4,6,16,0.72); backdrop-filter:blur(3px); }
+  .bim-card{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(460px,92vw); max-height:90vh; overflow:auto;
+    background:linear-gradient(160deg,#141a2e,#0d1120); border:1px solid var(--astro-accent,var(--sky)); border-top:5px solid var(--astro-accent,var(--sky));
+    border-radius:20px; padding:22px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .bim-close{ position:absolute; top:12px; right:14px; background:none; border:none; color:var(--chalk-dim); font-size:22px; cursor:pointer; }
+  .bim-art{ width:120px; height:120px; margin:4px auto 10px; }
+  .bim-name{ font-family:'Quicksand',sans-serif; font-weight:800; font-size:28px; color:var(--chalk); margin:0; }
+  .bim-kind{ font-size:14px; color:var(--astro-accent,var(--sky)); margin:2px 0 12px; font-weight:700; }
+  .bim-fact{ font-size:16px; color:var(--chalk); line-height:1.5; margin:0 0 16px; }
+  .bim-rows{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+  .bim-rows > div{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:8px; text-align:left; }
+  .bim-rows span{ display:block; font-size:14px; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:.5px; }
+  .bim-rows b{ font-size:14px; color:var(--chalk); }
+  .bim-enter{ width:100%; font-size:17px; padding:12px; }
+
+  /* ---- Tutorial overlay ("How to play") ---- */
+  .tutorial-overlay{ position:fixed; inset:0; z-index:130; display:none; }
+  .tutorial-overlay.open{ display:block; }
+  .tut-backdrop{ position:absolute; inset:0; background:rgba(4,6,16,0.78); backdrop-filter:blur(3px); }
+  .tut-card{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(560px,94vw); max-height:92vh; overflow:auto;
+    background:linear-gradient(160deg,#16203a,#0d1120); border:1px solid var(--sky); border-radius:22px; padding:26px 24px 20px; box-shadow:0 24px 70px rgba(0,0,0,.55); }
+  .tut-close{ position:absolute; top:12px; right:16px; background:none; border:none; color:var(--chalk-dim); font-size:22px; cursor:pointer; }
+  .tut-kicker{ font-family:'Quicksand',sans-serif; font-weight:800; font-size:14px; letter-spacing:.6px; text-transform:uppercase; color:var(--sky); }
+  .tut-topic{ font-family:'Patrick Hand',cursive; font-size:26px; color:var(--chalk); margin:6px 0 12px; text-wrap:balance; }
+  .tut-explain{ font-size:18px; line-height:1.6; color:var(--chalk); margin:0 0 10px; }
+  .tut-hint{ font-size:14px; color:var(--chalk-dim); margin:0; }
+  .tut-q{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:22px; color:var(--chalk); margin:14px 0; line-height:1.4; }
+  .tut-choices{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:12px 0; }
+  .tut-choice{ background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:8px 14px; font-size:17px; color:var(--chalk-dim); }
+  .tut-choice.correct{ background:rgba(110,207,143,0.18); border-color:#6fcf8f; color:#bff0cf; font-weight:800; }
+  .tut-a{ font-size:19px; color:var(--chalk); margin:10px 0 4px; } .tut-a b{ color:var(--yellow); }
+  .tut-nav{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:18px 0 6px; }
+  .tut-navspacer{ width:70px; } .tut-dots{ letter-spacing:4px; color:var(--sky); font-size:14px; }
+  .tut-toarena{ width:100%; margin-top:6px; }
+
+  /* ---- New question styles: Identify (mcOnly) & Compute (directInput) ---- */
+  .question-prompt{ text-align:center; padding:18px 14px; min-height:120px; display:flex; flex-direction:column; justify-content:center; gap:10px; }
+  .question-prompt .qp-text{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:clamp(20px,2.4vw,30px); color:var(--chalk); line-height:1.35; text-wrap:balance; }
+  .question-prompt .qp-soon{ font-family:'Patrick Hand',cursive; font-size:22px; color:var(--yellow); }
+  .question-prompt .qp-hint{ font-size:15px; color:var(--chalk-dim); }
+  .direct-answer-panel{ display:flex; gap:10px; align-items:center; justify-content:center; margin-top:8px; }
+  .direct-answer-panel .number-input{ max-width:180px; }
+
+  /* ---- Hoo Hey How ---- */
+  .hh-dice{ display:flex; gap:14px; justify-content:center; margin:12px 0; }
+  .hh-die{
+    font-size:56px; line-height:1; display:inline-block;
+    width:78px; height:78px; text-align:center;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:16px;
+    background:rgba(244,241,232,0.06);
+    border:2px solid rgba(244,241,232,0.18);
+    box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08);
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,.4));
+  }
+  /* tumbling while rolling */
+  .hh-die-rolling{ animation:hhTumble 0.35s ease-in-out infinite; border-color:var(--yellow); }
+  @keyframes hhTumble{
+    0%  { transform:translateY(0)    rotate(-16deg) scale(1);    }
+    25% { transform:translateY(-14px) rotate(10deg)  scale(1.08); }
+    50% { transform:translateY(0)     rotate(18deg)  scale(1);    }
+    75% { transform:translateY(-8px)  rotate(-8deg)  scale(1.05); }
+    100%{ transform:translateY(0)     rotate(-16deg) scale(1);    }
+  }
+  /* each die pops in as it lands */
+  .hh-die-land{ animation:hhLand 0.4s cubic-bezier(.17,.89,.32,1.28) both; }
+  .hh-die-land:nth-child(2){ animation-delay:0.1s; }
+  .hh-die-land:nth-child(3){ animation-delay:0.2s; }
+  @keyframes hhLand{
+    0%  { transform:scale(1.6) rotate(-24deg); opacity:0; }
+    60% { transform:scale(0.9) rotate(6deg);   opacity:1; }
+    100%{ transform:scale(1)   rotate(0);      opacity:1; }
+  }
+  /* win/lose reactions on the whole dice row */
+  .hh-dice-win .hh-die{ border-color:#7bd88f; box-shadow:0 0 18px rgba(123,216,143,.6); animation:hhWinBounce 0.6s ease 0.35s 2; }
+  .hh-dice-lose{ animation:hhShake 0.5s ease 0.3s 1; }
+  .hh-dice-lose .hh-die{ border-color:var(--coral); filter:grayscale(0.35) drop-shadow(0 4px 6px rgba(0,0,0,.4)); }
+  @keyframes hhWinBounce{ 0%,100%{ transform:translateY(0); } 40%{ transform:translateY(-12px); } }
+  @keyframes hhShake{ 0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-8px); } 40%{ transform:translateX(8px); } 60%{ transform:translateX(-5px); } 80%{ transform:translateX(5px); } }
+
+  .hh-result{ text-align:center; font-family:'Patrick Hand',cursive; font-size:24px; color:var(--yellow); margin:8px 0; }
+  .hh-result-win{ color:#7bd88f; animation:hhPop 0.5s ease both; }
+  .hh-result-lose{ color:var(--coral); animation:hhPop 0.5s ease both; }
+  .hh-result-even{ color:var(--chalk-dim); }
+  @keyframes hhPop{ 0%{ transform:scale(0.6); opacity:0; } 60%{ transform:scale(1.12); } 100%{ transform:scale(1); opacity:1; } }
+  @media (prefers-reduced-motion: reduce){
+    .hh-die-rolling, .hh-die-land, .hh-dice-win .hh-die, .hh-dice-lose, .hh-result-win, .hh-result-lose{ animation:none; }
+  }
+  .hh-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .hh-tile{ background:rgba(244,241,232,0.05); border:2px solid rgba(244,241,232,0.14); border-radius:14px; padding:10px; text-align:center; }
+  .hh-tile.hh-hit{ border-color:var(--yellow); box-shadow:0 0 14px rgba(242,193,78,.4); }
+  .hh-icon{ font-size:40px; } .hh-name{ font-size:15px; font-weight:700; } .hh-bet{ font-size:14px; color:var(--yellow); margin:3px 0; }
+  .hh-betbtns{ display:flex; gap:4px; justify-content:center; } .hh-roll-row{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-weight:700; }
+  @media (max-width:640px){ .prof-grid{ grid-template-columns:repeat(2,1fr); } .tr-row{ grid-template-columns:1fr 1fr; } .tr-spark{ display:none; } .hh-grid{ grid-template-columns:repeat(2,1fr); } }
+
+  /* ---- Planet-info strip sits compactly at the top of the main quest panel ---- */
+  .quest-main-panel > .astro-card{ margin:0 0 10px; flex:0 0 auto; align-self:stretch; max-height:92px; }
+
+  /* ---- "Entering a new planet" arrival splash ---- */
+  .planet-arrival{
+    position:absolute; inset:0; z-index:47; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 42%, rgba(16,28,56,0.92), rgba(4,8,18,0.97));
+    border-radius:14px; overflow:hidden; animation:paFade .4s ease both; cursor:pointer;
+  }
+  .planet-arrival.pa-out{ animation:paFadeOut .42s ease both; }
+  @keyframes paFade{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes paFadeOut{ from{ opacity:1; } to{ opacity:0; } }
+  .pa-stars{ position:absolute; inset:0; pointer-events:none; opacity:.7;
+    background-image:
+      radial-gradient(1.5px 1.5px at 18% 28%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 72% 18%, #cfe4ff, transparent),
+      radial-gradient(1px 1px at 42% 72%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 86% 62%, #fff, transparent),
+      radial-gradient(1px 1px at 55% 44%, #bcd4ff, transparent),
+      radial-gradient(1px 1px at 12% 82%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 90% 86%, #cfe4ff, transparent),
+      radial-gradient(1px 1px at 30% 12%, #fff, transparent);
+    animation:paDrift 6s linear infinite;
+  }
+  @keyframes paDrift{ from{ background-position:0 0; } to{ background-position:0 -220px; } }
+  .pa-inner{ position:relative; z-index:1; text-align:center; }
+  .pa-kicker{ font-family:'Quicksand',sans-serif; font-weight:800; letter-spacing:3px; font-size:15px;
+    color:var(--pa-accent,#6ec1e4); text-transform:uppercase; animation:paUp .5s .1s ease both; }
+  .pa-art{ width:132px; height:132px; margin:8px auto; filter:drop-shadow(0 0 26px var(--pa-accent,#6ec1e4));
+    animation:paZoom .9s cubic-bezier(.2,.8,.3,1.2) both; }
+  .pa-art svg{ width:100%; height:100%; }
+  .pa-planet{ font-family:'Patrick Hand',cursive; font-size:34px; color:var(--chalk); margin-top:6px; animation:paUp .55s .18s ease both; text-shadow:0 0 18px rgba(160,200,255,.35); }
+  .pa-kind{ font-family:'Quicksand',sans-serif; font-size:15px; color:var(--pa-accent,#6ec1e4); animation:paUp .6s .26s ease both; }
+  .pa-system{ font-family:'Cinzel',Georgia,serif; font-size:16px; letter-spacing:1px; color:var(--yellow); margin-top:12px; animation:paUp .65s .34s ease both; }
+  @keyframes paZoom{ from{ transform:scale(.2) rotate(-25deg); opacity:0; } to{ transform:scale(1) rotate(0); opacity:1; } }
+  @keyframes paUp{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce){
+    .planet-arrival, .planet-arrival *{ animation:none !important; }
+    .pa-stars{ animation:none; }
+  }
