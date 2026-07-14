@@ -93,3 +93,24 @@ Architecture preserved: ordered classic scripts, one global scope, no ES modules
 
 ---
 
+## Phase 6 — Typography & control-size tokens
+
+- **Date/time:** 2026-07-14
+- **Files changed:** `game/css/styles.css` (added `--font-ui-small/normal/large`,
+  `--font-heading-small`, `--button-min-height` to the active `:root`; wired `.btn` font-size +
+  min-height to tokens; fixed `.shop-btn` min-height 40→44px via `--button-min-height`).
+- **Backup:** covered by `game_backup_before_tooltips/` (same session; no destructive edits).
+- **Summary:** Established the shared sizing scale the spec asked for and referenced it from the
+  primary button class + the one sub-44px control found (`.shop-btn`). Audit finding: most controls
+  already meet thresholds from a prior enlargement pass (`.btn` 18–19px/48–52px, `.mc-btn` 24px/48px).
+  Deliberately conservative — did NOT bulk-bump the dense header/combat readouts the user already
+  tuned, to honour "no overlap after enlargement." The nav (`.reset-btn`) remains the readability floor.
+- **Tests (live browser @1366×768):** vars resolve (16/18/21/24/44px); applyBtn 19px/52px;
+  overflowX=false, no elements wider than viewport; console clean. (An earlier overflowX=true reading
+  was a headless artifact — window.innerWidth reported 0 until resize_window forced a real viewport.)
+- **Results:** PASS (token system in place; targeted fixes applied). Broader per-screen size audit
+  (shops/inventory/atlas/spells/modals at 4 resolutions) folds into Phase 7.
+- **Next:** Phase 5 (Hoo Hey How) then Phase 2 (answer panel), then the big Phase 1b variety system.
+
+---
+

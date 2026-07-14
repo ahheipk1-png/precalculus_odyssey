@@ -429,12 +429,12 @@
   .btn{
     font-family:'Quicksand', sans-serif;
     font-weight:700;
-    font-size: 18px;
+    font-size: var(--font-ui-normal);
     border: none;
     border-radius: 12px;
     padding: 13px 22px;
     cursor: pointer;
-    min-height: 48px;
+    min-height: max(48px, var(--button-min-height));
   }
   .btn:focus-visible{ outline: 3px solid var(--sky); outline-offset: 2px; }
   .btn-primary{
@@ -1134,6 +1134,13 @@
     --panel:rgba(17,24,49,.78);
     --panel-soft:rgba(255,255,255,.055);
     --line:rgba(184,199,255,.18);
+    /* Shared typography & control-size scale (Phase 6). Reference these instead of bare px so
+       readability stays consistent. The top nav (.reset-btn) is the minimum readability floor. */
+    --font-ui-small: 16px;      /* smallest normal UI text */
+    --font-ui-normal: 18px;     /* default button / body UI text */
+    --font-ui-large: 21px;      /* prominent button text */
+    --font-heading-small: 24px; /* small headings / panel titles */
+    --button-min-height: 44px;  /* minimum touch-target height */
   }
   html,body{
     background:
@@ -1897,7 +1904,7 @@
     min-height:52px !important;
   }
   /* Shop rows */
-  .shop-btn{ font-size:15px !important; min-height:40px !important; padding:9px 16px !important; }
+  .shop-btn{ font-size:var(--font-ui-small) !important; min-height:var(--button-min-height) !important; padding:10px 16px !important; }
   .shop-item-name{ font-size:22px !important; }
   .shop-item-stat, .shop-upgrade-hint{ font-size:15px !important; }
   /* Combat readouts that were tiny */
