@@ -42,7 +42,7 @@
   // Switch the background loop by context ('practice' | 'shop' | 'arena' | 'battle').
   function playMusic(key){
     if (key) AUDIO.current = key;
-    if (AUDIO.muted || !AUDIO.started) return;   // deferred until unmute / first gesture
+    if (AUDIO.muted || AUDIO.musicVol <= 0 || !AUDIO.started) return;   // deferred until gesture / silent if vol 0
     initAudioEl();
     var src = AUDIO.tracks[AUDIO.current];
     if (!src) return;
@@ -76,7 +76,7 @@
   // playhead and never cut each other off. Samples are one-shots, so loop stays off.
   var _sfxCache = {};
   function playSfxFile(url){
-    if (AUDIO.muted) return;
+    if (AUDIO.muted || AUDIO.sfxVol <= 0) return;
     try {
       var base = _sfxCache[url];
       if (!base) { base = new Audio(url); base.preload = 'auto'; _sfxCache[url] = base; }
@@ -118,7 +118,7 @@
     'ui-click':      { f: 440, t: 0.05, type: 'sine' }
   };
   function playSfx(name){
-    if (AUDIO.muted) return;
+    if (AUDIO.muted || AUDIO.sfxVol <= 0) return;
     if (SFX_FILES[name]) { playSfxFile(SFX_FILES[name]); return; }   // real sample if we have one
     var spec = SFX[name];
     if (!spec) return;
@@ -129,7 +129,7 @@
       osc.type = spec.type;
       osc.frequency.setValueAtTime(spec.f, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.16 * AUDIO.sfxVol), now + 0.012);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + spec.t);
       osc.connect(gain); gain.connect(ctx.destination);
       osc.start(now); osc.stop(now + spec.t + 0.03);
@@ -170,3 +170,59 @@
   function initMuteBtn(){
     if (el.muteBtn) el.muteBtn.textContent = AUDIO.muted ? '🔇 Sound' : '🔊 Sound';
   }
+
+  // ---------- Settings panel: music + SFX volume (0-100), saved to the profile/cloud ----------
+  // Reads state.settings into AUDIO's 0-1 volumes and applies them live.
+  function applyAudioSettings(){
+    var s = (typeof state === 'object' && state && state.settings) ? state.settings : { musicVol: 38, sfxVol: 72 };
+    AUDIO.musicVol = Math.max(0, Math.min(100, s.musicVol || 0)) / 100;
+    AUDIO.sfxVol   = Math.max(0, Math.min(100, s.sfxVol   || 0)) / 100;
+    if (AUDIO.audioEl) AUDIO.audioEl.volume = AUDIO.musicVol;
+    if (AUDIO.musicVol <= 0 && AUDIO.audioEl) AUDIO.audioEl.pause();
+  }
+  function setMusicVol(pct){
+    pct = Math.max(0, Math.min(100, Math.round(+pct || 0)));
+    if (!state.settings) state.settings = { musicVol: 38, sfxVol: 72 };
+    state.settings.musicVol = pct;
+    AUDIO.musicVol = pct / 100;
+    if (AUDIO.audioEl) AUDIO.audioEl.volume = AUDIO.musicVol;
+    if (pct > 0 && !AUDIO.muted){ AUDIO.started = true; playMusic(AUDIO.current); }
+    else if (AUDIO.audioEl){ AUDIO.audioEl.pause(); }
+    var l = document.getElementById('musicVolLabel'); if (l) l.textContent = pct + '%';
+  }
+  function setSfxVol(pct){
+    pct = Math.max(0, Math.min(100, Math.round(+pct || 0)));
+    if (!state.settings) state.settings = { musicVol: 38, sfxVol: 72 };
+    state.settings.sfxVol = pct;
+    AUDIO.sfxVol = pct / 100;
+    var l = document.getElementById('sfxVolLabel'); if (l) l.textContent = pct + '%';
+  }
+  // Persist once the slider is released (not on every drag tick).
+  function saveSettings(){ if (typeof saveGame === 'function') saveGame(); }
+
+  function openSettings(){
+    closeSettings();
+    var s = (state && state.settings) ? state.settings : { musicVol: 38, sfxVol: 72 };
+    var ov = document.createElement('div');
+    ov.id = 'settingsOverlay';
+    ov.className = 'settings-overlay';
+    ov.innerHTML =
+      '<div class="settings-card">' +
+        '<h2 class="settings-title">⚙️ Settings</h2>' +
+        '<div class="settings-row">' +
+          '<label>🎵 Music volume <b id="musicVolLabel">' + s.musicVol + '%</b></label>' +
+          '<input type="range" min="0" max="100" value="' + s.musicVol + '" class="settings-slider" ' +
+            'oninput="setMusicVol(this.value)" onchange="saveSettings()" aria-label="Music volume">' +
+        '</div>' +
+        '<div class="settings-row">' +
+          '<label>🔊 Sound effects <b id="sfxVolLabel">' + s.sfxVol + '%</b></label>' +
+          '<input type="range" min="0" max="100" value="' + s.sfxVol + '" class="settings-slider" ' +
+            'oninput="setSfxVol(this.value)" onchange="saveSettings(); playSfx(\'ui-click\')" aria-label="Sound effects volume">' +
+        '</div>' +
+        '<p class="settings-note">Set a volume to 0 to silence it. Your settings are saved to your account.</p>' +
+        '<button type="button" class="btn btn-primary" onclick="closeSettings()" data-tooltip="Close settings.">Done</button>' +
+      '</div>';
+    ov.addEventListener('click', function(e){ if (e.target === ov) closeSettings(); });
+    document.body.appendChild(ov);
+  }
+  function closeSettings(){ var ov = document.getElementById('settingsOverlay'); if (ov) ov.parentNode.removeChild(ov); }

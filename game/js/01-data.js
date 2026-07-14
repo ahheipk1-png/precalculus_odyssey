@@ -27,6 +27,7 @@
     roomFails: 0,      // wrong answers in the CURRENT room; 5 = game over (room restarts). Perfect room = 0.
     farm: { plots: [], animals: [], houses: 1 }, // see 18-farm.js
     miniGames: {},     // Wonderland mini-game progress: id -> { unlockedCount, firstCleared, best, plays, highScore }. See 17-wonderland.js / 34-wonder-shell.js.
+    settings: { musicVol: 38, sfxVol: 72 }, // volume 0-100, adjustable in the Settings panel; saved to profile/cloud. See 13-audio.js.
     testMode: false,
     streak: 0,
     levelSolves: 0,

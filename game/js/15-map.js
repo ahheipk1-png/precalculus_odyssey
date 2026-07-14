@@ -91,6 +91,18 @@
     if (typeof playMusic === 'function') playMusic('practice');
   }
 
+  // Header "📚 Practice" button: jump straight back to the arena from ANY view (hub, shop, minigame…).
+  function returnToPractice(){
+    if (typeof wgStopAll === 'function') wgStopAll();
+    if (typeof stopTileBall === 'function') stopTileBall();
+    wmapCancelWalk();
+    document.querySelectorAll('.view-container').forEach(function(v){ v.classList.remove('active'); });
+    var eq = document.getElementById('equationView');
+    if (eq) eq.classList.add('active');
+    if (typeof loadProblem === 'function') loadProblem();
+    if (typeof playMusic === 'function') playMusic('practice');
+  }
+
   // ------------------------------------------------------------------
   // Rendering
   // ------------------------------------------------------------------

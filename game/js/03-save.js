@@ -68,6 +68,7 @@
       roomFails: state.roomFails,
       farm: state.farm,
       miniGames: state.miniGames,
+      settings: state.settings,
       streak: state.streak,
       levelSolves: state.levelSolves,
       equippedWeapon: state.equippedWeapon,
@@ -180,6 +181,10 @@
     state.equippedShoes  = _validEquip(state.shoes,   state.equippedShoes,  'basic_boots');
     state.defeatedMonsters = snap.defeatedMonsters || {};
     state.miniGames = (snap.miniGames && typeof snap.miniGames === 'object') ? snap.miniGames : {};
+    state.settings = (snap.settings && typeof snap.settings === 'object')
+      ? { musicVol: (snap.settings.musicVol != null ? snap.settings.musicVol : 38), sfxVol: (snap.settings.sfxVol != null ? snap.settings.sfxVol : 72) }
+      : { musicVol: 38, sfxVol: 72 };
+    if (typeof applyAudioSettings === 'function') applyAudioSettings();
     state.bossDefeated = snap.bossDefeated || {};
     // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
     // the Boss Gate button is re-derived from levelSolves/bossDefeated in updatePanelVisibility.
@@ -207,6 +212,8 @@
     state.roomFails = 0;
     state.farm = { plots: [], animals: [], houses: 1 };
     state.miniGames = {};
+    state.settings = { musicVol: 38, sfxVol: 72 };
+    if (typeof applyAudioSettings === 'function') applyAudioSettings();
     state.gatePending = false;
     state.bossGateUnlocked = false;
     state.bossRoomEntered = false;

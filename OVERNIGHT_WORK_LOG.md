@@ -422,3 +422,30 @@ are documented above (mcOnly style cap; balance/graph not auto-solved; no screen
 - **Results:** PASS.
 
 
+
+---
+
+# BATCH: auth / settings / map / UI cleanup (user items 1-11)
+
+## Items 5, 7, 8, 9, 11 — UI cleanup + volume settings
+- **Date/time:** 2026-07-14
+- **Files:** `game/index.html` (header: +Practice, +Settings, −Cloud, −Star Log, −Sound),
+  `game/js/15-map.js` (`returnToPractice`), `game/js/13-audio.js` (volume-aware playMusic/playSfx +
+  `applyAudioSettings`/`setMusicVol`/`setSfxVol`/`openSettings`/`closeSettings`/`saveSettings`),
+  `game/js/01-data.js` + `03-save.js` (`state.settings` persist/restore/reset), `game/css/systems.css`
+  (`.game-tooltip{width:max-content}` tooltip fix + `.settings-*`).
+- **Summary:**
+  - **11 (tooltips):** the tooltip was rendering as a 72px sliver (min-content collapse). Fixed with
+    `width:max-content` → now a readable 197×38 box positioned by the cursor.
+  - **7 (cloud):** removed the Cloud button — cloud sync still runs automatically (committed = cloud).
+  - **8 (star log):** removed the 📖 Star Log button (story/memory codex no longer surfaced).
+  - **9 (practice):** added a green 📚 Practice button as the FIRST header item; `returnToPractice()`
+    jumps back to the arena from any view.
+  - **5 (settings/volume):** replaced the 🔊 Sound toggle with ⚙️ Settings → a modal with **Music** and
+    **SFX** volume sliders (0-100). Volumes drive `AUDIO.musicVol/sfxVol` live (0 = silent) and persist
+    in `state.settings` (profile + cloud). Old mute button/refs are guarded (null-safe).
+- **Tests:** header correct (no cloud/starlog; practice+settings present); returnToPractice map→arena;
+  settings modal 2 sliders; setMusicVol(55)/setSfxVol(20) update state+AUDIO; save→reload keeps them;
+  tooltip 197×38 readable; console clean.
+- **Result:** PASS.
+- **Next:** item 10 (walkable 100×100 map), then items 1/2/3/6 (auth via D1).
