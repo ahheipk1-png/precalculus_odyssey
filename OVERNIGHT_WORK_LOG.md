@@ -171,3 +171,46 @@ Architecture preserved: ordered classic scripts, one global scope, no ES modules
 
 ---
 
+## Phase 1 (audit slice) — Existing-arena correctness harness (section 14)
+
+- **Date/time:** 2026-07-14
+- **Files changed:** NEW `tools/validate-arenas.js`; NEW `QA_PLAYTHROUGH_PROGRESS.json`.
+- **Summary:** Before authoring new question styles, built + ran a generator-validation harness over
+  all 187 existing arenas (30 iterations each) checking: exactly-one-correct MC, no duplicate choices,
+  valid directInput answer, valid graph spec, no computed undefined/NaN.
+- **Result:** **0 real correctness issues.** Four arenas initially flagged were confirmed benign:
+  52–54 (`formula` mode) legitimately carry `addToken:null` (no additive term; guarded in
+  `getHintFormula`); 149 (`mcOnly` "What is log(1)?") uses `"undefined"` as an intentional *distractor*
+  (correct answer "0"). Harness refined to ignore those → 0 issues. Mode distribution across samples:
+  mcOnly + directInput dominate, plus numeric/bracket/formula/graph.
+- **Significance:** Directly addresses the earlier "I don't feel confident about the questions/answers"
+  concern — the current content is mathematically sound. `validateAllArenas()` is reusable and MUST be
+  re-run after any new question authoring (Phase 1b) as the correctness gate.
+
+---
+
+## STATUS AFTER THIS AUTONOMOUS BATCH (2026-07-14)
+
+**Done, tested in-browser (console clean), committed & pushed to `main` (auto-deploys):**
+- Phase 1a — Boss Gate requirement 6 → 10 (single source `ARENA_GOAL`), gate opens only after the finale.
+- Phase 2 — Answer-panel stability: verified already-correct (grid keeps it right/stable across all
+  modes @1366/1024; Planet Info is a separate view). No risky change made. Feedback/progress relocation
+  into the right panel deferred (documented).
+- Phase 3 — Boss Gate reset model (leave undefeated → gate closes; persistent `bossDefeated`).
+- Phase 4 — Global cursor-following tooltip system (`32-tooltip.js`, auto-upgrades native title=).
+- Phase 5 — Hoo Hey How bowl animation + bigger controls + persistent history panel.
+- Phase 6 — Shared typography/size tokens; fixed sub-44px control.
+- Section-14 audit — all 187 arenas correctness-clean.
+
+**Remaining (large, honestly not started/partial — recommend dedicated runs):**
+- **Phase 1b/1c — the 30-style question-VARIETY engine** (styleId/templateId registry, per-topic
+  content, 10-question trial composer enforcing ≥6 styles / ≤3 each / no-consecutive / modeling+
+  reverse+visual+reasoning, Q10 multi-stage finale). This is the biggest and most correctness-
+  sensitive piece: a new generation layer + core solve-loop rewiring + a lot of new *correct* content.
+  It should be built additively behind the validation harness and applied incrementally, NOT flipped
+  on for all 187 arenas untested. Deliberately not rushed tonight to protect answer correctness.
+- **Phase 7 — full click-through UI playthrough of every arena at 4 resolutions with screenshots.**
+  Not started as a literal 187×4 sweep; note screenshots time out in this environment. The panel
+  layout + gate flow were verified via DOM across representative modes/viewports.
+
+
