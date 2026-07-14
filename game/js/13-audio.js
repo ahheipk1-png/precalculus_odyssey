@@ -1,16 +1,16 @@
   // ---------- Audio: context-switched background music + SFX placeholders ----------
-  // Music WAV loops live in ../sound/ (repo-root sibling of game/, so they resolve over both the
-  // local http server and a file:// double-click). SFX are WebAudio-oscillator BEEP PLACEHOLDERS
-  // for now — when real SFX files arrive, swap the body of playSfx() to `new Audio(url).play()`.
+  // Music WAV loops live in game/sound/ (inside the deploy root, referenced as `sound/…` relative
+  // to index.html — works locally and on Cloudflare Pages where game/ IS the site root). Some SFX
+  // are real samples (SFX_FILES); others fall back to WebAudio-oscillator beeps.
   var AUDIO = {
     muted: (function(){ try { return localStorage.getItem('po_muted') === '1'; } catch(e){ return false; } })(),
     musicVol: 0.38,
     sfxVol: 0.72,
     tracks: {
-      practice: '../sound/generic_background_loop.wav',
-      shop:     '../sound/weapon_room_loop.wav',
-      arena:    '../sound/arena_room_loop.wav',
-      battle:   '../sound/battle_music_loop.wav'
+      practice: 'sound/generic_background_loop.wav',
+      shop:     'sound/weapon_room_loop.wav',
+      arena:    'sound/arena_room_loop.wav',
+      battle:   'sound/battle_music_loop.wav'
     },
     current: 'practice',   // which context we're in (music resumes to this after unmute/gesture)
     audioEl: null,
@@ -57,19 +57,19 @@
   }
 
   // ---------- Real one-shot SFX samples (Sound Pack) ----------
-  // Event name -> WAV under ../sound/. These are recorded one-shots that fade to silence and are
+  // Event name -> WAV under sound/. These are recorded one-shots that fade to silence and are
   // NEVER looped. Any event NOT in this map falls through to the oscillator BEEP placeholder below,
   // so every existing playSfx() call keeps working.
   var SFX_FILES = {
-    'battle-hit':      '../sound/attack_impact.wav',                 // generic melee/energy impact
-    'victory':         '../sound/battle_victory_fanfare.wav',        // short celebration: battle won
-    'planet-complete': '../sound/planet_complete_celebration.wav',   // longer celebration: planet finished
-    'weapon-upgrade':  '../sound/weapon_upgrade.wav',                // successful weapon/gear upgrade
-    'machine':         '../sound/machine_activate.wav',              // chip machines / terminals / star gates / stations
-    'warp':            '../sound/machine_activate.wav',              // wormhole = a star-gate activation
-    'equip-light':     '../sound/metal_equip_light_weapon.wav',      // sword, dagger, bow, spear, staff
-    'equip-heavy':     '../sound/metal_equip_heavy_armor.wav',       // heavy weapon, shield, armor, boots
-    'equip-scifi':     '../sound/metal_equip_scifi_lock.wav'         // AI / plasma / quantum gear
+    'battle-hit':      'sound/attack_impact.wav',                 // generic melee/energy impact
+    'victory':         'sound/battle_victory_fanfare.wav',        // short celebration: battle won
+    'planet-complete': 'sound/planet_complete_celebration.wav',   // longer celebration: planet finished
+    'weapon-upgrade':  'sound/weapon_upgrade.wav',                // successful weapon/gear upgrade
+    'machine':         'sound/machine_activate.wav',              // chip machines / terminals / star gates / stations
+    'warp':            'sound/machine_activate.wav',              // wormhole = a star-gate activation
+    'equip-light':     'sound/metal_equip_light_weapon.wav',      // sword, dagger, bow, spear, staff
+    'equip-heavy':     'sound/metal_equip_heavy_armor.wav',       // heavy weapon, shield, armor, boots
+    'equip-scifi':     'sound/metal_equip_scifi_lock.wav'         // AI / plasma / quantum gear
   };
 
   // Cache one <audio> per file; play a clone each time so rapid repeats (combat hits) get their own
