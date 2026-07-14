@@ -26,8 +26,10 @@ The 9 star systems are recorded in `STAR_SYSTEMS` (`worlds.config.js`) for the S
 - **Opening narration** — a skippable star-field crawl (verbatim `STORY.openingNarration`) shown to
   new players; replayable from the Star Log. `showOpeningNarration`/`hideOpeningNarration`.
 - **Tagline** on the start screen + the Star Log tagline.
-- **Astronomy card** — a slim panel atop the equation view showing the planet's real Sol body (name +
-  2 facts + stylized SVG). `updateAstroCard` (called from `loadProblem`), art from `planetSVG`.
+- **Astronomy card** — `updateAstroCard` (`14-lore.js`, called from `loadProblem`). **Hidden during
+  arena play** (user preference) — it early-returns after unlocking the body, so the top strip stays
+  clear; the planet name still shows in the stat tile and full astronomy lives in the Star Atlas.
+  (To re-enable the in-arena card, delete the early-return block.)
 - **📖 Star Log** (`#codexView`, header button) — tabs **Story** (narration + collected memory
   fragments) and **Star Atlas** (the Sun + 10 planet cards with real facts; visited-planets gating).
   `openCodex`/`setCodexTab`/`renderStoryTab`/`renderStarAtlas`.

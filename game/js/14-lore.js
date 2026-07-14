@@ -200,6 +200,14 @@
   }
   function updateAstroCard(){
     if (!el.astroCard) return;
+    // Hidden during arena play (user preference) — the planet name + system already show in the top
+    // stat tile, and full astronomy lives in the Star Atlas "About this planet". Body is still
+    // unlocked below so the codex/atlas fills in. To re-enable the in-arena card, remove this block.
+    el.astroCard.hidden = true; el.astroCard.innerHTML = '';
+    var _ar = (typeof getArena === 'function') ? getArena(state.level) : null;
+    if (_ar && typeof unlockBody === 'function') { try { unlockBody(state.level); } catch (e) {} }
+    return;
+    /* eslint-disable no-unreachable */
     var arena = (typeof getArena === 'function') ? getArena(state.level) : null;
     if (!arena || !arena.body) { el.astroCard.innerHTML = ''; el.astroCard.hidden = true; return; }
     var b = arena.body;
