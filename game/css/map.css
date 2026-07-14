@@ -150,6 +150,20 @@
   .wmap-avatar-emoji{ display: inline-block; }
   .wmap-avatar.wmap-flip .wmap-avatar-flip{ transform: scaleX(-1); }
   .wmap-avatar.wmap-walking .wmap-avatar-emoji{ animation: wmapBob 0.35s ease-in-out infinite; }
+  /* Free keyboard walking (item 10): immediate position (no 0.7s click-walk tween) + a walk bob. */
+  .wmap-avatar.wmap-keywalk{ transition: none; }
+  .wmap-avatar.wmap-keywalk .wmap-avatar-emoji{ animation: wmapBob 0.3s ease-in-out infinite; }
+  /* Building the player is standing next to — glows + shows it's enterable. */
+  .wmap-building.wmap-near{ outline: 3px solid var(--yellow); outline-offset: 3px; box-shadow: 0 0 22px rgba(242,193,78,0.6); transform: translate(-50%, -50%) scale(1.08); }
+  .wmap-enter-hint{
+    position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+    z-index: 8; background: rgba(16,22,40,0.94); color: var(--chalk);
+    border: 1px solid var(--yellow); border-radius: 999px; padding: 7px 16px;
+    font-size: 16px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    pointer-events: none;
+  }
+  .wmap-enter-hint[hidden]{ display: none; }
+  .wmap-coord{ color: var(--sky); font-weight: 700; margin-left: 6px; font-variant-numeric: tabular-nums; }
   @keyframes wmapBob{
     0%, 100%{ transform: translateY(0); }
     50%     { transform: translateY(-6px) rotate(-4deg); }

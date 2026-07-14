@@ -59,6 +59,7 @@
   }
   function wmapCancelWalk(){
     if (wmapWalkTimer) { clearTimeout(wmapWalkTimer); wmapWalkTimer = null; }
+    if (typeof wmapUnbindKeys === 'function') wmapUnbindKeys();   // stop free-walk keys on any nav away
   }
 
   // ------------------------------------------------------------------
@@ -71,6 +72,7 @@
     view.innerHTML = wmapRenderHtml();
     document.querySelectorAll('.view-container').forEach(function(v){ v.classList.remove('active'); });
     view.classList.add('active');
+    wmapBindKeys();                          // free keyboard walking (item 10)
     if (typeof playMusic === 'function') playMusic('practice');
   }
 
@@ -151,7 +153,7 @@
       var badge = (s.id === 'wonder')
         ? '<span class="wmap-badge" id="wmapWonderBadge">🎟️ ' + (state.wonderPasses || 0) + '</span>'
         : '';
-      return '<button type="button" class="wmap-building" style="left:' + s.x + '%;top:' + s.y +
+      return '<button type="button" class="wmap-building" data-id="' + s.id + '" style="left:' + s.x + '%;top:' + s.y +
         '%;--wmap-accent:' + s.accent + '" onclick="wmapGoTo(\'' + s.id + '\')" ' +
         'title="' + wmapEsc(s.name + (s.desc ? ' — ' + s.desc : '')) + '" ' +
         'aria-label="' + wmapEsc(s.name + (s.desc ? '. ' + s.desc : '')) + '">' +
@@ -179,8 +181,9 @@
           '<div class="wmap-avatar" id="wmapAvatar" style="left:' + wmapPos.x + '%;top:' + wmapPos.y + '%" aria-hidden="true">' +
             '<span class="wmap-avatar-flip"><span class="wmap-avatar-emoji">🧑‍🚀</span></span>' +
           '</div>' +
+          '<div class="wmap-enter-hint" id="wmapEnterHint" hidden></div>' +
         '</div>' +
-        '<p class="wmap-hint">Tap a building — your explorer walks over and knocks! 🚶</p>' +
+        '<p class="wmap-hint">🎮 Walk with <b>arrow keys</b> or <b>WASD</b> — step up to a building and press <b>Enter</b> to go in. (Or just tap it.) <span class="wmap-coord" id="wmapCoord">📍 (' + Math.round(wmapPos.x) + ', ' + Math.round(wmapPos.y) + ') / 100</span></p>' +
         '<div class="wmap-hotel-overlay" id="wmapHotelOverlay" hidden>' +
           '<div class="wmap-hotel" id="wmapHotelCard" role="dialog" aria-modal="true" aria-label="Starlight Hotel">' +
             '<div class="wmap-zzz" aria-hidden="true">💤</div>' +
@@ -219,6 +222,104 @@
       if (a) a.classList.remove('wmap-walking');
       wmapArrive(id);
     }, WMAP_WALK_MS + 60);                   // small buffer so the transition visibly finishes
+  }
+
+  // ------------------------------------------------------------------
+  // Free keyboard walking (item 10): the scene is a 100×100 grid — the avatar's
+  // %-coords ARE its 0-100 grid position. Arrow keys / WASD move it smoothly; step
+  // up to a building (within ~8 units of its door) and press Enter to go in.
+  // ------------------------------------------------------------------
+  var WMAP_KEYS = { up: false, down: false, left: false, right: false };
+  var wmapRaf = 0, wmapLastTs = 0, wmapNearId = null, wmapKd = null, wmapKu = null;
+  var WMAP_SPEED = 42;                       // grid units (≈%) per second
+
+  function wmapClampGrid(v){ return v < 2 ? 2 : (v > 98 ? 98 : v); }
+
+  function wmapBindKeys(){
+    wmapUnbindKeys();
+    WMAP_KEYS.up = WMAP_KEYS.down = WMAP_KEYS.left = WMAP_KEYS.right = false;
+    wmapNearId = null;
+    wmapKd = function(e){
+      var view = document.getElementById('mapView');
+      if (!view || !view.classList.contains('active')) return;
+      switch (e.key){
+        case 'ArrowUp': case 'w': case 'W': WMAP_KEYS.up = true; break;
+        case 'ArrowDown': case 's': case 'S': WMAP_KEYS.down = true; break;
+        case 'ArrowLeft': case 'a': case 'A': WMAP_KEYS.left = true; break;
+        case 'ArrowRight': case 'd': case 'D': WMAP_KEYS.right = true; break;
+        case 'Enter': case ' ': if (wmapNearId){ e.preventDefault(); var id = wmapNearId; wmapArrive(id); } return;
+        default: return;
+      }
+      e.preventDefault();
+      wmapStartLoop();
+    };
+    wmapKu = function(e){
+      switch (e.key){
+        case 'ArrowUp': case 'w': case 'W': WMAP_KEYS.up = false; break;
+        case 'ArrowDown': case 's': case 'S': WMAP_KEYS.down = false; break;
+        case 'ArrowLeft': case 'a': case 'A': WMAP_KEYS.left = false; break;
+        case 'ArrowRight': case 'd': case 'D': WMAP_KEYS.right = false; break;
+      }
+    };
+    document.addEventListener('keydown', wmapKd);
+    document.addEventListener('keyup', wmapKu);
+  }
+  function wmapUnbindKeys(){
+    if (wmapKd){ document.removeEventListener('keydown', wmapKd); wmapKd = null; }
+    if (wmapKu){ document.removeEventListener('keyup', wmapKu); wmapKu = null; }
+    if (wmapRaf){ cancelAnimationFrame(wmapRaf); wmapRaf = 0; }
+    WMAP_KEYS.up = WMAP_KEYS.down = WMAP_KEYS.left = WMAP_KEYS.right = false;
+  }
+  function wmapStartLoop(){ if (wmapRaf) return; wmapLastTs = 0; wmapRaf = requestAnimationFrame(wmapMoveLoop); }
+  function wmapMoveLoop(ts){
+    var view = document.getElementById('mapView');
+    if (!view || !view.classList.contains('active')){ wmapRaf = 0; return; }
+    var dt = wmapLastTs ? Math.min((ts - wmapLastTs) / 1000, 0.05) : 0.016;
+    wmapLastTs = ts;
+    // PURE step (also console-testable via wmapKeyStep).
+    wmapKeyStep(dt, WMAP_KEYS);
+    var av = document.getElementById('wmapAvatar');
+    if (av){
+      av.classList.add('wmap-keywalk');
+      if (WMAP_KEYS.left && !WMAP_KEYS.right) av.classList.add('wmap-flip');
+      else if (WMAP_KEYS.right && !WMAP_KEYS.left) av.classList.remove('wmap-flip');
+      av.style.left = wmapPos.x + '%';
+      av.style.top = wmapPos.y + '%';
+    }
+    wmapUpdateProximity();
+    if (WMAP_KEYS.up || WMAP_KEYS.down || WMAP_KEYS.left || WMAP_KEYS.right){
+      wmapRaf = requestAnimationFrame(wmapMoveLoop);
+    } else { wmapRaf = 0; if (av) av.classList.remove('wmap-keywalk'); }
+  }
+  // PURE: advance the avatar one frame given dt (seconds) + a key-state object.
+  function wmapKeyStep(dt, keys){
+    var dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    var dy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+    if (!dx && !dy) return;
+    var len = Math.sqrt(dx * dx + dy * dy);
+    wmapPos.x = wmapClampGrid(wmapPos.x + (dx / len) * WMAP_SPEED * dt);
+    wmapPos.y = wmapClampGrid(wmapPos.y + (dy / len) * WMAP_SPEED * dt);
+  }
+  // Highlight the nearest building door and toggle the "press Enter" hint.
+  function wmapUpdateProximity(){
+    var near = null, best = 8;               // within 8 grid units of a door
+    for (var i = 0; i < WMAP_SPOTS.length; i++){
+      var s = WMAP_SPOTS[i], ddx = s.x - wmapPos.x, ddy = (s.y + 10) - wmapPos.y;
+      var d = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (d < best){ best = d; near = s; }
+    }
+    var co = document.getElementById('wmapCoord');
+    if (co) co.textContent = '📍 (' + Math.round(wmapPos.x) + ', ' + Math.round(wmapPos.y) + ') / 100';
+    var newId = near ? near.id : null;
+    if (newId === wmapNearId) return;
+    wmapNearId = newId;
+    var buildings = document.querySelectorAll('.wmap-building');
+    for (var b = 0; b < buildings.length; b++) buildings[b].classList.toggle('wmap-near', buildings[b].getAttribute('data-id') === newId);
+    var hint = document.getElementById('wmapEnterHint');
+    if (hint){
+      if (near){ hint.hidden = false; hint.innerHTML = '▶ Press <b>Enter</b> to visit ' + near.emoji + ' ' + wmapEsc(near.name); }
+      else hint.hidden = true;
+    }
   }
 
   function wmapArrive(id){
