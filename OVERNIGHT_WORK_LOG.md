@@ -326,4 +326,24 @@ are documented above (mcOnly style cap; balance/graph not auto-solved; no screen
 - **Results:** PASS.
 - **Next:** MG-3b Gone Fishin'.
 
+---
+
+## MG-3b — Gone Fishin' 🎣 (second carnival game)
+
+- **Date/time:** 2026-07-14
+- **Files changed:** `game/js/34-wonder-games.js` (Gone Fishin' + `wgStopAll`), `game/js/17-wonderland.js`
+  (card playable; nav guards use `wgStopAll`), `game/css/wonderland.css` (`.fish-*`, pond), `game/index.html`.
+- **Summary:** Fish (numbered) swim across a pond; a **rule banner** ("Catch EVEN fish", "multiples of
+  3", "greater than 12", "fish showing 12", …) rotates every 8s. Tap a fish that matches = points +
+  combo; wrong fish = combo lost + small score penalty. Spawns are **biased** so matching fish always
+  appear; 40s runs; high score persists; same Cash-scaling reward as Bullseye. Touch-first (tap fish);
+  CSS-animated swim; view-active self-check stops the spawn/timer intervals on navigation. `wgStopAll`
+  now stops every carnival timer (called by all Wonderland nav exits + each game's open/start).
+- **Tests (live browser):** rule matching 4800/4800 correct (independent recompute); biased spawns
+  yield matches for every rule kind; lobby card playable; start→pond+rule+fish; even-8 catch scores +
+  combo; odd-7 wrong resets combo; end clears both intervals, records high (140) + pays Cash (73) +
+  result; save→reload keeps high score; console clean.
+- **Results:** PASS.
+- **Next:** MG-3c Merry Math-Go-Round.
+
 

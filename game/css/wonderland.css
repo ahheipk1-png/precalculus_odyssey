@@ -142,6 +142,29 @@
 @keyframes bullShake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-6px); } 75%{ transform:translateX(6px); } }
 @media (prefers-reduced-motion: reduce){ .bull-target, .bull-target.bull-wrong .bull-ring{ transition:none; animation:none; } }
 @media (max-width:520px){ .bull-question{ font-size:28px; } .bull-num{ width:44px; height:44px; font-size:24px; } }
+
+/* ---- Gone Fishin' 🎣 ---- */
+.fish-rule{ text-align:center; font-family:'Patrick Hand', cursive; font-size:26px; color:var(--sky);
+  margin:8px 0; min-height:34px; }
+.fish-rule b{ color:var(--yellow); }
+.fish-pond{ position:relative; width:100%; max-width:560px; height:300px; margin:0 auto 8px;
+  border-radius:16px; overflow:hidden;
+  background:linear-gradient(180deg, #10395a 0%, #0c2740 60%, #0a1f34 100%);
+  box-shadow:inset 0 0 40px rgba(0,0,0,.5), inset 0 2px 0 rgba(110,193,228,.25); }
+.fish{ position:absolute; left:-64px; border:none; background:none; cursor:pointer; padding:2px 4px;
+  display:flex; align-items:center; gap:2px; white-space:nowrap;
+  animation-name:fishSwim; animation-timing-function:linear; animation-fill-mode:forwards;
+  transform:translateX(0); }
+.fish-body{ font-size:36px; line-height:1; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); transform:scaleX(-1); }
+.fish-num{ font-family:'Quicksand', sans-serif; font-weight:800; font-size:20px; color:#0a1f34;
+  background:var(--yellow); border-radius:999px; padding:1px 9px; box-shadow:0 2px 4px rgba(0,0,0,.4); }
+.fish:hover .fish-num{ background:#fff; }
+.fish-caught{ animation:fishCatch .24s ease forwards !important; }
+.fish-wrong{ filter:grayscale(.4); opacity:.6; }
+@keyframes fishSwim{ from{ transform:translateX(0); } to{ transform:translateX(calc(560px + 128px)); } }
+@keyframes fishCatch{ from{ transform:scale(1); opacity:1; } to{ transform:scale(1.6) translateY(-14px); opacity:0; } }
+@media (prefers-reduced-motion: reduce){ .fish-caught{ animation:none !important; opacity:0; } }
+@media (max-width:600px){ .fish-pond{ height:250px; } .fish-body{ font-size:30px; } .fish-num{ font-size:17px; } }
 .wond-soon{
   font-size:14px;
   font-weight: 700;

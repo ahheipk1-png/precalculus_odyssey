@@ -174,7 +174,7 @@
 
   function openWonderland(){
     stopTileBall();                       // never leave a stale loop behind
-    if (typeof bullStop === 'function') bullStop();   // and no stray carnival-game timer
+    if (typeof wgStopAll === 'function') wgStopAll();   // and no stray carnival-game timer
     var view = wondShowView();
     if (!view) return;
     view.innerHTML = wondLobbyHtml();
@@ -183,7 +183,7 @@
 
   function closeWonderland(){
     stopTileBall();
-    if (typeof bullStop === 'function') bullStop();
+    if (typeof wgStopAll === 'function') wgStopAll();
     var view = document.getElementById('wonderlandView');
     if (view) view.classList.remove('active');
     var eq = document.getElementById('equationView');
@@ -194,7 +194,7 @@
   // Back button: the Map Hub when it exists, otherwise fall back to the equation view.
   function wonderBackToMap(){
     stopTileBall();
-    if (typeof bullStop === 'function') bullStop();
+    if (typeof wgStopAll === 'function') wgStopAll();
     var view = document.getElementById('wonderlandView');
     if (view) view.classList.remove('active');
     if (typeof openMapHub === 'function') { openMapHub(); return; }
@@ -207,7 +207,7 @@
     // Each carnival game becomes playable as it's built; `launch` null = still Coming soon.
     var carnival = [
       { icon: '🎯', name: 'Bullseye Numbers', desc: 'Hit the target that answers each maths question — beat the clock!', launch: 'openBullseye()', cost: 'Free' },
-      { icon: '🎣', name: 'Gone Fishin’', desc: 'A new carnival game is being built!', launch: null },
+      { icon: '🎣', name: 'Gone Fishin’', desc: 'Catch only the fish whose number matches the rule!', launch: 'openFishin()', cost: 'Free' },
       { icon: '🎠', name: 'Merry Math-Go-Round', desc: 'A new carnival game is being built!', launch: null }
     ].map(function(g){
       if (!g.launch){
