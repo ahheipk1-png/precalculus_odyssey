@@ -360,8 +360,26 @@
 
   // ---------- Problem loading ----------
 
+  // Pull the next question for this arena. The variety engine (33-variety.js) pre-builds a
+  // 10-question trial per arena (mixed styles, all derived from the arena's own verified answer);
+  // question index = levelSolves. Arenas it can't diversify (complex modes) return a null trial and
+  // fall back to the native generator, so their behaviour is unchanged.
+  function _varietyProblem(){
+    if (window.VARIETY_ENABLED && typeof buildArenaTrial === 'function'){
+      if (state.trialLevel !== state.level || !state.trial){
+        state.trial = buildArenaTrial(state.level);
+        state.trialLevel = state.level;
+      }
+      if (state.trial && state.trial.length){
+        var idx = Math.min(state.levelSolves, state.trial.length - 1);
+        if (state.trial[idx]) return state.trial[idx];
+      }
+    }
+    return generateProblem(state.level);
+  }
+
   function loadProblem(){
-    var p = generateProblem(state.level);
+    var p = _varietyProblem();
     state.mode = p.mode;
 
     // Remember the last few arenas the player actually played — the Trading Room

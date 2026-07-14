@@ -38,6 +38,22 @@ renders up to 500 px wide (`min(500px, 78vw)`) and is **centred** in the wide qu
 `#graphPanel.graph-panel` is a full-width flex column, so `renderGraphPanel()` must set
 `el0.style.display = 'flex'` (an inline `'block'` would beat the class's `display:flex` and left-align it).
 
+**Question variety — `js/33-variety.js` (`buildArenaTrial(n)`).** To avoid an arena being 10 copies
+of one template with new numbers, a per-arena **trial** of 10 questions is composed from several
+distinct STYLES, each *derived from the arena's own native, already-verified problem* — so every
+derived question is correct by construction (its answer is the arena's answer). Styles are expressed
+as the existing render modes (`mcOnly`/`directInput`), so no renderer change was needed.
+`loadProblem` pulls `state.trial[state.levelSolves]` (see `_varietyProblem`, 05-render.js), rebuilding
+the trial when the arena changes; `VARIETY_ENABLED` gates it. Coverage (verified over all 187):
+- **directInput arenas (~87):** full variety — 6–7 distinct styles (`direct`, `mc`, `trueFalse`,
+  `errorAnalysis`, `compare`, `estimate`) + a two-step `finale` at Q10; ≤2–3 per style, ~0 consecutive.
+- **mcOnly arenas (~89):** 3 styles (`direct`, `trueFalse`, `errorAnalysis`) — capped because they
+  expose no numeric answer to derive `mc`/`compare`/`estimate` from; still mixes, ~0 consecutive.
+- **numeric/bracket/formula/graph arenas (~11):** `buildArenaTrial` returns null → native generator
+  (unchanged behaviour).
+Every composed question is validated by `_validOk` (mirrors `tools/validate-arenas.js`) before use;
+a full sweep found **0 invalid questions**. Q10 always carries `finale:true`.
+
 **MC correctness invariants.** Every Identify (`mcOnly`) arena must have **exactly one** correct
 choice. Two subtle bugs to guard against: (1) `_mc` dedupes distractors by exact *string*, so a
 distractor that is the same *set* as the answer slips through — e.g. arena 94's roots `x=2 or x=−2`

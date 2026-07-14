@@ -213,4 +213,35 @@ Architecture preserved: ordered classic scripts, one global scope, no ES modules
   Not started as a literal 187×4 sweep; note screenshots time out in this environment. The panel
   layout + gate flow were verified via DOM across representative modes/viewports.
 
+---
+
+## Phase 1b — Question VARIETY engine (the big one)
+
+- **Date/time:** 2026-07-14
+- **Files changed:** NEW `game/js/33-variety.js`; `game/js/05-render.js` (`_varietyProblem` +
+  loadProblem hook); `game/index.html` (script include); `docs/architecture.md`, `docs/gameplay.md`.
+- **Backup:** `game_backup_before_question_variety/`
+- **Approach:** compose a per-arena 10-question **trial** from distinct STYLES, each derived from the
+  arena's own native, §14-verified problem — so correctness is guaranteed by construction. All styles
+  render as existing modes (`mcOnly`/`directInput`); no renderer change. `loadProblem` pulls
+  `state.trial[levelSolves]`; complex modes return null → native generator (no regression).
+- **Styles:** directInput → direct, mc, trueFalse, errorAnalysis, compare, estimate, + Q10 two-step
+  finale. mcOnly → direct, trueFalse, errorAnalysis. Composer enforces (best-effort): no consecutive
+  repeat, ≤3/style, maximise distinct, Q10 finale. Every question passes `_validOk` before use.
+- **Tests (live browser, all 187 arenas swept):**
+  - **0 invalid questions** across all 176 diversified trials (11 complex arenas → native fallback).
+  - Distinct styles: **87 arenas ≥6** (directInput), **89 arenas = 3** (mcOnly), finale on all 176.
+  - Consecutive repeats total **30** across 176 arenas (~0.17 each); directInput arenas ~0.
+  - Gameplay integration: arena 7 delivers 7 styles in sequence (no consecutive), Q10 finale; a
+    correct answer runs the real `handleSolved` path and advances `levelSolves`.
+  - DOM render: derived `compare` shows its HTML prompt + 3 choice buttons; `finale` shows the
+    two-step prompt + input box. Console clean.
+- **Honest coverage note:** mcOnly-native arenas (~half) are capped at 3 styles — they expose no
+  numeric answer to derive mc/compare/estimate from, so the spec's "≥6 distinct" is met for the
+  directInput half and partially for the mcOnly half. No incorrect content was fabricated to inflate
+  the count. Further mcOnly variety would need topic-specific authored content (future work).
+- **Results:** PASS (correctness) + strong variety on ~half the game, partial on the rest, native
+  fallback on complex modes. `VARIETY_ENABLED` can disable it instantly if needed.
+- **Next:** Phase 7 — UI playthrough / QA report.
+
 
