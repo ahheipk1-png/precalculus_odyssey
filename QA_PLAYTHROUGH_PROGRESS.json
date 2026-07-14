@@ -1,20 +1,29 @@
 {
   "profile": "QA_ARENA_001",
-  "note": "Automated invariant audit complete for all 187 arenas (0 real issues). Full click-through UI playthrough (section 13) not yet started — that is a separate multi-session effort.",
+  "note": "UI-driven auto-playthrough complete for all 176 diversifiable arenas (10/10 via real click/submit events, gate opens at 10, 0 errors). 11 native-complex arenas (balance/graph) load cleanly but need multi-step/graph UI not driven by the scripted player. See ARENA_PLAYTHROUGH_REPORT.md.",
   "automatedAudit": {
     "arenasChecked": 187,
     "iterationsPerArena": 30,
     "realIssues": 0,
-    "benignFalsePositivesExplained": ["52-54 formula addToken:null (by design)", "149 mcOnly 'undefined' distractor (intentional)"],
     "harness": "tools/validate-arenas.js"
   },
+  "varietySweep": {
+    "arenasDiversified": 176,
+    "nativeFallback": 11,
+    "invalidQuestions": 0,
+    "arenasWith6PlusStyles": 87,
+    "arenasWith3Styles": 89,
+    "finaleOnAll": 176
+  },
   "uiPlaythrough": {
-    "lastCompletedArena": 0,
-    "nextArena": 1,
-    "passed": 0,
-    "failed": 0,
-    "blocked": [],
-    "status": "not-started"
+    "method": "real click/submit DOM events; navigation scripted; screenshots unavailable (tool times out)",
+    "fullyPlayedToGate": 176,
+    "gateOpenedAt10": 176,
+    "realErrors": 0,
+    "consoleErrors": 0,
+    "notAutoPlayed": [5, 47, 48, 49, 50, 51, 52, 53, 54, 169, 171],
+    "notAutoPlayedReason": "native complex modes (balance-equation op-row / interactive graph); load + render verified, not auto-solved",
+    "saveReloadCheckpoint": "pass (progress/currencies/bossDefeated preserved; transient gate flag not preserved)"
   },
   "lastUpdatedAt": "2026-07-14"
 }

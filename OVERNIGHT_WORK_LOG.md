@@ -244,4 +244,36 @@ Architecture preserved: ordered classic scripts, one global scope, no ES modules
   fallback on complex modes. `VARIETY_ENABLED` can disable it instantly if needed.
 - **Next:** Phase 7 — UI playthrough / QA report.
 
+---
+
+## Phase 7 — UI-driven arena playthrough + QA reports
+
+- **Date/time:** 2026-07-14
+- **Files changed:** NEW `ARENA_PLAYTHROUGH_REPORT.md`; updated `QA_PLAYTHROUGH_PROGRESS.json`.
+- **Method:** answers submitted through the REAL UI handlers via dispatched `click` on `.mc-btn` and
+  `submit` on the answer form (what a human click/Enter fires); progress required `levelSolves` to
+  advance by exactly 1 per answer. Navigation scripted; inter-question render advanced inline because
+  the browser pane throttles background timers. Screenshots unavailable here (tool times out) — verified
+  by DOM geometry + console instead. Reported honestly; no image evidence claimed.
+- **Results (all 187 arenas):**
+  - **176/187 fully played to the Boss Gate** (10/10 via UI events), gate opened at exactly 10 on all,
+    **0 real errors**, finale on all, **console clean** across the whole sweep.
+  - 11 arenas not auto-played (5, 47–54, 169, 171) = native complex modes (balance op-row solving /
+    interactive graph). Confirmed they load + render native controls cleanly (op-row / graph SVG) with
+    no console errors; graph tap-to-solve verified earlier; balance is the original tested core.
+  - Save/reload checkpoint: level/levelSolves/coins/gold/bossDefeated preserved; transient
+    `bossGateUnlocked` forced false on load.
+- **Honest gaps:** no image screenshots (environment limit); balance/graph arenas not auto-solved
+  end-to-end (multi-step/graph UI); mcOnly arenas capped at 3 styles (documented in Phase 1b).
+- **Results:** PASS for the 176 auto-playable arenas; 11 native arenas verified to load/render only.
+
+---
+
+## FINAL STATUS — all 7 phases addressed (2026-07-14)
+
+Every phase implemented, tested in-browser (console clean), committed and pushed to `main`
+(auto-deploys to precalculus-odyssey.pages.dev). Backups per phase under `game_backup_before_*`.
+Correctness gated by `tools/validate-arenas.js` (0 issues over all 187 arenas). Remaining honest gaps
+are documented above (mcOnly style cap; balance/graph not auto-solved; no screenshots in this env).
+
 
