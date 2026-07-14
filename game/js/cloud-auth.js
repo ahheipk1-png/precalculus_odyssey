@@ -2,13 +2,12 @@
 // cloud-auth.js — username/password login, account-request/approval, admin panel,
 // single active session (items 1,2,3,6). Talks to the D1-backed Functions at
 // /api/auth/* and /api/admin/*. Replaces the start screen's saved-player LIST
-// (item 3) with a Log-in / Request-account form. A local "test account" path
-// keeps the game playable offline (and exempt from single-login).
+// (item 3) with a Log-in / Request-account form.
 //
 // NOTE: the network flows require the deployed Cloudflare Functions + the
-// migrations/0002_auth.sql migration. The FIRST account registered becomes the
-// admin (approved). Locally (file/static server without the API) the test-account
-// button still starts the game.
+// migrations (0002 auth, 0003 seeds admin/admin, 0004 seeds the test account
+// mitb / 6.2831853). The test account `mitb` unlocks test mode in-game and is
+// exempt from single-login (see TEST_USERNAMES / TEST_NAMES).
 // ============================================================================
 (function () {
   var AUTH_KEY = 'poAuthSession';
@@ -58,8 +57,7 @@
         '<button type="button" class="auth-tab' + (authTab === 'register' ? ' active' : '') + '" onclick="authSetTab(\'register\')">Request account</button>' +
       '</div>' +
       formHtml() +
-      '<p class="auth-msg" id="authMsg"></p>' +
-      '<button type="button" class="auth-test-link" onclick="authTestLogin()">▶ Play the test account (offline)</button>';
+      '<p class="auth-msg" id="authMsg"></p>';
     var pass = document.getElementById('authPass');
     if (pass) pass.addEventListener('keydown', function (ev){ if (ev.key === 'Enter'){ ev.preventDefault(); authTab === 'login' ? window.authLogin() : window.authRegister(); } });
   }
@@ -89,7 +87,6 @@
     } else msg((r.data && r.data.error) || 'Login failed.', 'err');
   }
 
-  window.authTestLogin = function (){ clearSession(); bridgeToGame('mitb'); };
   window.authLogout = async function (){ try { await api('/api/auth/logout', { auth: true }); } catch (e) {} clearSession(); try { location.reload(); } catch (e) {} };
 
   // Hand off to the existing game with `username` as the active profile.

@@ -45,8 +45,9 @@ account-approval workflow, an admin panel, and a single active session per accou
   every account's status. It's the header **🛠️ Admin** button (admins only).
 - **Single login** (item 6): logging in revokes any other active session for that account — so the
   same account can't be used on two devices at once. **Test accounts** (`mitb`) are exempt.
-- **Test account**: the start screen has a **"Play the test account (offline)"** link — it starts the
-  game locally without the cloud, so the game is always playable even before the backend is set up.
+- **Test account**: seed it with `migrations/0004_seed_test.sql`, then log in with **username `mitb`,
+  password `6.2831853`** (2π). It unlocks in-game test mode and is exempt from single-login (can be
+  logged in on more than one device at once).
 
 ## Notes / limitations
 
