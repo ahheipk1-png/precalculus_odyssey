@@ -7,14 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Patrick+Hand&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="css/styles.css?v=20260714f" />
-<link rel="stylesheet" href="css/map.css?v=20260714f" />
-<link rel="stylesheet" href="css/chest.css?v=20260714f" />
-<link rel="stylesheet" href="css/wonderland.css?v=20260714f" />
-<link rel="stylesheet" href="css/farm.css?v=20260714f" />
-<link rel="stylesheet" href="css/alchemy.css?v=20260714f" />
-<link rel="stylesheet" href="css/item-store.css?v=20260714f" />
-<link rel="stylesheet" href="css/systems.css?v=20260714f" />
+<link rel="stylesheet" href="css/styles.css?v=20260714g" />
+<link rel="stylesheet" href="css/map.css?v=20260714g" />
+<link rel="stylesheet" href="css/chest.css?v=20260714g" />
+<link rel="stylesheet" href="css/wonderland.css?v=20260714g" />
+<link rel="stylesheet" href="css/farm.css?v=20260714g" />
+<link rel="stylesheet" href="css/alchemy.css?v=20260714g" />
+<link rel="stylesheet" href="css/item-store.css?v=20260714g" />
+<link rel="stylesheet" href="css/systems.css?v=20260714g" />
 </head>
 <body>
 
@@ -175,23 +175,23 @@
           <form class="apply-row" id="applyForm">
             <span class="both-sides-label">both sides by</span>
             <input type="text" inputmode="numeric" id="numberInput" class="number-input" autocomplete="off" placeholder="?" />
-            <button type="submit" class="btn btn-primary" id="applyBtn">Apply</button>
+            <button type="submit" class="btn btn-primary" id="applyBtn" data-tooltip="Apply this operation to both sides of the equation.">Apply</button>
           </form>
 
           <div class="expand-panel" id="expandPanel" hidden>
-            <button class="btn btn-primary" id="expandBtn" type="button">🔎 Expand the brackets</button>
+            <button class="btn btn-primary" id="expandBtn" type="button" data-tooltip="Multiply out the brackets, then solve the equation that's left.">🔎 Expand the brackets</button>
             <div class="mc-choices" id="mcChoices" hidden></div>
           </div>
 
           <!-- Compute style: type one positive integer + Submit -->
           <form class="direct-answer-panel" id="directAnswerPanel" hidden>
             <input type="text" inputmode="numeric" id="directInput" class="number-input" autocomplete="off" placeholder="answer" />
-            <button type="submit" class="btn btn-primary" id="directSubmitBtn">Submit ✓</button>
+            <button type="submit" class="btn btn-primary" id="directSubmitBtn" data-tooltip="Submit your answer.">Submit ✓</button>
           </form>
 
           <div class="combat-actions" id="levelGateActions" style="display:none; margin: 15px 0 10px;">
-            <button class="btn btn-primary" id="gateBattleBtn" type="button">⚔️ Challenge Planet Boss</button>
-            <button class="btn btn-secondary" id="gateBackBtn" type="button" style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.12); color:#ddd;">📝 Keep Training</button>
+            <button class="btn btn-primary" id="gateBattleBtn" type="button" data-tooltip="Enter the Boss Room and challenge this planet's boss. Leaving without defeating it closes the gate.">⚔️ Challenge Planet Boss</button>
+            <button class="btn btn-secondary" id="gateBackBtn" type="button" data-tooltip="Keep practising this arena. The Boss Gate stays open until you enter the Boss Room." style="background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.12); color:#ddd;">📝 Keep Training</button>
           </div>
 
           <div class="secondary-actions" id="eqActions">
@@ -346,7 +346,7 @@
           <div class="rpg-header">
             <h2 class="rpg-title">⚔️ Monster Challenge Arena</h2>
             <div class="arena-header-actions">
-              <button class="btn btn-ghost" id="battleFleeBtn" type="button">📝 Keep Training</button>
+              <button class="btn btn-ghost" id="battleFleeBtn" type="button" data-tooltip="Leave the Boss Room and return to the arena. If you haven't beaten the boss, the gate closes and you must answer 10 questions again.">📝 Keep Training</button>
               <button class="btn btn-ghost" id="battleShopBtn" type="button">🛒 Weapon Store</button>
             </div>
           </div>
@@ -541,46 +541,47 @@
        (Not ES modules, so double-clicking this file from disk still works.) -->
   <!-- Config = pure content data (star systems, planets, story, …). Loads FIRST so the
        logic modules below read from it. Add content by editing these — see CONFIG_GUIDE.md. -->
-  <script src="config/worlds.config.js?v=20260714f"></script>
-  <script src="config/curriculum.config.js?v=20260714f"></script>
-  <script src="config/tutorials.config.js?v=20260714f"></script>
-  <script src="config/astro.config.js?v=20260714f"></script>
-  <script src="config/rooms.config.js?v=20260714f"></script>
-  <script src="config/planets.config.js?v=20260714f"></script>
-  <script src="config/story.config.js?v=20260714f"></script>
-  <script src="config/economy.config.js?v=20260714f"></script>
-  <script src="config/elements.config.js?v=20260714f"></script>
-  <script src="config/gear.config.js?v=20260714f"></script>
-  <script src="config/spells.config.js?v=20260714f"></script>
-  <script src="js/01-data.js?v=20260714f"></script>
-  <script src="js/02-dom.js?v=20260714f"></script>
-  <script src="js/03-save.js?v=20260714f"></script>
-  <script src="js/04-logic.js?v=20260714f"></script>
-  <script src="js/09-items.js?v=20260714f"></script>
-  <script src="js/21-catalogue.js?v=20260714f"></script>
-  <script src="js/14-lore.js?v=20260714f"></script>
-  <script src="js/05-render.js?v=20260714f"></script>
-  <script src="js/06-rpg-battle.js?v=20260714f"></script>
-  <script src="js/13-audio.js?v=20260714f"></script>
-  <script src="js/15-map.js?v=20260714f"></script>
-  <script src="js/16-chest.js?v=20260714f"></script>
-  <script src="js/17-wonderland.js?v=20260714f"></script>
-  <script src="js/18-farm.js?v=20260714f"></script>
-  <script src="js/19-alchemy.js?v=20260714f"></script>
-  <script src="js/20-item-store.js?v=20260714f"></script>
-  <script src="js/26-spells.js?v=20260714f"></script>
-  <script src="js/22-profile.js?v=20260714f"></script>
-  <script src="js/24-trading.js?v=20260714f"></script>
-  <script src="js/25-nav.js?v=20260714f"></script>
-  <script src="js/27-hoohey.js?v=20260714f"></script>
-  <script src="js/28-arena-generators.js?v=20260714f"></script>
-  <script src="js/29-tutorial.js?v=20260714f"></script>
-  <script src="js/30-bodyart.js?v=20260714f"></script>
-  <script src="js/31-graph.js?v=20260714f"></script>
-  <script src="js/cloud-save.js?v=20260714f"></script>
-  <script src="js/cloud-ui.js?v=20260714f"></script>
-  <script src="js/07-main.js?v=20260714f"></script>
-  <script src="js/08-layout.js?v=20260714f"></script>
+  <script src="config/worlds.config.js?v=20260714g"></script>
+  <script src="config/curriculum.config.js?v=20260714g"></script>
+  <script src="config/tutorials.config.js?v=20260714g"></script>
+  <script src="config/astro.config.js?v=20260714g"></script>
+  <script src="config/rooms.config.js?v=20260714g"></script>
+  <script src="config/planets.config.js?v=20260714g"></script>
+  <script src="config/story.config.js?v=20260714g"></script>
+  <script src="config/economy.config.js?v=20260714g"></script>
+  <script src="config/elements.config.js?v=20260714g"></script>
+  <script src="config/gear.config.js?v=20260714g"></script>
+  <script src="config/spells.config.js?v=20260714g"></script>
+  <script src="js/01-data.js?v=20260714g"></script>
+  <script src="js/02-dom.js?v=20260714g"></script>
+  <script src="js/03-save.js?v=20260714g"></script>
+  <script src="js/04-logic.js?v=20260714g"></script>
+  <script src="js/09-items.js?v=20260714g"></script>
+  <script src="js/21-catalogue.js?v=20260714g"></script>
+  <script src="js/14-lore.js?v=20260714g"></script>
+  <script src="js/05-render.js?v=20260714g"></script>
+  <script src="js/06-rpg-battle.js?v=20260714g"></script>
+  <script src="js/13-audio.js?v=20260714g"></script>
+  <script src="js/15-map.js?v=20260714g"></script>
+  <script src="js/16-chest.js?v=20260714g"></script>
+  <script src="js/17-wonderland.js?v=20260714g"></script>
+  <script src="js/18-farm.js?v=20260714g"></script>
+  <script src="js/19-alchemy.js?v=20260714g"></script>
+  <script src="js/20-item-store.js?v=20260714g"></script>
+  <script src="js/26-spells.js?v=20260714g"></script>
+  <script src="js/22-profile.js?v=20260714g"></script>
+  <script src="js/24-trading.js?v=20260714g"></script>
+  <script src="js/25-nav.js?v=20260714g"></script>
+  <script src="js/27-hoohey.js?v=20260714g"></script>
+  <script src="js/28-arena-generators.js?v=20260714g"></script>
+  <script src="js/29-tutorial.js?v=20260714g"></script>
+  <script src="js/30-bodyart.js?v=20260714g"></script>
+  <script src="js/31-graph.js?v=20260714g"></script>
+  <script src="js/cloud-save.js?v=20260714g"></script>
+  <script src="js/cloud-ui.js?v=20260714g"></script>
+  <script src="js/07-main.js?v=20260714g"></script>
+  <script src="js/08-layout.js?v=20260714g"></script>
+  <script src="js/32-tooltip.js?v=20260714g"></script>
 
 </body>
 </html>

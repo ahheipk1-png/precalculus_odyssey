@@ -62,3 +62,34 @@ Architecture preserved: ordered classic scripts, one global scope, no ES modules
 
 ---
 
+## Phase 4 — Global cursor-following tooltip system
+
+- **Date/time:** 2026-07-14
+- **Files changed:** NEW `game/js/32-tooltip.js`; `game/css/systems.css` (`.game-tooltip`);
+  `game/index.html` (script include + data-tooltip on applyBtn/expandBtn/directSubmitBtn/
+  gateBattleBtn/gateBackBtn/battleFleeBtn); `docs/architecture.md`.
+- **Backup:** `game_backup_before_tooltips/`
+- **Summary:** One reusable `#gameTooltip` element. Document-level delegation shows a tooltip for
+  any `[data-tooltip]` element, follows the cursor with offset + viewport clamping, appears after a
+  ~320ms delay, and hides on mouseout/scroll/Escape/blur. Keyboard focus shows it near the element
+  rect; touch shows it on press for ~2.6s. `pointer-events:none` so it never blocks clicks. Text is
+  set via textContent (escaped) unless `data-tooltip-html="1"`. KEY WIN: on first hover/focus it
+  auto-upgrades any native `title=` to data-tooltip and removes the title — so every existing
+  title-based tooltip across the game (header nav, currency chips, lives, planet stat, hint) becomes
+  the nicer following tooltip and the browser's native one is suppressed. `window.GameTooltip.set/hide` API.
+- **Tests (live browser):**
+  - #gameTooltip present; engine ready flag set.
+  - Hover the full-screen button (native title) → title moved to data-tooltip, title attr removed,
+    tooltip visible with the correct text, computed pointer-events:none.
+  - gateBattleBtn has explicit data-tooltip.
+  - Mouseout hides the tooltip. (Viewport-clamp code exercised; exact px assert blocked by the
+    headless context reporting window dims as 0 — logic uses live innerWidth/innerHeight.)
+  - Console: no errors.
+- **Results:** PASS.
+- **Unresolved:** broader per-control data-tooltip authoring (shops/inventory/atlas cards/spells)
+  is partly covered automatically via existing title= attributes; explicit copy for controls that
+  lack titles can be expanded during the Phase 7 audit.
+- **Next:** Phase 6 (typography vars) or Phase 5 (Hoo Hey How) — both safe/contained.
+
+---
+
