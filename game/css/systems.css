@@ -28,9 +28,9 @@
   .cl-code-card .cl-code{ font-family:'Cinzel',serif; font-size:26px; letter-spacing:2px; color:var(--yellow); text-align:center; background:rgba(0,0,0,0.28); border:1px dashed var(--yellow); border-radius:12px; padding:14px; margin:10px 0; word-break:break-all; }
 
   /* ---------- Coordinate-geometry graph (31-graph.js, #graphPanel) ---------- */
-  .graph-panel{ display:flex; flex-direction:column; align-items:center; margin:6px 0 4px; }
+  .graph-panel{ display:flex; flex-direction:column; align-items:center; width:100%; align-self:stretch; margin:12px 0; }
   .graph-panel[hidden]{ display:none; }
-  .coord-graph{ width:min(340px, 86vw); height:auto; touch-action:manipulation; }
+  .coord-graph{ width:min(500px, 78vw); max-width:100%; height:auto; margin:0 auto; touch-action:manipulation; }
   .cg-grid{ stroke:rgba(244,241,232,0.10); stroke-width:0.5; }
   .cg-axis{ stroke:rgba(244,241,232,0.55); stroke-width:1.4; }
   .cg-num{ fill:var(--chalk-dim); font-size:11px; font-family:'Quicksand',sans-serif; text-anchor:middle; }

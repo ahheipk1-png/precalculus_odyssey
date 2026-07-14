@@ -33,7 +33,10 @@ a parabola, or a circle) alongside its normal answer box; used by the distance/g
 `interactive:'line'` (tap two lattice points that lie on the target line — arena **171**, "tap two
 points on y=mx+c"). `renderGraphPanel()` draws the SVG and wires clicks to `graphClick`/`graphClear`;
 a correct tap calls `handleSolved`, a wrong one is exactly one `registerFail`. `buildGraphSVG` uses an
-integer lattice so it stays tap-friendly and browser-testable.
+integer lattice so it stays tap-friendly and browser-testable. **Layout:** the SVG (`.coord-graph`)
+renders up to 500 px wide (`min(500px, 78vw)`) and is **centred** in the wide quest panel — its wrapper
+`#graphPanel.graph-panel` is a full-width flex column, so `renderGraphPanel()` must set
+`el0.style.display = 'flex'` (an inline `'block'` would beat the class's `display:flex` and left-align it).
 
 **MC correctness invariants.** Every Identify (`mcOnly`) arena must have **exactly one** correct
 choice. Two subtle bugs to guard against: (1) `_mc` dedupes distractors by exact *string*, so a

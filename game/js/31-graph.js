@@ -93,7 +93,7 @@
     if (!el0) return;
     var p = state.problem, g = p && p.graph;
     if (!g){ el0.hidden = true; el0.style.display = 'none'; el0.innerHTML = ''; return; }
-    el0.hidden = false; el0.style.display = 'block';
+    el0.hidden = false; el0.style.display = 'flex';
     state.graphPicks = [];
     var controls = '';
     if (g.interactive === 'point') controls = '<div class="cg-controls"><span class="cg-tip">Tap the correct point on the grid.</span></div>';
