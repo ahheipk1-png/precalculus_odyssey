@@ -85,6 +85,7 @@
       armor: state.armor,
       shoes: state.shoes,
       defeatedMonsters: state.defeatedMonsters,
+      bossDefeated: state.bossDefeated,
       trophies: state.trophies,
       savedAt: Date.now()
     };
@@ -177,6 +178,11 @@
     state.equippedArmor  = _validEquip(state.armor,   state.equippedArmor,  'cloth_tunic');
     state.equippedShoes  = _validEquip(state.shoes,   state.equippedShoes,  'basic_boots');
     state.defeatedMonsters = snap.defeatedMonsters || {};
+    state.bossDefeated = snap.bossDefeated || {};
+    // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
+    // the Boss Gate button is re-derived from levelSolves/bossDefeated in updatePanelVisibility.
+    state.bossGateUnlocked = false;
+    state.bossRoomEntered = false;
     state.trophies = snap.trophies || [];
   }
 
@@ -199,6 +205,9 @@
     state.roomFails = 0;
     state.farm = { plots: [], animals: [], houses: 1 };
     state.gatePending = false;
+    state.bossGateUnlocked = false;
+    state.bossRoomEntered = false;
+    state.bossDefeated = {};
     state.equippedWeapon = 'wood_sword';
     state.equippedShield = 'leather_buckler';
     state.equippedArmor = 'cloth_tunic';

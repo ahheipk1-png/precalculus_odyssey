@@ -418,7 +418,12 @@
     // Test account: the Boss Gate is ALWAYS open — the "⚔️ Boss Gate Open!" button stays
     // visible on every room so the tester can drop into the boss / shop / battle at will
     // (normally it only appears once the room's gate has been earned).
-    if (state.gatePending || state.testMode) {
+    // Normal players: the button also reappears after a reload when they have ALREADY earned
+    // the gate this arena (levelSolves >= ARENA_GOAL) and have not yet beaten the boss — i.e.
+    // temporary gate access survives reload, but is gone once they leave the boss undefeated
+    // (which resets levelSolves to 0). See returnToArenaFromBoss (06-rpg-battle.js).
+    var gateEarned = (state.levelSolves >= ARENA_GOAL) && !(state.bossDefeated && state.bossDefeated[state.level]);
+    if (state.gatePending || state.testMode || gateEarned) {
       if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'inline-block';
     } else {
       if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'none';
@@ -501,6 +506,8 @@
     state.roomFails = 0;
     state.streak = 0;
     state.gatePending = false;
+    state.bossGateUnlocked = false;
+    state.bossRoomEntered = false;
     el.levelGateActions.style.display = 'none';
     el.eqActions.style.display = 'flex';
     updateStats();

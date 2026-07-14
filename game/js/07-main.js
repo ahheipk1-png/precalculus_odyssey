@@ -374,15 +374,19 @@
   }
   el.shopBackBtn.addEventListener('click', closeShop);
   el.battleFleeBtn.addEventListener('click', function(){
-    el.battleView.classList.remove('active');
-    el.equationView.classList.add('active');
-    
-    el.levelGateActions.style.display = 'none';
-    el.eqActions.style.display = 'flex';
-    updatePanelVisibility();
-    
-    setControlsEnabled(true);
-    loadProblem();
+    // Leaving the Boss Room. returnToArenaFromBoss closes the gate (redo ARENA_GOAL) unless the
+    // arena's boss has already been beaten.
+    if (typeof returnToArenaFromBoss === 'function') {
+      returnToArenaFromBoss();
+    } else {
+      el.battleView.classList.remove('active');
+      el.equationView.classList.add('active');
+      el.levelGateActions.style.display = 'none';
+      el.eqActions.style.display = 'flex';
+      updatePanelVisibility();
+      setControlsEnabled(true);
+      loadProblem();
+    }
   });
   if (el.battleShopBtn) {
     el.battleShopBtn.addEventListener('click', openShop);
@@ -434,6 +438,8 @@
         state.levelSolves = 0;
         state.roomFails = 0;
         state.gatePending = false;
+        state.bossGateUnlocked = false;
+        state.bossRoomEntered = false;
 
         document.querySelectorAll('.view-container.active').forEach(function(v){ v.classList.remove('active'); });
         el.equationView.classList.add('active');

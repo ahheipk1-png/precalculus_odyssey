@@ -461,7 +461,21 @@ user's own cheat account for fast playtesting. Effects:
 > auto-advance was **removed** (the gate now opens only after the finale question). Progress shows
 > `Arena Progress: N / ARENA_GOAL` via `updateLevelProgress()`; `#progressDots` has `ARENA_GOAL`
 > dots. New state fields (`bossGateUnlocked`, `bossRoomEntered`, `bossDefeated{}`) are declared in
-> `01-data.js` defaults; their reset-on-leave + persistence is Phase 3 (not yet wired).
+> `01-data.js` defaults; reset-on-leave + persistence wired in Phase 3 (below).
+
+> **Boss Gate reset model (Phase 3, 2026-07-14).** Three concepts:
+> `state.bossRoomEntered` (stepped into the boss room this visit — set by `openBattle`),
+> `state.bossGateUnlocked` (temporary gate access this visit), and the **persistent**
+> `state.bossDefeated{arenaN:true}` (bosses actually beaten — saved/restored in `03-save.js`).
+> `levelSolves` is the arenaQuestionsCompleted counter. **Leaving the boss room undefeated**
+> (flee via `battleFleeBtn`, or return after a loss via `handlePostCombatRedirect`) calls
+> `returnToArenaFromBoss()` (06-rpg-battle.js): unless `bossDefeated[level]`, it resets
+> `levelSolves=0`, clears `gatePending`/`bossGateUnlocked`, hides `gateEnterBtn`, and the player
+> must re-earn `ARENA_GOAL`. Beating the boss sets `bossDefeated[level]=true` in
+> `advanceToNextLevel`. On reload the gate button is re-derived in `loadProblem`:
+> visible iff `levelSolves >= ARENA_GOAL && !bossDefeated[level]` (or testMode). All arena-change
+> paths (restartRoom / worm-hole warp / atlas travel) clear the transient boss-visit flags; the
+> transient flags never persist (forced false in `applySnapshotToState`).
 - **Effectively-infinite coins & gems**: `updateStats()` re-pins `state.coins = state.gems =
   999999` on every refresh when `testMode`, so spending never runs them down. (Gems have no
   built system yet — the field is set for when the materials/trading-store system lands.)

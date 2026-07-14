@@ -219,6 +219,7 @@
     _atlasSystem = null;
     var doJump = function(){
       state.level = room; state.streak = 0; state.levelSolves = 0; state.roomFails = 0; state.gatePending = false;
+      state.bossGateUnlocked = false; state.bossRoomEntered = false;
       document.querySelectorAll('.view-container.active').forEach(function(v){ v.classList.remove('active'); });
       el.equationView.classList.add('active');
       el.levelGateActions.style.display = 'none'; el.eqActions.style.display = 'flex';

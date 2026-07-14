@@ -316,10 +316,13 @@
   }
 
   function openBattle() {
+    // Stepping into the Boss Room. If the player now leaves without beating the arena's boss,
+    // the Boss Gate closes and the ARENA_GOAL requirement must be earned again (section 9).
+    state.bossRoomEntered = true;
     el.equationView.classList.remove('active');
     el.shopView.classList.remove('active');
     el.battleView.classList.add('active');
-    
+
     el.monsterSelectScreen.style.display = 'block';
     el.combatArenaScreen.style.display = 'none';
     el.battleFleeBtn.hidden = false;
@@ -1050,13 +1053,38 @@
         if (el.battleShopBtn) el.battleShopBtn.hidden = false;
       }
     } else {
-      el.battleView.classList.remove('active');
-      el.equationView.classList.add('active');
-      el.levelGateActions.style.display = 'none';
-      el.eqActions.style.display = 'flex';
-      activeCombat = null;
-      loadProblem();
+      // Returned to the arena after a LOSS — treat as leaving the boss undefeated.
+      returnToArenaFromBoss();
     }
+  }
+
+  // Return to the arena from the Boss Room. If the arena's boss has NOT been beaten, revoke the
+  // temporary Boss Gate access: reset the question counter so the player must earn ARENA_GOAL
+  // correct answers again before the gate reopens (section 9 — leave undefeated → gate closes).
+  function returnToArenaFromBoss() {
+    el.battleView.classList.remove('active');
+    el.shopView.classList.remove('active');
+    el.equationView.classList.add('active');
+    activeCombat = null;
+    var beaten = !!(state.bossDefeated && state.bossDefeated[state.level]);
+    if (!beaten) {
+      state.gatePending = false;
+      state.bossGateUnlocked = false;
+      state.bossRoomEntered = false;
+      state.levelSolves = 0;
+      if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'none';
+      if (typeof showToast === 'function') {
+        showToast('🚪 You left the boss undefeated — the Boss Gate closed. Answer ' + ARENA_GOAL + ' questions again to reopen it.');
+      }
+      if (typeof saveGame === 'function') saveGame();
+    }
+    el.levelGateActions.style.display = 'none';
+    el.eqActions.style.display = 'flex';
+    if (typeof updateStats === 'function') updateStats();
+    if (typeof updateLevelProgress === 'function') updateLevelProgress();
+    if (typeof updatePanelVisibility === 'function') updatePanelVisibility();
+    if (typeof setControlsEnabled === 'function') setControlsEnabled(true);
+    loadProblem();
   }
 
   function advanceToNextLevel(byTraining) {
@@ -1087,11 +1115,17 @@
         showToast('Arena ' + state.level + ' unlocked! 🎉');
       }
     }
+    // Permanently record that this arena's boss was beaten (clears the gate for good here) and
+    // clear the per-visit boss-room flags.
+    if (!state.bossDefeated) state.bossDefeated = {};
+    state.bossDefeated[_paBefore] = true;
+    state.bossGateUnlocked = false;
+    state.bossRoomEntered = false;
     state.gatePending = false;
     state.levelSolves = 0;
     updateStats();
     updateLevelProgress(0);
-    
+
     el.battleView.classList.remove('active');
     el.equationView.classList.add('active');
     el.levelGateActions.style.display = 'none';
