@@ -113,6 +113,35 @@
 .wond-lvl-lock{ color: var(--coral); border-color: rgba(240,112,94,0.5); }
 .wond-lvl-meta{ font-size: 13px; color: var(--chalk-dim); }
 .wond-lvl-play{ margin-top: auto; width: 100%; font-size: 15px !important; min-height: 40px !important; }
+
+/* ---- Bullseye Numbers 🎯 ---- */
+.wg-diff-row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:14px 0; }
+.bull-question{ text-align:center; font-family:'Patrick Hand', cursive; font-size:34px; color:var(--chalk);
+  margin:10px 0 14px; min-height:44px; }
+.bull-question b{ color:var(--yellow); }
+.bull-board{ display:grid; grid-template-columns:repeat(2, minmax(120px, 1fr)); gap:16px;
+  max-width:460px; margin:0 auto 8px; }
+.bull-target{ position:relative; border:none; background:none; cursor:pointer; padding:0;
+  aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; min-height:96px;
+  transition:transform .12s ease; }
+.bull-target:hover{ transform:scale(1.05); }
+.bull-target:focus-visible{ outline:3px solid var(--sky); outline-offset:3px; border-radius:50%; }
+.bull-ring{ position:absolute; inset:0; border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 50%,
+      #f0705e 0 18%, #f4f1e8 18% 34%, #f0705e 34% 50%, #f4f1e8 50% 66%, #f0705e 66% 82%, #f4f1e8 82% 100%);
+  box-shadow:0 4px 12px rgba(0,0,0,.4), inset 0 0 0 3px rgba(20,42,31,.6); }
+.bull-num{ position:relative; z-index:2; font-family:'Quicksand', sans-serif; font-weight:800;
+  font-size:30px; color:#142a1f; background:rgba(244,241,232,0.92); border-radius:50%;
+  width:52px; height:52px; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.35); }
+.bull-key{ position:absolute; top:4px; left:8px; z-index:3; font-size:13px; font-weight:700;
+  color:#142a1f; background:var(--yellow); border-radius:6px; padding:0 6px; opacity:.85; }
+.bull-target.bull-hit .bull-ring{ box-shadow:0 0 22px 6px #7bd88f, inset 0 0 0 3px #7bd88f; }
+.bull-target.bull-wrong .bull-ring{ animation:bullShake .3s ease; box-shadow:0 0 20px 5px var(--coral); }
+@keyframes bullShake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-6px); } 75%{ transform:translateX(6px); } }
+@media (prefers-reduced-motion: reduce){ .bull-target, .bull-target.bull-wrong .bull-ring{ transition:none; animation:none; } }
+@media (max-width:520px){ .bull-question{ font-size:28px; } .bull-num{ width:44px; height:44px; font-size:24px; } }
 .wond-soon{
   font-size:14px;
   font-weight: 700;

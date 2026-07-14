@@ -302,4 +302,28 @@ are documented above (mcOnly style cap; balance/graph not auto-solved; no screen
 - **Results:** PASS.
 - **Next:** shared shell + registry (MG-2), then the 3 carnival games (MG-3).
 
+---
+
+## MG-3a — Bullseye Numbers 🎯 (first of the 3 carnival games in the screenshot)
+
+- **Date/time:** 2026-07-14
+- **Files changed:** NEW `game/js/34-wonder-games.js` (carnival games module + shared mini-game
+  helpers `wgMini`/`wgRecordScore`/`wgPayReward`); `game/js/17-wonderland.js` (lobby cards now a
+  config — Bullseye playable, other 2 still Coming soon; `bullStop` guard on all nav exits);
+  `game/css/wonderland.css` (`.bull-*`, `.wg-diff-row`); `game/index.html` (include).
+- **Backup:** `game_backup_before_carnival_games/`
+- **Summary:** A timed mental-maths dartboard. Pick Easy/Normal/Hard → a maths question shows with
+  4 dartboard targets (one correct, derived correct-by-construction); tap or press 1-4. Correct =
+  points + growing combo bonus; wrong = combo lost + −2s. 45s runs; high score persists; **Cash-only**
+  reward scaled by score+difficulty with a beat-your-best bonus (rare CPU chip only on top Hard runs)
+  — free to play but not a rare-gear farm. Keyboard + touch; tooltips; view-active self-check stops a
+  stray timer on navigation.
+- **Tests (live browser):** bullGen 900/900 correct (answer present at correctIdx, 4 distinct ≥0
+  options); reward scaling correct (easy100→24, normal100→38, hard250+new→158+CPU, 0→0); lobby shows
+  Bullseye playable + 2 Coming soon; start→45s/4 targets/question; correct pick scores + new round;
+  wrong pick resets combo + −2s; end records high score (175) + pays Cash (87) + result screen;
+  save→reload keeps the high score; console clean.
+- **Results:** PASS.
+- **Next:** MG-3b Gone Fishin'.
+
 

@@ -174,6 +174,7 @@
 
   function openWonderland(){
     stopTileBall();                       // never leave a stale loop behind
+    if (typeof bullStop === 'function') bullStop();   // and no stray carnival-game timer
     var view = wondShowView();
     if (!view) return;
     view.innerHTML = wondLobbyHtml();
@@ -182,6 +183,7 @@
 
   function closeWonderland(){
     stopTileBall();
+    if (typeof bullStop === 'function') bullStop();
     var view = document.getElementById('wonderlandView');
     if (view) view.classList.remove('active');
     var eq = document.getElementById('equationView');
@@ -192,6 +194,7 @@
   // Back button: the Map Hub when it exists, otherwise fall back to the equation view.
   function wonderBackToMap(){
     stopTileBall();
+    if (typeof bullStop === 'function') bullStop();
     var view = document.getElementById('wonderlandView');
     if (view) view.classList.remove('active');
     if (typeof openMapHub === 'function') { openMapHub(); return; }
@@ -201,18 +204,26 @@
   // ---------- Lobby ----------
   function wondLobbyHtml(){
     var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
-    var locked = [
-      ['🎠', 'Merry Math-Go-Round'],
-      ['🎣', 'Gone Fishin’'],
-      ['🎯', 'Bullseye Numbers']
+    // Each carnival game becomes playable as it's built; `launch` null = still Coming soon.
+    var carnival = [
+      { icon: '🎯', name: 'Bullseye Numbers', desc: 'Hit the target that answers each maths question — beat the clock!', launch: 'openBullseye()', cost: 'Free' },
+      { icon: '🎣', name: 'Gone Fishin’', desc: 'A new carnival game is being built!', launch: null },
+      { icon: '🎠', name: 'Merry Math-Go-Round', desc: 'A new carnival game is being built!', launch: null }
     ].map(function(g){
-      return '<div class="wond-card wond-locked">' +
-        '<div class="wond-card-icon">' + g[0] + '</div>' +
-        '<div class="wond-card-name">' + g[1] + '</div>' +
-        '<div class="wond-card-desc">A new carnival game is being built!</div>' +
-        '<span class="wond-soon">🔒 Coming soon</span>' +
-        '</div>';
+      if (!g.launch){
+        return '<div class="wond-card wond-locked">' +
+          '<div class="wond-card-icon">' + g.icon + '</div>' +
+          '<div class="wond-card-name">' + g.name + '</div>' +
+          '<div class="wond-card-desc">' + g.desc + '</div>' +
+          '<span class="wond-soon">🔒 Coming soon</span></div>';
+      }
+      return '<div class="wond-card">' +
+        '<div class="wond-card-icon">' + g.icon + '</div>' +
+        '<div class="wond-card-name">' + g.name + '</div>' +
+        '<div class="wond-card-desc">' + g.desc + '</div>' +
+        '<button type="button" class="btn btn-primary wond-play" onclick="' + g.launch + '" data-tooltip="Play ' + g.name + ' — ' + g.cost + '.">Play! (' + g.cost + ')</button></div>';
     }).join('');
+    var locked = carnival;
     return '' +
       '<div class="wond-board">' +
         '<div class="wond-head">' +
