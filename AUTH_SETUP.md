@@ -3,7 +3,31 @@
 The game now logs in through the **Cloudflare D1** database with a username + password,
 account-approval workflow, an admin panel, and a single active session per account.
 
-## One-time deploy steps
+## ⭐ Easiest setup — one URL, no D1 console, no SQL
+
+After the site is deployed, just open this URL **once** in your browser (it sets up the database
+columns AND seeds both logins in a single call):
+
+```
+https://precalculus-odyssey.pages.dev/api/admin/bootstrap?key=odyssey-setup-2pi
+```
+
+You should see `{"ok":true,"message":"Bootstrap complete..."}`. Then log in:
+
+| Account | Username | Password |
+|---|---|---|
+| **Admin** | `admin` | `admin` |
+| **Test**  | `mitb`  | `Pi*2=6.2831853`  *(literal text)* |
+
+Log in as **admin**, click **🛠️ Admin** in the header, and change the admin password to something longer.
+
+Security: the `key` is baked into `functions/api/admin/bootstrap.js` (`SETUP_KEY`) — change it there, or set
+a `SEED_KEY` secret in the Cloudflare Pages dashboard, and/or delete that file after you've bootstrapped,
+since anyone with the key can reset these two logins.
+
+---
+
+## Manual alternative — one-time deploy steps (if you prefer SQL)
 
 1. **Run the new migration** (adds the auth columns to `cloud_accounts`):
 
@@ -46,7 +70,7 @@ account-approval workflow, an admin panel, and a single active session per accou
 - **Single login** (item 6): logging in revokes any other active session for that account — so the
   same account can't be used on two devices at once. **Test accounts** (`mitb`) are exempt.
 - **Test account**: seed it with `migrations/0004_seed_test.sql`, then log in with **username `mitb`,
-  password `6.2831853`** (2π). It unlocks in-game test mode and is exempt from single-login (can be
+  password `Pi*2=6.2831853`** (literal text). It unlocks in-game test mode and is exempt from single-login (can be
   logged in on more than one device at once).
 
 ## Notes / limitations

@@ -1,13 +1,14 @@
--- Seed the TEST account:  username = mitb   password = 6.2831853   (2π)
--- Run AFTER 0001 + 0002:
+-- Seed the TEST account:  username = mitb   password = Pi*2=6.2831853   (literal text)
+-- Easiest: DON'T run this — just hit /api/admin/bootstrap?key=... once (see AUTH_SETUP.md).
+-- Or run AFTER 0001 + 0002:
 --   npx wrangler d1 execute precalculus_odyssey --file=./migrations/0004_seed_test.sql
 -- or paste into the Cloudflare dashboard → D1 → precalculus_odyssey → Console.
 --
 -- Password stored the same way the login endpoint computes it:
---   sha256hex( password_salt + ':' + password )  =  sha256hex('mitbseed01:6.2831853').
+--   sha256hex( password_salt + ':' + password )  =  sha256hex('mitbseed01:Pi*2=6.2831853').
 -- 'mitb' is a recognised test account: it unlocks test mode in-game AND is exempt from the
 -- single-login rule (it can be logged in on more than one device at once).
--- Idempotent: re-running resets it back to mitb / 6.2831853.
+-- Idempotent: re-running resets it back to mitb / Pi*2=6.2831853.
 
 DELETE FROM cloud_accounts WHERE username = 'mitb';
 
@@ -17,7 +18,7 @@ VALUES
   ('acc_seed_mitb',
    '0000000000000000000000000000000000000000000000000000000000000000',
    'mitb',
-   '730f2af72489a05b11cd8d6aa73bd1ada2b52673e7e476281c601ebf0b344672',
+   'b6920ef6192fbce091f31c25b40506c36d475b01d7a0c243df9ba0438e872f50',
    'mitbseed01',
    'approved',
    0,
