@@ -11,7 +11,7 @@ pages_build_output_dir = "game"
 [[d1_databases]]
 binding = "DB"
 database_name = "precalculus_odyssey"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "a236252a-157e-40fc-bf10-30cb2610b61a"
 
 # --- Optional: a separate D1 for preview deployments (uncomment + fill in) ---
 # [env.preview]
