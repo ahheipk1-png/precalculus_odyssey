@@ -26,6 +26,7 @@
     solveClock: 0,     // total problems ever solved — the farm's growth clock ("1 planet of practice" = 9 solves)
     roomFails: 0,      // wrong answers in the CURRENT room; 5 = game over (room restarts). Perfect room = 0.
     farm: { plots: [], animals: [], houses: 1 }, // see 18-farm.js
+    miniGames: {},     // Wonderland mini-game progress: id -> { unlockedCount, firstCleared, best, plays, highScore }. See 17-wonderland.js / 34-wonder-shell.js.
     testMode: false,
     streak: 0,
     levelSolves: 0,

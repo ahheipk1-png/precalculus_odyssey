@@ -67,6 +67,7 @@
       solveClock: state.solveClock,
       roomFails: state.roomFails,
       farm: state.farm,
+      miniGames: state.miniGames,
       streak: state.streak,
       levelSolves: state.levelSolves,
       equippedWeapon: state.equippedWeapon,
@@ -178,6 +179,7 @@
     state.equippedArmor  = _validEquip(state.armor,   state.equippedArmor,  'cloth_tunic');
     state.equippedShoes  = _validEquip(state.shoes,   state.equippedShoes,  'basic_boots');
     state.defeatedMonsters = snap.defeatedMonsters || {};
+    state.miniGames = (snap.miniGames && typeof snap.miniGames === 'object') ? snap.miniGames : {};
     state.bossDefeated = snap.bossDefeated || {};
     // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
     // the Boss Gate button is re-derived from levelSolves/bossDefeated in updatePanelVisibility.
@@ -204,6 +206,7 @@
     state.solveClock = 0;
     state.roomFails = 0;
     state.farm = { plots: [], animals: [], houses: 1 };
+    state.miniGames = {};
     state.gatePending = false;
     state.bossGateUnlocked = false;
     state.bossRoomEntered = false;

@@ -25,8 +25,18 @@ presentation (rewards already credited by the caller); re-entrant; reduced-motio
 ## Wonderland — `js/17-wonderland.js` (`#wonderlandView`)
 
 Carnival lobby showing **🎟️ Wonderland Passes** + a playable **Tile Ball** (Breakout) canvas game
-costing 1 pass. `wonderRewardForScore(f)` (pure) pays materials + an item by cleared fraction;
-`applyWonderReward` credits them. The rAF loop is cancelled on exit.
+costing 1 pass, plus **Hoo Hey How** and three carnival cards. `wonderRewardForScore(f)` (pure) pays
+materials + an item by cleared fraction; `applyWonderReward` credits them. The rAF loop is cancelled on exit.
+
+**Tile Ball has 5 difficulty levels** (`WOND_LEVELS`, Warm-Up→Singularity): rising grid size + ball
+speed + fewer balls, `checker` gap patterns and 2-hit `armoured` tiles (`tile.hp`). The lobby card
+opens a **level-select** (`wondOpenTileLevels`) with locked/cleared badges + best %. Clearing every
+tile unlocks the next level and offers a Next-Level button; progress lives in
+`state.miniGames.tileBall` = `{unlockedCount, firstCleared{idx}, best{idx:frac}, plays}` (persisted in
+`03-save.js` under `state.miniGames`, default `{}`). `wondLevelReward(levelIdx, f, firstClear)` scales
+the base tier by level (1.0×→2.4×), adds a **first-clear bonus**, and **halves repeat clears**
+(anti-farming); the 1-pass cost is the throttle. `state.miniGames` is the shared save bucket for all
+Wonderland mini-games.
 
 **Hoo Hey How** (`js/27-hoohey.js`, `#hooHeyView`) — Bầu Cua dice betting for Cash. Bet on the six
 symbols, then three dice roll: each match pays your stake back **plus** the same again. The roll is

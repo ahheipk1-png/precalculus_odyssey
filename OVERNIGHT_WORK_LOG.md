@@ -276,4 +276,30 @@ Every phase implemented, tested in-browser (console clean), committed and pushed
 Correctness gated by `tools/validate-arenas.js` (0 issues over all 187 arenas). Remaining honest gaps
 are documented above (mcOnly style cap; balance/graph not auto-solved; no screenshots in this env).
 
+---
+
+# WONDERLAND MINI-GAMES EXPANSION (separate later-phase task)
+
+## MG-1 — Tile Ball difficulty levels
+
+- **Date/time:** 2026-07-14
+- **Files changed:** `game/js/17-wonderland.js` (WOND_LEVELS + level-aware engine + level select +
+  scaled rewards + unlock/persist), `game/css/wonderland.css` (`.wond-lvl-*`), `game/js/01-data.js`
+  (`state.miniGames`), `game/js/03-save.js` (persist/restore/reset miniGames), `game/index.html`.
+- **Backup:** `game_backup_before_tileball_levels/`
+- **Summary:** The existing single-board Tile Ball (Breakout) now has **5 progressive levels**
+  (Warm-Up → Singularity) with rising grid size, ball speed, fewer balls, gap (checker) patterns and
+  **2-hit armoured tiles**. A **level-select screen** (from the lobby card) shows locked/unlocked/
+  cleared badges + best %. Clearing all tiles **unlocks the next level** and offers a Next Level
+  button; progress persists in `state.miniGames.tileBall` ({unlockedCount, firstCleared, best, plays}).
+  Rewards **scale by level** (1.0×→2.4×) with a **first-clear bonus** and **halved repeat clears**
+  (anti-farming); the Pass cost (1/play) remains the throttle.
+- **Tests (live browser):** 5 levels; tile counts per pattern correct (L4 tough = 48 tiles, 16
+  armoured; L5 toughcheck = 27, 9 armoured); reward math correct + scaling + first-clear bonus +
+  repeat halving; level select shows 1 unlocked → 2 after a clear; full clear unlocks next level +
+  persists; game init per level (4 balls / speed 3.3 on L1); armoured tile survives 1 hit, dies on 2;
+  save→reload keeps `miniGames.tileBall`; console clean.
+- **Results:** PASS.
+- **Next:** shared shell + registry (MG-2), then the 3 carnival games (MG-3).
+
 

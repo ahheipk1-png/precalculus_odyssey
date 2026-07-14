@@ -85,6 +85,34 @@
 }
 .wond-play{ margin-top: auto; }
 .wond-locked{ opacity: 0.55; }
+
+/* ---- Tile Ball level select ---- */
+.wond-lvl-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+.wond-lvl-card{
+  background: rgba(244,241,232,0.06);
+  border: 1px solid rgba(244,241,232,0.14);
+  border-radius: 14px;
+  padding: 14px 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.wond-lvl-locked{ opacity: 0.55; }
+.wond-lvl-num{ font-size: 14px; font-weight: 700; color: var(--chalk-dim); letter-spacing: 0.5px; }
+.wond-lvl-name{ font-family: 'Patrick Hand', cursive; font-size: 21px; color: var(--yellow); }
+.wond-lvl-badge{ font-size: 13px; font-weight: 700; color: var(--chalk-dim);
+  border: 1px solid rgba(244,241,232,0.2); border-radius: 999px; padding: 2px 10px; }
+.wond-lvl-clear{ color: #7bd88f; border-color: #7bd88f; }
+.wond-lvl-lock{ color: var(--coral); border-color: rgba(240,112,94,0.5); }
+.wond-lvl-meta{ font-size: 13px; color: var(--chalk-dim); }
+.wond-lvl-play{ margin-top: auto; width: 100%; font-size: 15px !important; min-height: 40px !important; }
 .wond-soon{
   font-size:14px;
   font-weight: 700;

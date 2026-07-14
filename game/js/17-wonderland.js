@@ -30,10 +30,29 @@
 
   // ---------- Tile Ball constants ----------
   var WOND_W = 480, WOND_H = 340;            // logical canvas size (CSS scales it)
-  var WOND_COLS = 6, WOND_ROWS = 5;          // 30 tiles total
-  var WOND_BASE_SPEED = 4.0;                 // px per 60fps-frame
-  var WOND_MAX_SPEED = 7.5;
-  var WOND_START_BALLS = 3;
+  var WOND_MAX_SPEED = 9.0;                  // hard cap on ball speed (per-level maxSpeed is lower)
+
+  // Progressive difficulty levels. Each: grid size, ball start speed + speed cap, balls (lives),
+  // and a tile pattern. 'tough' rows/'toughcheck' add 2-hit armoured tiles; 'checker' leaves gaps.
+  var WOND_LEVELS = [
+    { name: 'Warm-Up',       cols: 6, rows: 4, speed: 3.3, maxSpeed: 6.2, balls: 4, pattern: 'full' },
+    { name: 'Cadet Run',     cols: 7, rows: 5, speed: 3.8, maxSpeed: 6.8, balls: 3, pattern: 'full' },
+    { name: 'Asteroid Belt', cols: 8, rows: 5, speed: 4.2, maxSpeed: 7.4, balls: 3, pattern: 'checker' },
+    { name: 'Ion Storm',     cols: 8, rows: 6, speed: 4.7, maxSpeed: 8.0, balls: 3, pattern: 'tough' },
+    { name: 'Singularity',   cols: 9, rows: 6, speed: 5.2, maxSpeed: 8.8, balls: 2, pattern: 'toughcheck' }
+  ];
+
+  // Per-profile Tile Ball progress (persisted via state.miniGames — see 03-save.js).
+  function wondTB(){
+    if (typeof state !== 'object' || !state) return { unlockedCount: 1, firstCleared: {}, best: {}, plays: 0 };
+    if (!state.miniGames) state.miniGames = {};
+    var tb = state.miniGames.tileBall;
+    if (!tb || typeof tb !== 'object'){ tb = { unlockedCount: 1, firstCleared: {}, best: {}, plays: 0 }; state.miniGames.tileBall = tb; }
+    if (typeof tb.unlockedCount !== 'number' || tb.unlockedCount < 1) tb.unlockedCount = 1;
+    if (!tb.firstCleared) tb.firstCleared = {};
+    if (!tb.best) tb.best = {};
+    return tb;
+  }
 
   // ---------- Mutable game state (module-global, reset by wondInitGame) ----------
   var WOND = {
@@ -46,11 +65,13 @@
     colors: null,
     stars: [],
     tiles: [],
-    tilesTotal: WOND_COLS * WOND_ROWS,
-    tilesLeft: WOND_COLS * WOND_ROWS,
-    balls: WOND_START_BALLS,
+    levelIdx: 0,          // which WOND_LEVELS entry is being played
+    level: null,          // the active level config
+    tilesTotal: 0,
+    tilesLeft: 0,
+    balls: 3,
     hits: 0,              // paddle bounces + tile breaks; every 8th speeds the ball up
-    speed: WOND_BASE_SPEED,
+    speed: 4.0,
     launched: false,
     paddle: { x: 0, y: 0, w: 84, h: 12 },
     ball: { x: 0, y: 0, vx: 0, vy: 0, r: 7 },
@@ -101,6 +122,28 @@
     if (f >= 0.7) return '🥇 Gold Prize';
     if (f >= 0.4) return '🥈 Silver Prize';
     return '🫀 Consolation Prize';
+  }
+
+  // PURE: scale a base tier reward by the level played, add a first-clear bonus, and diminish
+  // repeat clears (anti-farming). levelIdx is 0-based. firstClear = first full clear of THIS level.
+  function wondLevelReward(levelIdx, f, firstClear){
+    var base = wonderRewardForScore(f);
+    var lvlMult = 1 + levelIdx * 0.35;                 // L1=1.0x … L5=2.4x
+    var r = { chips: {}, gold: 0, silver: 0, item: base.item, levelIdx: levelIdx };
+    for (var k in (base.chips || {})) r.chips[k] = base.chips[k];   // rare chips not scaled by level
+    r.gold = Math.round((base.gold || 0) * lvlMult);
+    r.silver = Math.round((base.silver || 0) * lvlMult);
+    if (f >= 1 && firstClear){
+      r.gold += 2 + levelIdx;                          // first-clear bonus grows with level
+      if (levelIdx >= 2){ r.chips.cpu = (r.chips.cpu || 0) + 1; }
+      r.firstClearBonus = true;
+    } else if (f >= 1 && !firstClear){
+      r.gold = Math.floor(r.gold / 2);                 // repeat full clear: halved metals
+      r.silver = Math.floor(r.silver / 2);
+      r.item = null;                                   // no repeat item drops
+      r.repeat = true;
+    }
+    return r;
   }
 
   // Pay out a reward object from wonderRewardForScore. Side effects only — the
@@ -184,8 +227,8 @@
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🧱</div>' +
             '<div class="wond-card-name">Tile Ball</div>' +
-            '<div class="wond-card-desc">Bounce the ball and smash every tile to win the Grand Prize!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="startTileBall()">Play! (1 🎟️)</button>' +
+            '<div class="wond-card-desc">Bounce the ball and smash every tile! ' + WOND_LEVELS.length + ' levels of rising difficulty.</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="wondOpenTileLevels()" data-tooltip="Choose a Tile Ball level. Each play costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🎲</div>' +
@@ -201,13 +244,54 @@
       '</div>';
   }
 
+  // ---------- Tile Ball: level select ----------
+  function wondOpenTileLevels(){
+    stopTileBall();
+    var view = wondShowView();
+    if (!view) return;
+    view.innerHTML = wondTileLevelSelectHtml();
+  }
+
+  function wondTileLevelSelectHtml(){
+    var tb = wondTB();
+    var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
+    var cards = WOND_LEVELS.map(function(lv, i){
+      var unlocked = i < tb.unlockedCount;
+      var cleared = !!tb.firstCleared[i];
+      var best = tb.best[i] ? Math.round(tb.best[i] * 100) + '%' : '—';
+      var badge = cleared ? '<span class="wond-lvl-badge wond-lvl-clear">✔ Cleared</span>'
+                          : (unlocked ? '<span class="wond-lvl-badge">New</span>' : '<span class="wond-lvl-badge wond-lvl-lock">🔒 Locked</span>');
+      var btn = unlocked
+        ? '<button type="button" class="btn btn-primary wond-lvl-play" onclick="startTileBall(' + i + ')" data-tooltip="Play ' + lv.name + ' — costs 1 Wonderland Pass.">Play (1 🎟️)</button>'
+        : '<button type="button" class="btn btn-ghost wond-lvl-play" disabled>Clear the level before to unlock</button>';
+      return '<div class="wond-lvl-card' + (unlocked ? '' : ' wond-lvl-locked') + '">' +
+        '<div class="wond-lvl-num">Level ' + (i + 1) + '</div>' +
+        '<div class="wond-lvl-name">' + lv.name + '</div>' +
+        badge +
+        '<div class="wond-lvl-meta">' + lv.cols + '×' + lv.rows + ' tiles · ' + lv.balls + ' balls · best ' + best + '</div>' +
+        btn +
+      '</div>';
+    }).join('');
+    return '' +
+      '<div class="wond-board">' +
+        '<div class="wond-head">' +
+          '<h2 class="wond-title"><span class="wond-wheel">🧱</span> Tile Ball — Choose a Level</h2>' +
+          '<p class="wond-sub">Clear every tile to unlock the next level. Higher levels pay bigger prizes!</p>' +
+        '</div>' +
+        '<div class="wond-passrow"><span class="wond-passes">🎟️ Passes: <b>' + passes + '</b></span>' +
+          '<span class="wond-hint">Each play costs 1 pass.</span></div>' +
+        '<div class="wond-lvl-grid">' + cards + '</div>' +
+        '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the Wonderland lobby.">← Lobby</button></div>' +
+      '</div>';
+  }
+
   // ---------- Tile Ball: screens ----------
   function wondGameHtml(){
     return '' +
       '<div class="wond-board wond-game">' +
         '<div class="wond-game-top">' +
-          '<h2 class="wond-title wond-title-sm">🧱 Tile Ball</h2>' +
-          '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button>' +
+          '<h2 class="wond-title wond-title-sm">🧱 Tile Ball — L' + (WOND.levelIdx + 1) + ' ' + (WOND.level ? WOND.level.name : '') + '</h2>' +
+          '<button type="button" class="btn btn-ghost" onclick="wondOpenTileLevels()" data-tooltip="Leave this game and pick a level. Leaving mid-game skips the prize.">← Levels</button>' +
         '</div>' +
         '<div class="wond-hud" id="wondHud"></div>' +
         '<div class="wond-canvas-wrap">' +
@@ -238,29 +322,46 @@
   function wondResultHtml(f, destroyed, r){
     var pct = Math.round(f * 100);
     var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
-    var headline = f >= 1.0 ? '🌟 GRAND PRIZE! 🌟' : (f >= 0.4 ? '🎉 Nice run!' : '💪 Nice try!');
+    var idx = WOND.levelIdx, lv = WOND.level || WOND_LEVELS[idx];
+    var cleared = f >= 1.0;
+    var headline = cleared ? '🌟 LEVEL CLEAR! 🌟' : (f >= 0.4 ? '🎉 Nice run!' : '💪 Nice try!');
+    var bonusLine = r.firstClearBonus ? '<p class="wond-sub">🎉 First clear bonus awarded!</p>'
+                  : (r.repeat ? '<p class="wond-sub">↩ Replay clear — reduced prize (no farming!).</p>' : '');
+    var nextIdx = idx + 1;
+    var nextBtn = (cleared && nextIdx < WOND_LEVELS.length)
+      ? '<button type="button" class="btn btn-primary" onclick="startTileBall(' + nextIdx + ')" data-tooltip="Advance to the next, harder level.">▶ Next Level: ' + WOND_LEVELS[nextIdx].name + ' (1 🎟️)</button>'
+      : '';
     return '' +
       '<div class="wond-board">' +
         '<div class="wond-head">' +
           '<h2 class="wond-title">' + headline + '</h2>' +
-          '<p class="wond-sub">You smashed <b>' + destroyed + ' / ' + WOND.tilesTotal + '</b> tiles (' + pct + '%) — ' + wondTierLabel(f) + '</p>' +
+          '<p class="wond-sub">Level ' + (idx + 1) + ' · ' + lv.name + ' — smashed <b>' + destroyed + ' / ' + WOND.tilesTotal + '</b> tiles (' + pct + '%) — ' + wondTierLabel(f) + '</p>' +
+          bonusLine +
         '</div>' +
         '<div class="wond-result-card">' +
           '<div class="wond-result-label">Your prizes</div>' +
           '<div class="wond-prizes">' + wondPrizeChips(r) + '</div>' +
         '</div>' +
         '<div class="wond-footer">' +
-          '<button type="button" class="btn btn-primary" onclick="startTileBall()">Play again! (1 🎟️ — you have ' + passes + ')</button>' +
-          '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Back to Lobby</button>' +
+          nextBtn +
+          '<button type="button" class="btn btn-ghost" onclick="startTileBall(' + idx + ')" data-tooltip="Replay this level (repeat clears pay less).">↻ Replay (1 🎟️ — you have ' + passes + ')</button>' +
+          '<button type="button" class="btn btn-ghost" onclick="wondOpenTileLevels()" data-tooltip="Pick another level.">🎚️ Level Select</button>' +
         '</div>' +
       '</div>';
   }
 
   // ---------- Tile Ball: lifecycle ----------
-  function startTileBall(){
+  function startTileBall(levelIdx){
     if (WOND.running) return;                                 // ignore double-clicks
     var view = document.getElementById('wonderlandView');
     if (!view) return;                                        // container not wired yet
+    levelIdx = (typeof levelIdx === 'number' && levelIdx >= 0 && levelIdx < WOND_LEVELS.length) ? levelIdx : 0;
+    var tb = wondTB();
+    if (levelIdx >= tb.unlockedCount){
+      if (typeof showToast === 'function') showToast('Clear the earlier level first to unlock this one!');
+      if (typeof playSfx === 'function') playSfx('wrong');
+      return;
+    }
     var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
     if (passes < 1){
       if (typeof showToast === 'function') showToast('You need a Wonderland Pass! Finish a planet to earn some.');
@@ -268,7 +369,10 @@
       return;
     }
     state.wonderPasses = passes - 1;
+    tb.plays = (tb.plays || 0) + 1;
     if (typeof updateStats === 'function') updateStats();     // HUD refresh + autosave
+    WOND.levelIdx = levelIdx;
+    WOND.level = WOND_LEVELS[levelIdx];
     wondShowView();
     view.innerHTML = wondGameHtml();
     wondInitGame();
@@ -281,17 +385,18 @@
     WOND.canvas = canvas;
     WOND.ctx2d = canvas.getContext('2d');
     WOND.colors = wondPalette();
+    var lv = WOND.level || WOND_LEVELS[0];
     WOND.running = true;
     WOND.over = false;
     WOND.lastTs = 0;
-    WOND.balls = WOND_START_BALLS;
+    WOND.balls = lv.balls;
     WOND.hits = 0;
-    WOND.speed = WOND_BASE_SPEED;
+    WOND.speed = lv.speed;
     WOND.launched = false;
     WOND.keys.left = WOND.keys.right = false;
     WOND.paddle.x = (WOND_W - WOND.paddle.w) / 2;
     WOND.paddle.y = WOND_H - 26;
-    wondBuildTiles();
+    wondBuildTiles(lv);
     wondBuildStars();
     wondResetBall();
     wondBindInput();
@@ -322,27 +427,47 @@
     var destroyed = WOND.tilesTotal - WOND.tilesLeft;
     var f = WOND.tilesTotal > 0 ? destroyed / WOND.tilesTotal : 0;
     stopTileBall();
-    var r = wonderRewardForScore(f);
+    var tb = wondTB();
+    var idx = WOND.levelIdx;
+    var wasFirstClear = !tb.firstCleared[idx];
+    var r = wondLevelReward(idx, f, wasFirstClear);
     applyWonderReward(r);
+    // Record best fraction + unlock the next level on a full clear.
+    if (!tb.best[idx] || f > tb.best[idx]) tb.best[idx] = f;
+    if (f >= 1){
+      tb.firstCleared[idx] = true;
+      if (idx + 1 < WOND_LEVELS.length && tb.unlockedCount < idx + 2) tb.unlockedCount = idx + 2;
+    }
+    if (typeof saveGame === 'function') saveGame();
     var view = document.getElementById('wonderlandView');
     if (view) view.innerHTML = wondResultHtml(f, destroyed, r);
   }
 
   // ---------- Tile Ball: setup helpers ----------
-  function wondBuildTiles(){
-    var gap = 6, tileH = 18, tileW = 70;
-    var left = (WOND_W - (WOND_COLS * tileW + (WOND_COLS - 1) * gap)) / 2;
-    var top = 40;
-    var cols = WOND.colors;
-    var rowColors = [cols.coral, cols.yellow, cols.sky, cols.chalk, cols.chalkDim];
+  function wondBuildTiles(level){
+    level = level || WOND_LEVELS[0];
+    var cols = level.cols, rows = level.rows;
+    var gap = 5, tileH = 18, marginX = 18;
+    var tileW = (WOND_W - marginX * 2 - (cols - 1) * gap) / cols;
+    var left = marginX, top = 38;
+    var pal = WOND.colors;
+    var rowColors = [pal.coral, pal.yellow, pal.sky, pal.chalk, pal.chalkDim, pal.coral];
+    var toughColor = '#9aa7bd';                                 // armoured (2-hit) tile
+    var checker = (level.pattern === 'checker' || level.pattern === 'toughcheck');
+    var toughTop = (level.pattern === 'tough' || level.pattern === 'toughcheck');
     WOND.tiles = [];
-    for (var r = 0; r < WOND_ROWS; r++){
-      for (var c = 0; c < WOND_COLS; c++){
+    for (var r = 0; r < rows; r++){
+      for (var c = 0; c < cols; c++){
+        if (checker && ((r + c) % 2 === 1)) continue;           // leave a gap
+        var armored = toughTop && (r < 2);                      // top two rows are armoured
+        var base = rowColors[r % rowColors.length];
         WOND.tiles.push({
           x: left + c * (tileW + gap),
           y: top + r * (tileH + gap),
           w: tileW, h: tileH,
-          color: rowColors[r % rowColors.length],
+          baseColor: base,
+          color: armored ? toughColor : base,
+          hp: armored ? 2 : 1,
           alive: true
         });
       }
@@ -379,7 +504,8 @@
 
   // Rescale velocity to a new speed, keeping direction. Capped at WOND_MAX_SPEED.
   function wondSetSpeed(s){
-    WOND.speed = Math.min(s, WOND_MAX_SPEED);
+    var cap = (WOND.level && WOND.level.maxSpeed) ? WOND.level.maxSpeed : WOND_MAX_SPEED;
+    WOND.speed = Math.min(s, cap, WOND_MAX_SPEED);
     var b = WOND.ball;
     var mag = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
     if (mag > 0){
@@ -488,8 +614,9 @@
       var t = WOND.tiles[i];
       if (!t.alive) continue;
       if (b.x + b.r > t.x && b.x - b.r < t.x + t.w && b.y + b.r > t.y && b.y - b.r < t.y + t.h){
-        t.alive = false;
-        WOND.tilesLeft--;
+        t.hp--;
+        if (t.hp <= 0){ t.alive = false; WOND.tilesLeft--; }
+        else { t.color = t.baseColor; }                        // armoured tile cracks to its base colour
         // Reflect on the axis we came from (previous position was outside that band)
         var py = b.y - b.vy * s;
         if (py <= t.y - b.r || py >= t.y + t.h + b.r) b.vy = -b.vy; else b.vx = -b.vx;
@@ -518,6 +645,7 @@
     var destroyed = WOND.tilesTotal - WOND.tilesLeft;
     var f = WOND.tilesTotal > 0 ? destroyed / WOND.tilesTotal : 0;
     hud.innerHTML =
+      '<span class="wond-chip">🎚️ Level <b>' + (WOND.levelIdx + 1) + '</b></span>' +
       '<span class="wond-chip">🧱 Tiles left: <b>' + WOND.tilesLeft + '</b></span>' +
       '<span class="wond-chip">⚾ Balls: <b>' + WOND.balls + '</b></span>' +
       '<span class="wond-chip">🎁 Prize now: <b>' + wondTierLabel(f) + '</b></span>';
