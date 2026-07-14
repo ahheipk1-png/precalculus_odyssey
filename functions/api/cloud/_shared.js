@@ -57,6 +57,40 @@ export async function authAccount(context) {
   return { accountId: row.account_id };
 }
 
+// ---- Username / password auth (items 1,2,3,6) ----
+export const TEST_USERNAMES = ['mitb', 'michaelisthebest', 'michealisthebest']; // exempt from single-login
+
+export function normalizeUsername(u) { return String(u || '').trim().toLowerCase(); }
+export function validUsername(u) { return /^[a-z0-9_]{3,16}$/.test(u); }
+export function validPassword(p) { return typeof p === 'string' && p.length >= 8 && p.length <= 64; }
+
+export function newSalt() { return randBytesHex(12); }
+export async function hashPassword(salt, password) { return sha256hex(salt + ':' + String(password)); }
+
+// Authenticate the Bearer token → full account row (id, username, is_admin, status), or null.
+export async function authAccountFull(context) {
+  const auth = context.request.headers.get('Authorization') || '';
+  const m = /^Bearer\s+([A-Za-z0-9._-]+)$/.exec(auth);
+  if (!m) return null;
+  const tokenHash = await sha256hex(m[1]);
+  const row = await context.env.DB
+    .prepare(`SELECT a.account_id AS account_id, a.username AS username, a.is_admin AS is_admin, a.status AS status
+                FROM cloud_sessions s JOIN cloud_accounts a ON a.account_id = s.account_id
+               WHERE s.token_hash = ?1 AND s.revoked_at IS NULL AND s.expires_at > ?2`)
+    .bind(tokenHash, nowIso())
+    .first();
+  if (!row) return null;
+  try { await context.env.DB.prepare(`UPDATE cloud_accounts SET last_seen_at = ?1 WHERE account_id = ?2`).bind(nowIso(), row.account_id).run(); } catch (e) {}
+  return { accountId: row.account_id, username: row.username, isAdmin: !!row.is_admin, status: row.status };
+}
+
+// For admin-only endpoints: returns the admin account or throws a Response via the caller's guard.
+export async function authAdmin(context) {
+  const acc = await authAccountFull(context);
+  if (!acc || !acc.isAdmin || acc.status !== 'approved') return null;
+  return acc;
+}
+
 export async function readJsonBody(request) {
   const text = await request.text();
   if (text.length > MAX_SAVE_BYTES) { const e = new Error('too large'); e.tooLarge = true; throw e; }

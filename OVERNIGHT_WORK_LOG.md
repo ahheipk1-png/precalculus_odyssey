@@ -449,3 +449,36 @@ are documented above (mcOnly style cap; balance/graph not auto-solved; no screen
   tooltip 197×38 readable; console clean.
 - **Result:** PASS.
 - **Next:** item 10 (walkable 100×100 map), then items 1/2/3/6 (auth via D1).
+
+## Items 1,2,3,6 — Auth via Cloudflare D1 (password + approval + admin + single-login)
+- **Date/time:** 2026-07-14
+- **Files:** NEW `migrations/0002_auth.sql`; NEW Functions `functions/api/auth/{register,login,logout}.js`
+  + `functions/api/admin/{accounts,account}.js`; `functions/api/cloud/_shared.js` (+password hashing,
+  authAccountFull/authAdmin, username/password validators); NEW `game/js/cloud-auth.js` (login/register/
+  admin UI + session); `game/css/systems.css` (`.auth-*`, `.admin-*`); `game/index.html` (include);
+  NEW `AUTH_SETUP.md`.
+- **Summary:**
+  - **1/3 (password + DB login):** `cloud_accounts` gains username/password_hash/password_salt/status/
+    is_admin/approved_at. Register (POST /api/auth/register) requires username 3-16 + password ≥8, stores
+    a salted SHA-256 hash, creates a **pending** account. Login (POST /api/auth/login) verifies the hash +
+    approval. Start screen now shows Log in / Request account forms — **no user list** (item 3).
+  - **2 (admin):** first-ever account = admin (approved). Admin header button → panel listing every
+    account + status, with **approve / reject / disable / makeAdmin / set-password(override)** (admin-only,
+    enforced by `authAdmin`).
+  - **6 (single login):** login revokes all other live sessions for the account (except test accounts).
+  - **Test account:** start screen "Play the test account (offline)" starts the game locally (test mode),
+    exempt from cloud auth + single-login, so the game is never locked out.
+- **Tests (frontend, live browser vs a mocked backend):** start shows auth forms + no saved-players list;
+  register → "awaiting approval" message + switch to login; login(admin) → game starts + session saved +
+  Admin/Logout header buttons; admin panel → 2 rows, Approve + Set-password + status badges; test-login →
+  game in test mode offline, no cloud session; console clean.
+- **Honest limitation:** the D1 backend can't be exercised locally (no D1 here). The Functions + migration
+  are code-complete and deploy automatically; the live flows need a post-deploy smoke test + running
+  `migrations/0002_auth.sql`. See AUTH_SETUP.md.
+- **Result:** frontend PASS; backend built + documented for deploy.
+
+## END OF BATCH — user items 1-11 status
+- ✅ 5 (volume settings), 7 (remove cloud btn), 8 (remove star log), 9 (practice to top), 10 (walkable
+  100×100 map), 11 (tooltip fix) — built, tested in-browser, deployed.
+- ✅ 1,2,3,6 (auth) — backend + frontend built; frontend verified vs mock; needs live D1 migration+deploy.
+- (There is no item 4 in the user's list.)

@@ -51,6 +51,34 @@
   .settings-note{ font-size: 14px; color: var(--chalk-dim); text-align: center; margin: 14px 0 16px; }
   .settings-card .btn{ width: 100%; }
 
+  /* ---------- Auth: login / register / admin (cloud-auth.js) ---------- */
+  .auth-tabs{ display:flex; gap:8px; margin:16px 0 12px; }
+  .auth-tab{ flex:1; padding:10px; border-radius:10px; border:1px solid rgba(244,241,232,0.18);
+    background:rgba(244,241,232,0.05); color:var(--chalk-dim); font-weight:700; font-size:16px; cursor:pointer; }
+  .auth-tab.active{ background:rgba(110,193,228,0.16); border-color:var(--sky); color:var(--sky); }
+  .auth-form{ display:flex; flex-direction:column; gap:10px; }
+  .auth-input{ padding:12px 14px; border-radius:12px; border:1px solid rgba(244,241,232,0.22);
+    background:#0d1731; color:#fff; font-size:17px; font-family:'Quicksand',sans-serif; }
+  .auth-input:focus{ outline:2px solid var(--sky); border-color:var(--sky); }
+  .auth-submit{ margin-top:2px; }
+  .auth-note{ font-size:13px; color:var(--chalk-dim); text-align:center; margin:2px 0 0; }
+  .auth-msg{ min-height:20px; font-size:15px; font-weight:700; text-align:center; margin:10px 0 6px; }
+  .auth-msg.auth-err{ color:var(--coral); } .auth-msg.auth-ok{ color:#7bd88f; }
+  .auth-test-link{ display:block; margin:4px auto 0; background:none; border:none; color:var(--chalk-dim);
+    font-size:14px; text-decoration:underline; cursor:pointer; }
+  .admin-card{ width:min(560px,94vw); }
+  .admin-list{ max-height:56vh; overflow-y:auto; margin:6px 0 14px; display:flex; flex-direction:column; gap:8px; }
+  .admin-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+    background:rgba(255,255,255,0.03); border-radius:10px; padding:10px 12px; }
+  .admin-who b{ font-size:17px; }
+  .admin-status{ font-size:12px; font-weight:700; border-radius:999px; padding:2px 9px; margin-left:6px; text-transform:uppercase; }
+  .admin-approved{ color:#7bd88f; border:1px solid #7bd88f; }
+  .admin-pending{ color:var(--yellow); border:1px solid var(--yellow); }
+  .admin-rejected, .admin-disabled{ color:var(--coral); border:1px solid rgba(240,112,94,0.6); }
+  .admin-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+  .admin-btn{ font-size:14px !important; min-height:34px !important; padding:5px 10px !important; }
+  .admin-empty{ color:var(--chalk-dim); text-align:center; padding:16px; }
+
   /* ---------- Cloud Save (cloud-ui.js) ---------- */
   #cloudBtn.cst-ok{ color:#7bd88f; border-color:#7bd88f; }
   #cloudBtn.cst-busy{ color:var(--sky); border-color:var(--sky); }
