@@ -19,10 +19,22 @@ account-approval workflow, an admin panel, and a single active session per accou
    - `GET  /api/admin/accounts` — admin-only: every account + its status.
    - `POST /api/admin/account` — admin-only: `approve` / `reject` / `disable` / `enable` / `makeAdmin` / `setPassword`.
 
-3. **Create the admin account.** On the live site, click **Request account** and register a username +
-   password. **The first account ever registered becomes the admin** (auto-approved). From then on:
-   - New users click **Request account** → their account is created as **pending**.
-   - You (admin) log in, click **🛠️ Admin** in the header, and **Approve** them.
+3. **Seed the admin account** (gives you a ready login — `admin` / `admin`):
+
+   ```
+   npx wrangler d1 execute precalculus_odyssey --file=./migrations/0003_seed_admin.sql
+   ```
+   …or paste `migrations/0003_seed_admin.sql` into the D1 Console.
+
+   Then on the live site go to the **Log in** tab and enter **username `admin`, password `admin`** →
+   **Log in ▶**. You're now the admin — click **🛠️ Admin** in the top header to open the admin page,
+   and change the password there (Set password) to something longer.
+
+   (There's also a fallback: the very first account ever *registered* via the Request-account form
+   becomes an admin automatically — but the seed above is the easy path you asked for.)
+
+   From then on, new users click **Request account** → their account is **pending** → you **Approve**
+   them from the 🛠️ Admin panel.
 
 ## How it behaves
 
