@@ -38,7 +38,7 @@
     // own grid column (that used to steal the wide column and hide the equation).
     var astro=document.getElementById('astroCard');
     if(astro) main.appendChild(astro);
-    var mainIds=['formulaCaption','scaleWrap','questionPrompt'];
+    var mainIds=['formulaCaption','scaleWrap','questionPrompt','graphPanel'];
     mainIds.forEach(function(id){var n=document.getElementById(id);if(n)main.appendChild(n);});
     var feedback=document.getElementById('feedbackMsg');
     var moves=document.getElementById('movesInfo');

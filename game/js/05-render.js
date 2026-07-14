@@ -106,6 +106,14 @@
       if (el.planetName) el.planetName.textContent = (_ar && _ar.body) ? _ar.body.name : ('Arena ' + state.level);
       // Show the math TOPIC next to the arena number (the star system lives in the "About" info).
       if (el.planetSystem) el.planetSystem.textContent = _ar ? _ar.topic : '';
+      // Header tagline reflects the current maths WORLD (not a hardcoded "Balance Quest").
+      var _tag = document.getElementById('gameTagline');
+      if (_tag && _ar){
+        var _w = (typeof MATH_WORLDS !== 'undefined') ? MATH_WORLDS.filter(function(w){ return w.id === _ar.worldId; })[0] : null;
+        _tag.innerHTML = _w
+          ? '🌌 <span class="x-emph">' + _w.title + '</span> · Arena ' + state.level + ' of ' + (state.maxLevel || 187)
+          : 'A maths voyage across the galaxy — solve planets to explore the stars.';
+      }
     }
     if (el.passValue) el.passValue.textContent = state.wonderPasses || 0;
     if (el.streakValue) el.streakValue.textContent = state.streak;
@@ -162,6 +170,12 @@
     if (state.mode === 'mcOnly'){ p.innerHTML = 'Read the question and <strong>tap</strong> the answer you think is correct.'; return; }
     if (state.mode === 'directInput'){ p.innerHTML = 'Work out the value, <strong>type</strong> it, then press Submit.'; return; }
     if (state.mode === 'comingSoon'){ p.innerHTML = 'This planet is not charted yet — its puzzles are on the way.'; return; }
+    if (state.mode === 'graph'){
+      p.innerHTML = (state.problem && state.problem.graph && state.problem.graph.interactive === 'line')
+        ? 'Tap <strong>two points</strong> on the grid that the line passes through.'
+        : 'Tap the correct <strong>point</strong> on the grid.';
+      return;
+    }
     var subj = (state.mode === 'formula' && state.problem && state.problem.subject) ? state.problem.subject : 'x';
     p.innerHTML = 'Use the same operation on both sides. Keep the balance steady until <strong>' + subj + '</strong> stands alone.';
   }
