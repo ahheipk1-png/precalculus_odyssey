@@ -38,6 +38,20 @@ the base tier by level (1.0×→2.4×), adds a **first-clear bonus**, and **halv
 (anti-farming); the 1-pass cost is the throttle. `state.miniGames` is the shared save bucket for all
 Wonderland mini-games.
 
+**Carnival games — `js/34-wonder-games.js`.** Three original, math-flavoured, free-to-play games launch
+from the lobby (shared helpers `wgMini`/`wgRecordScore`/`wgPayReward`; `wgStopAll` stops every
+carnival timer and is called by all Wonderland nav exits):
+- **Bullseye Numbers 🎯** (`openBullseye`) — timed mental-maths dartboard; a question + 4 targets
+  (correct-by-construction via `bullGen`), tap or press 1-4, combo scoring, 45s.
+- **Gone Fishin' 🎣** (`openFishin`) — numbered fish swim a pond; a rotating rule (`fishGenRule`/
+  `fishRuleMatch`: even/odd/multiple/greater/less/exact) says which to catch; spawns biased so matches
+  appear; 40s.
+- **Merry Math-Go-Round 🎠** (`openCarousel`) — a rotating ring of 6 horses (`mgrGen`, reuses bullGen);
+  click the horse answering the centre sum; ring spins by difficulty, horses counter-rotate upright.
+All persist a high score in `state.miniGames[id]` and pay **Cash only**, scaled by score+difficulty with
+a beat-your-best bonus (rare CPU chip only on top Hard runs) — replayable for score, never a rare-gear
+farm. Each has a view-active self-check that stops its timers on navigation. Keyboard + touch; tooltips.
+
 **Hoo Hey How** (`js/27-hoohey.js`, `#hooHeyView`) — Bầu Cua dice betting for Cash. Bet on the six
 symbols, then three dice roll: each match pays your stake back **plus** the same again. The roll is
 **animated with a bowl** (Phase 5) — `hhRoll` decides the final faces up front, deducts the stake,

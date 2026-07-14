@@ -208,7 +208,7 @@
     var carnival = [
       { icon: '🎯', name: 'Bullseye Numbers', desc: 'Hit the target that answers each maths question — beat the clock!', launch: 'openBullseye()', cost: 'Free' },
       { icon: '🎣', name: 'Gone Fishin’', desc: 'Catch only the fish whose number matches the rule!', launch: 'openFishin()', cost: 'Free' },
-      { icon: '🎠', name: 'Merry Math-Go-Round', desc: 'A new carnival game is being built!', launch: null }
+      { icon: '🎠', name: 'Merry Math-Go-Round', desc: 'Ride the carousel — click the horse whose number answers the sum!', launch: 'openCarousel()', cost: 'Free' }
     ].map(function(g){
       if (!g.launch){
         return '<div class="wond-card wond-locked">' +

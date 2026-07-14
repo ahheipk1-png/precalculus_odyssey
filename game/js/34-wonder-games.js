@@ -242,6 +242,161 @@
   function wgStopAll(){
     if (typeof bullStop === 'function') bullStop();
     if (typeof fishStop === 'function') fishStop();
+    if (typeof mgrStop === 'function') mgrStop();
+  }
+
+  // ===========================================================================
+  // Merry Math-Go-Round 🎠 — a rotating carousel of numbered horses; click the
+  // horse whose number answers the question in the middle.
+  // ===========================================================================
+  var MGR_TIME = 45, MGR_HORSES = 6;
+  var MGR = { active: false, timer: 0, score: 0, combo: 0, best: 0, timeLeft: 0, diff: 'easy', round: null, hits: 0, misses: 0 };
+
+  function mgrSpinDur(diff){ return diff === 'hard' ? 5.5 : (diff === 'normal' ? 8 : 12); }  // seconds/rev
+
+  // PURE: a question + MGR_HORSES numeric options (one correct), reusing bullGen and padding out.
+  function mgrGen(diff){
+    var g = bullGen(diff), opts = g.opts.slice(), guard = 0;
+    while (opts.length < MGR_HORSES && guard++ < 40){
+      var d = g.ans + (rand(0, 1) ? 1 : -1) * rand(1, 10);
+      if (d >= 0 && opts.indexOf(d) === -1) opts.push(d);
+    }
+    var fill = g.ans + opts.length;
+    while (opts.length < MGR_HORSES){ if (opts.indexOf(fill) === -1 && fill >= 0) opts.push(fill); fill++; }
+    shuffle(opts);
+    return { text: g.text, ans: g.ans, opts: opts, correctIdx: opts.indexOf(g.ans) };
+  }
+
+  function openCarousel(){
+    wgStopAll();
+    var view = wgShowView();
+    if (!view) return;
+    var m = wgMini('carousel');
+    view.innerHTML =
+      '<div class="wond-board">' +
+        '<div class="wond-head"><h2 class="wond-title"><span class="wond-wheel">🎠</span> Merry Math-Go-Round</h2>' +
+          '<p class="wond-sub">Ride the carousel — click the horse whose number answers the sum!</p></div>' +
+        '<div class="wond-passrow"><span class="wond-passes">🏆 High score: <b>' + (m.highScore || 0) + '</b></span>' +
+          '<span class="wond-hint">Free to play · tap a horse · ' + MGR_TIME + 's</span></div>' +
+        '<div class="wg-diff-row">' +
+          '<button type="button" class="btn btn-primary" onclick="mgrStart(\'easy\')" data-tooltip="Slow spin, simple sums.">🟢 Easy</button>' +
+          '<button type="button" class="btn btn-primary" onclick="mgrStart(\'normal\')" data-tooltip="Faster spin, ×/÷.">🟡 Normal</button>' +
+          '<button type="button" class="btn btn-primary" onclick="mgrStart(\'hard\')" data-tooltip="Fast spin — best Cash.">🔴 Hard</button>' +
+        '</div>' +
+        '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the Wonderland lobby.">← Lobby</button></div>' +
+      '</div>';
+  }
+
+  function mgrStart(diff){
+    wgStopAll();
+    var view = document.getElementById('wonderlandView');
+    if (!view) return;
+    MGR.active = true; MGR.diff = diff; MGR.score = 0; MGR.combo = 0;
+    MGR.timeLeft = MGR_TIME; MGR.hits = 0; MGR.misses = 0;
+    MGR.best = wgMini('carousel').highScore || 0;
+    view.innerHTML =
+      '<div class="wond-board wond-game">' +
+        '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🎠 Merry Math-Go-Round — ' + diff.charAt(0).toUpperCase() + diff.slice(1) + '</h2>' +
+          '<button type="button" class="btn btn-ghost" onclick="openCarousel()" data-tooltip="Quit this run (score is not saved).">✕ Quit</button></div>' +
+        '<div class="wond-hud" id="mgrHud"></div>' +
+        '<div class="mgr-stage"><div class="mgr-ring" id="mgrRing"></div>' +
+          '<div class="mgr-center" id="mgrCenter">🎠</div></div>' +
+        '<p class="wond-tip">The horse with the right answer wins points. Wrong horse = combo lost.</p>' +
+      '</div>';
+    mgrNextRound();
+    mgrUpdateHud();
+    if (typeof playSfx === 'function') playSfx('ui-click');
+    MGR.timer = setInterval(mgrTick, 1000);
+  }
+
+  function mgrTick(){
+    if (!MGR.active) return;
+    var view = document.getElementById('wonderlandView');
+    if (!view || !view.classList.contains('active') || !document.getElementById('mgrHud')){ mgrStop(); return; }
+    MGR.timeLeft--;
+    mgrUpdateHud();
+    if (MGR.timeLeft <= 0) mgrEnd();
+  }
+
+  function mgrNextRound(){
+    if (!MGR.active) return;
+    MGR.round = mgrGen(MGR.diff);
+    var center = document.getElementById('mgrCenter');
+    if (center) center.innerHTML = '<span class="mgr-q">' + MGR.round.text + '<span class="mgr-eq">= ?</span></span>';
+    var ring = document.getElementById('mgrRing');
+    if (!ring) return;
+    var dur = mgrSpinDur(MGR.diff);
+    ring.style.animationDuration = dur + 's';
+    var N = MGR.round.opts.length, R = 40;                       // orbit radius (% of stage)
+    ring.innerHTML = MGR.round.opts.map(function(v, i){
+      var ang = -Math.PI / 2 + i * (2 * Math.PI / N);
+      var x = 50 + R * Math.cos(ang), y = 50 + R * Math.sin(ang);
+      return '<div class="mgr-slot" style="left:' + x + '%;top:' + y + '%">' +
+        '<button type="button" class="mgr-horse" style="animation-duration:' + dur + 's" onclick="mgrPick(' + i + ')" data-idx="' + i + '">' +
+          '<span class="mgr-horse-icon">🐎</span><span class="mgr-horse-num">' + v + '</span>' +
+        '</button></div>';
+    }).join('');
+  }
+
+  function mgrPick(idx){
+    if (!MGR.active || !MGR.round) return;
+    var ring = document.getElementById('mgrRing');
+    var btn = ring && ring.querySelector('[data-idx="' + idx + '"]');
+    if (idx === MGR.round.correctIdx){
+      MGR.combo++; MGR.hits++;
+      MGR.score += 10 + Math.min(MGR.combo - 1, 10) * 2;
+      if (btn) btn.classList.add('mgr-hit');
+      if (typeof playSfx === 'function') playSfx('solve-correct');
+      mgrUpdateHud();
+      mgrNextRound();
+    } else {
+      MGR.combo = 0; MGR.misses++;
+      MGR.timeLeft = Math.max(0, MGR.timeLeft - 2);
+      if (btn) btn.classList.add('mgr-wrong');
+      if (typeof playSfx === 'function') playSfx('wrong');
+      mgrUpdateHud();
+      if (MGR.timeLeft <= 0){ mgrEnd(); return; }
+      setTimeout(function(){ if (MGR.active) mgrNextRound(); }, 260);
+    }
+  }
+
+  function mgrUpdateHud(){
+    var hud = document.getElementById('mgrHud');
+    if (!hud) return;
+    hud.innerHTML =
+      '<span class="wond-chip">⭐ Score: <b>' + MGR.score + '</b></span>' +
+      '<span class="wond-chip">🔥 Combo: <b>' + MGR.combo + '</b></span>' +
+      '<span class="wond-chip">⏱️ Time: <b>' + MGR.timeLeft + 's</b></span>' +
+      '<span class="wond-chip">🏆 Best: <b>' + MGR.best + '</b></span>';
+  }
+
+  function mgrStop(){
+    MGR.active = false;
+    if (MGR.timer){ clearInterval(MGR.timer); MGR.timer = 0; }
+  }
+
+  function mgrEnd(){
+    var score = MGR.score, diff = MGR.diff, hits = MGR.hits, misses = MGR.misses;
+    mgrStop();
+    var newHigh = wgRecordScore('carousel', score, diff);
+    var r = bullReward(score, diff, newHigh);
+    wgPayReward(r);
+    var acc = (hits + misses) > 0 ? Math.round(hits / (hits + misses) * 100) : 0;
+    var view = document.getElementById('wonderlandView');
+    if (!view) return;
+    view.innerHTML =
+      '<div class="wond-board">' +
+        '<div class="wond-head"><h2 class="wond-title">' + (newHigh ? '🏆 NEW HIGH SCORE!' : '🎠 Ride over!') + '</h2>' +
+          '<p class="wond-sub">Score <b>' + score + '</b> · ' + hits + ' correct · ' + acc + '% accuracy · ' + diff + '</p></div>' +
+        '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
+          '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + (r.coins || 0) + '</span>' +
+          (r.chips && r.chips.cpu ? '<span class="wond-chip wond-prize-chip">🖥️ CPU ×' + r.chips.cpu + '</span>' : '') + '</div></div>' +
+        '<div class="wond-footer">' +
+          '<button type="button" class="btn btn-primary" onclick="mgrStart(\'' + diff + '\')" data-tooltip="Play this difficulty again.">↻ Play again</button>' +
+          '<button type="button" class="btn btn-ghost" onclick="openCarousel()" data-tooltip="Change difficulty.">🎠 Difficulty</button>' +
+          '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
+        '</div>' +
+      '</div>';
   }
 
   // ===========================================================================

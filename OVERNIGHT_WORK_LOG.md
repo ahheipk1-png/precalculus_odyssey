@@ -346,4 +346,25 @@ are documented above (mcOnly style cap; balance/graph not auto-solved; no screen
 - **Results:** PASS.
 - **Next:** MG-3c Merry Math-Go-Round.
 
+---
+
+## MG-3c — Merry Math-Go-Round 🎠 (third carnival game — the 3 screenshot games are now ALL done)
+
+- **Date/time:** 2026-07-14
+- **Files changed:** `game/js/34-wonder-games.js` (carousel + `mgrStop` in `wgStopAll`),
+  `game/js/17-wonderland.js` (card playable — no Coming soon left), `game/css/wonderland.css`
+  (`.mgr-*` rotating ring), `game/index.html`.
+- **Summary:** A rotating carousel of 6 numbered horses orbits a centre question (e.g. "6 × 7 = ?").
+  Click the horse whose number is the answer → points + combo; wrong horse = combo lost + −2s. The
+  ring rotates (CSS, speed by difficulty; horses counter-rotate to stay upright; reduced-motion
+  freezes it). 45s runs; high score persists; same Cash reward model. Reuses `bullGen` padded to 6
+  options (correct by construction).
+- **Tests (live browser):** mgrGen 1800/1800 valid (6 distinct opts, correct at correctIdx); **lobby
+  now shows all 3 carnival games playable and ZERO "Coming soon"**; start→6 horses + centre question;
+  correct pick scores + new round; wrong pick resets combo + −2s; end records high (120) + Cash (66) +
+  result; save→reload keeps high score; console clean.
+- **Results:** PASS. **The three "Coming soon" cards in the screenshot (Bullseye Numbers, Gone Fishin',
+  Merry Math-Go-Round) are all complete + playable.**
+- **Next:** MG-4 spec games (Quantum Block Forge first), as far as feasible.
+
 
