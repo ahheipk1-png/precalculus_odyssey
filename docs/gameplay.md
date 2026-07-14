@@ -33,7 +33,16 @@ a parabola, or a circle) alongside its normal answer box; used by the distance/g
 `interactive:'line'` (tap two lattice points that lie on the target line — arena **171**, "tap two
 points on y=mx+c"). `renderGraphPanel()` draws the SVG and wires clicks to `graphClick`/`graphClear`;
 a correct tap calls `handleSolved`, a wrong one is exactly one `registerFail`. `buildGraphSVG` uses an
-integer lattice so it stays tap-friendly and browser-testable. **Layout:** the SVG (`.coord-graph`)
+integer lattice so it stays tap-friendly and browser-testable. **Illustrative graphs (2026-07-14):**
+`buildGraphSVG` also draws `polygons` (triangles, with an optional right-angle marker) and `ellipse`
+(conics). Geometry/conic/quadratic arenas attach an illustration-only `.graph` via helpers in
+28-arena-generators.js (`gTriangle`/`gCircle`/`gEllipse`/`gParab`/`withGraph`) — right-triangle arenas
+(155-158) show the triangle, circle/conic arenas (162, 172, 174) show the circle/ellipse/parabola, and
+quadratic-function/root arenas (77, 84, 87, 89, 91, 94-96, 101, 107, 109, 110, 116, 124, 129, 181)
+show the parabola `y=ax²+bx+c` with its roots/vertex marked. The parabola's a,b,c and the triangle's
+legs match the question exactly, so the graph is purely supplementary (never changes the answer). The
+variety engine carries the seed's `.graph` onto same-instance derived styles (direct/mc/trueFalse/
+errorAnalysis/estimate) but not compare/finale (which use two instances). **Layout:** the SVG (`.coord-graph`)
 renders up to 500 px wide (`min(500px, 78vw)`) and is **centred** in the wide quest panel — its wrapper
 `#graphPanel.graph-panel` is a full-width flex column, so `renderGraphPanel()` must set
 `el0.style.display = 'flex'` (an inline `'block'` would beat the class's `display:flex` and left-align it).

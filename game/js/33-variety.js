@@ -82,7 +82,7 @@
     shuffle(opts);
     var ci = opts.indexOf(A);
     return { mode: 'mcOnly', prompt: p.prompt, choices: opts.map(_vfmt), correctIndex: ci, par: 0,
-      styleId: 'mc', templateId: 'mc', category: 'calculation' };
+      graph: p.graph, styleId: 'mc', templateId: 'mc', category: 'calculation' };
   }
 
   function _freshTF(n) {
@@ -100,7 +100,7 @@
     return { mode: 'mcOnly',
       prompt: '<b>True or False?</b><br>For “' + p.prompt + '”, the answer is <b>' + claimStr + '</b>.',
       choices: ['✓ True', '✗ False'], correctIndex: isTrue ? 0 : 1, par: 0,
-      styleId: 'trueFalse', templateId: 'tf', category: 'reasoning' };
+      graph: p.graph, styleId: 'trueFalse', templateId: 'tf', category: 'reasoning' };
   }
 
   function _freshError(n) {
@@ -118,7 +118,7 @@
     return { mode: 'mcOnly',
       prompt: 'A cadet answered “' + p.prompt + '” with <b>' + claim + '</b>.<br>Is the cadet correct?',
       choices: ['✓ Correct', '✗ Incorrect'], correctIndex: ok ? 0 : 1, par: 0,
-      styleId: 'errorAnalysis', templateId: 'err', category: 'reasoning' };
+      graph: p.graph, styleId: 'errorAnalysis', templateId: 'err', category: 'reasoning' };
   }
 
   function _freshCompare(n) {
@@ -139,7 +139,7 @@
     return { mode: 'directInput',
       prompt: 'Estimate: work out “' + p.prompt + '”, then round to the nearest 10.',
       answer: Math.round(p.answer / 10) * 10, par: 0,
-      styleId: 'estimate', templateId: 'est', category: 'estimation' };
+      graph: p.graph, styleId: 'estimate', templateId: 'est', category: 'estimation' };
   }
 
   function _freshFinale(n) {

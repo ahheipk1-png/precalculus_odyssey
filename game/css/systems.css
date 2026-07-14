@@ -62,8 +62,9 @@
   .cg-num{ fill:var(--chalk-dim); font-size:11px; font-family:'Quicksand',sans-serif; text-anchor:middle; }
   .cg-num-y{ text-anchor:end; }
   .cg-plot{ stroke:var(--sky); stroke-width:2.6; fill:none; }
-  .cg-seg{ stroke:var(--yellow); stroke-width:2.2; }
+  .cg-seg{ stroke:var(--yellow); stroke-width:2.2; fill:none; }
   .cg-dash{ stroke-dasharray:4 4; }
+  .cg-poly{ fill:rgba(110,193,228,0.16); stroke:var(--sky); stroke-width:2.4; stroke-linejoin:round; }
   .cg-point{ fill:var(--coral); stroke:#fff; stroke-width:1.5; }
   .cg-plabel{ fill:var(--chalk); font-size:13px; font-family:'Quicksand',sans-serif; font-weight:700; }
   .cg-hit{ fill:transparent; cursor:pointer; }

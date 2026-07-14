@@ -59,6 +59,23 @@
     (g.segments || []).forEach(function(S){
       s += '<line class="cg-seg' + (S.dash ? ' cg-dash' : '') + '" x1="' + sx(S.x1) + '" y1="' + sy(S.y1) + '" x2="' + sx(S.x2) + '" y2="' + sy(S.y2) + '"/>';
     });
+    // filled polygons (e.g. triangles). Optional `right` = index of the vertex holding a right angle.
+    (g.polygons || []).forEach(function(P){
+      var pts = (P.pts || []).map(function(pt){ return sx(pt[0]).toFixed(1) + ',' + sy(pt[1]).toFixed(1); }).join(' ');
+      s += '<polygon class="cg-poly" points="' + pts + '"/>';
+      if (typeof P.right === 'number' && P.pts && P.pts.length >= 3){
+        // small right-angle square at the right-angle vertex, along its two edges
+        var i0 = P.right, i1 = (i0 + 1) % P.pts.length, i2 = (i0 + 2) % P.pts.length;
+        var v = P.pts[i0], u1 = P.pts[i1], u2 = P.pts[i2];
+        var d = 0.6;
+        var n1 = [Math.sign(u1[0] - v[0]), Math.sign(u1[1] - v[1])];
+        var n2 = [Math.sign(u2[0] - v[0]), Math.sign(u2[1] - v[1])];
+        var a1 = [v[0] + n1[0] * d, v[1] + n1[1] * d];
+        var a2 = [v[0] + n2[0] * d, v[1] + n2[1] * d];
+        var ac = [v[0] + (n1[0] + n2[0]) * d, v[1] + (n1[1] + n2[1]) * d];
+        s += '<polyline class="cg-seg" points="' + sx(a1[0]) + ',' + sy(a1[1]) + ' ' + sx(ac[0]) + ',' + sy(ac[1]) + ' ' + sx(a2[0]) + ',' + sy(a2[1]) + '"/>';
+      }
+    });
     if (g.parabola){
       var pts = [], a = g.parabola.a, b = g.parabola.b || 0, c = g.parabola.c || 0;
       for (var x = w.xmin; x <= w.xmax + 0.001; x += (w.xmax - w.xmin) / 80){
@@ -71,6 +88,11 @@
       s += '<ellipse class="cg-plot" cx="' + sx(g.circle.cx) + '" cy="' + sy(g.circle.cy) +
         '" rx="' + (g.circle.r / (w.xmax - w.xmin) * (W - 2 * pad)) +
         '" ry="' + (g.circle.r / (w.ymax - w.ymin) * (H - 2 * pad)) + '"/>';
+    }
+    if (g.ellipse){
+      s += '<ellipse class="cg-plot" cx="' + sx(g.ellipse.cx) + '" cy="' + sy(g.ellipse.cy) +
+        '" rx="' + (g.ellipse.rx / (w.xmax - w.xmin) * (W - 2 * pad)) +
+        '" ry="' + (g.ellipse.ry / (w.ymax - w.ymin) * (H - 2 * pad)) + '"/>';
     }
     (g.points || []).forEach(function(P){
       s += '<circle class="cg-point" cx="' + sx(P.x) + '" cy="' + sy(P.y) + '" r="5"/>';

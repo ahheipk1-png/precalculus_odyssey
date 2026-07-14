@@ -393,4 +393,32 @@ are documented above (mcOnly style cap; balance/graph not auto-solved; no screen
   session; recommended as dedicated follow-up runs. Framework (`state.miniGames`, `wg*` helpers,
   `wgStopAll`, view-active self-checks) is in place for them.
 
+---
+
+## Illustrative graphs for geometry / conics / quadratic-function questions
+
+- **Date/time:** 2026-07-14
+- **Files changed:** `game/js/31-graph.js` (buildGraphSVG: `polygons` for triangles + right-angle
+  marker, `ellipse` for conics), `game/css/systems.css` (`.cg-poly`), `game/js/28-arena-generators.js`
+  (graph helpers `gTriangle`/`gCircle`/`gEllipse`/`gParab`/`withGraph` + `.graph` on ~23 arenas),
+  `game/js/33-variety.js` (derived styles carry the seed's graph), `docs/gameplay.md`.
+- **Backup:** `game_backup_before_geometry_graphs/`
+- **Summary:** Geometry, conic and quadratic-function questions now show an **illustration-only** graph
+  alongside the question:
+  - **Right triangles** (155-158): the triangle with legs matching the question + a right-angle mark.
+  - **Circles / conics** (162 unit circle, 172 radius, 174 circle/parabola/ellipse): the actual conic.
+  - **Quadratic functions / roots** (77, 84, 87, 89, 91, 94, 95, 96, 101, 107, 109, 110, 116, 124, 129,
+    181): the parabola `y=ax²+bx+c` with roots and/or vertex marked. a,b,c match the question exactly.
+  The pre-existing coordinate-geometry graphs (167-171) are unchanged. Graphs are supplementary (the
+  question already states its data in text), so they never change the answer. The variety engine copies
+  the seed's `.graph` onto same-instance derived styles (direct/mc/trueFalse/errorAnalysis/estimate),
+  so the illustration persists across an arena's varied questions; compare/finale (two instances) skip it.
+- **Tests (live browser):** every target arena carries a graph; every graph renders to valid SVG (no
+  undefined/NaN); parabola coefficients match the quadratics (x²−81→roots ±9; x²−8x+12→roots 2,6;
+  x²−6x+9→double root 3); triangle/circle/ellipse render (polygon/ellipse present); graph panel shows
+  (`display:flex`) alongside the answer even on derived mcOnly styles; **correctness sweep of all 187
+  arena trials = 0 issues**; variety trial for arena 84 carries the graph on direct/mc/tf/error and not
+  on compare/finale; console clean.
+- **Results:** PASS.
+
 
