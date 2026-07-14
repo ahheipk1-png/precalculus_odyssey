@@ -20,20 +20,20 @@ The front end only calls **relative** paths (`/api/cloud/...`) so nothing is har
 ---
 
 ## Step 1 — Put the project on GitHub
-1. Create a new **empty** GitHub repo, e.g. `precalculus-odyssey` (private is fine).
+1. Create a new **empty** GitHub repo, e.g. `precalculus_odyssey` (private is fine).
 2. From the project root (`C:\PythonProject\AlgebraGame`) push it:
    ```powershell
    git add -A
    git commit -m "Add Cloudflare cloud-save layer"
    git branch -M main
-   git remote add origin https://github.com/<you>/precalculus-odyssey.git
+   git remote add origin https://github.com/<you>/precalculus_odyssey.git
    git push -u origin main
    ```
    > Don’t commit the `backups/` folder — add it to `.gitignore` first (see “Housekeeping”).
 
 ## Step 2 — Create the D1 database
 1. Cloudflare dashboard → **Workers & Pages → D1 → Create database**.
-2. Name it **`precalculus-odyssey`** → Create.
+2. Name it **`precalculus_odyssey`** → Create.
 3. Open it → **Console** tab → paste the entire contents of `migrations/0001_cloud_saves.sql` → **Execute**.
    (You should see the 3 tables + indexes created.)
 4. Copy the database’s **Database ID** (you may paste it into `wrangler.toml`, optional).
@@ -48,7 +48,7 @@ The front end only calls **relative** paths (`/api/cloud/...`) so nothing is har
 
 ## Step 4 — Bind D1 to the Pages project
 1. Pages project → **Settings → Functions → D1 database bindings** (a.k.a. Bindings).
-2. Add binding: **Variable name = `DB`**, **D1 database = precalculus-odyssey**.
+2. Add binding: **Variable name = `DB`**, **D1 database = precalculus_odyssey**.
 3. Add the **same binding to Preview** too if you want cloud saves on preview deploys.
 4. **Redeploy** (Deployments → … → Retry deployment) so the binding takes effect.
 
@@ -90,8 +90,8 @@ Not needed for normal play. To keep JSON copies on your PC:
 If you install Node + wrangler you can run the whole thing (Functions + D1) locally:
 ```powershell
 npm i -g wrangler
-wrangler d1 execute precalculus-odyssey --local --file=./migrations/0001_cloud_saves.sql
-wrangler pages dev game --d1 DB=precalculus-odyssey
+wrangler d1 execute precalculus_odyssey --local --file=./migrations/0001_cloud_saves.sql
+wrangler pages dev game --d1 DB=precalculus_odyssey
 ```
 Without Node, everything still works — you just test on the deployed `pages.dev` site.
 

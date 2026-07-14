@@ -10,7 +10,7 @@ pages_build_output_dir = "game"
 # --- D1 binding named DB (production) ---
 [[d1_databases]]
 binding = "DB"
-database_name = "precalculus-odyssey"
+database_name = "precalculus_odyssey"
 database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 
 # --- Optional: a separate D1 for preview deployments (uncomment + fill in) ---
