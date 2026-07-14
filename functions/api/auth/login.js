@@ -39,7 +39,10 @@ export async function onRequestPost(context) {
 
     return json(200, { ok: true, accountId: acc.account_id, username, isAdmin: !!acc.is_admin, sessionToken: token, expiresAt: expires });
   } catch (e) {
-    return bad('SERVER_ERROR', 'Could not log in.', 500);
+    var detail = (e && e.message) ? e.message : 'unknown error';
+    if (/no column|no such column|has no column/i.test(detail)) detail = 'the login database is not set up yet — open /api/admin/bootstrap?key=odyssey-setup-2pi once.';
+    else if (/Cannot read|undefined|is not a function|env\.DB/i.test(detail)) detail = 'the D1 database binding "DB" is not attached to this Pages project (Settings → Functions → D1 bindings), or bootstrap has not run.';
+    return bad('SERVER_ERROR', 'Could not log in: ' + detail, 500);
   }
 }
 export const onRequest = (ctx) => (ctx.request.method === 'POST' ? onRequestPost(ctx) : bad('METHOD_NOT_ALLOWED', 'Use POST.', 405));
