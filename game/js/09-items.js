@@ -17,24 +17,73 @@
   // but the loot ROLL is a per-kill reward — richer for higher ranks (1 Easy, 2 Elite, 3 Boss).
   // ---- Chip / currency economy (enemies are AI robots → drop AI chips + gold/silver) ----
   // Loot roll per kill — richer for higher ranks (1 Easy, 2 Elite, 3 Boss). See economy.config.js.
-  function rollMonsterLoot(monster){
+  // Drop table for one monster, derived from BOTH its rank (1 Easy / 2 Elite / 3 Boss) AND its
+  // strength tier (arena 1-13 = tier 1 … arena 53-65 = tier 5). One source of truth: the same
+  // spec drives the actual roll AND the "Drops:" preview on the monster card.
+  // Each row: [chipId, min, max, chance%].
+  function monsterDropSpec(monster){
     var r = monster.rank || 1;
+    var t = 1 + Math.floor((((monster.room || 1) - 1)) / 13);      // strength tier 1..5
+    var spec = [];
+    spec.push(['energy_core', 1, r + t, 100]);
+    spec.push(['robotic_alloy', 1, Math.max(1, r + t - 2), 40 + r * 10 + t * 5]);
+    if (r >= 2 || t >= 2) spec.push(['cpu', 1, Math.max(1, Math.floor((r + t) / 2)), 45 + t * 5]);
+    if ((r >= 2 && t >= 2) || t >= 3) spec.push(['gpu', 1, (t >= 4 ? 2 : 1), 30 + t * 5]);
+    if (r >= 3 || t >= 3) spec.push(['neural_chip', 1, (t >= 3 ? 2 : 1), (r >= 3 ? 60 : 30)]);
+    if ((r >= 3 && t >= 2) || t >= 4) spec.push(['quantum_chip', 1, 1, (r >= 3 ? 45 : 25)]);
+    if (r >= 3 && t >= 4) spec.push(['alien_processor', 1, 1, (t >= 5 ? 100 : 35)]);
+    return { spec: spec, tier: t, gold: [Math.max(0, t - 1), r + t - 1], silver: [1, r + t] };
+  }
+
+  function rollMonsterLoot(monster){
+    var d = monsterDropSpec(monster);
     var loot = { chips: {}, gold: 0, silver: 0 };
-    loot.chips.energy_core = 1 + rand(0, r);
-    if (rand(1, 100) <= 40 + r * 10) loot.chips.robotic_alloy = rand(1, r);
-    if (r >= 2 && rand(1, 100) <= 45) loot.chips.cpu = rand(1, Math.max(1, r - 1));
-    if (r >= 2 && rand(1, 100) <= 30) loot.chips.gpu = 1;
-    if (r >= 3 && rand(1, 100) <= 55) loot.chips.neural_chip = 1;
-    if (r >= 3 && rand(1, 100) <= 25) loot.chips.quantum_chip = 1;
-    loot.silver = rand(1, r + 1);
-    if (r >= 2) loot.gold = rand(1, r);
+    d.spec.forEach(function(s){
+      if (rand(1, 100) <= s[3]){ var n = rand(s[1], s[2]); if (n > 0) loot.chips[s[0]] = n; }
+    });
+    loot.gold = rand(d.gold[0], d.gold[1]);
+    loot.silver = rand(d.silver[0], d.silver[1]);
     return loot;
   }
 
-  // Chips needed to reach a given upgrade level (on TOP of the Cash cost). See economy.config.js.
-  function getUpgradeRecipe(nextLevel){
+  // Kid-facing "Drops: 🔋1–4 🖥️1–2? 🥇0–3 🥈1–4" line ("?" = not guaranteed).
+  function monsterDropPreview(monster){
+    var d = monsterDropSpec(monster);
+    var parts = d.spec.map(function(s){
+      var icon = (typeof CHIPS !== 'undefined' && CHIPS[s[0]]) ? CHIPS[s[0]].icon : '🧩';
+      return icon + (s[1] === s[2] ? s[2] : (s[1] + '–' + s[2])) + (s[3] < 100 ? '?' : '');
+    });
+    parts.push('🥇' + d.gold[0] + '–' + d.gold[1]);
+    parts.push('🥈' + d.silver[0] + '–' + d.silver[1]);
+    return parts.join(' ');
+  }
+
+  // Chips needed to reach a given upgrade level (on TOP of the Cash cost). Better gear demands
+  // more ADVANCED processors: common gear runs on cores/alloy, Legendary needs CPUs/GPUs, the
+  // Archive/Stellar tiers need Neural + Quantum chips, and Rift/Odyssey gear wants Alien
+  // Processors. Each recipe uses 1-3 chip types.
+  var _RARITY_CHIP_TIER = { common: 1, legendary: 2, archive: 3, stellar: 3, rift: 4, odyssey: 4 };
+  var _UPGRADE_RECIPES_BY_TIER = {
+    1: { 1: { energy_core: 3 },
+         2: { energy_core: 4, robotic_alloy: 2 },
+         3: { robotic_alloy: 3, cpu: 1 } },
+    2: { 1: { energy_core: 5, cpu: 1 },
+         2: { cpu: 2, gpu: 1 },
+         3: { cpu: 2, gpu: 2, neural_chip: 1 } },
+    3: { 1: { cpu: 3, neural_chip: 1 },
+         2: { neural_chip: 2, quantum_chip: 1 },
+         3: { neural_chip: 2, quantum_chip: 2, alien_processor: 1 } },
+    4: { 1: { neural_chip: 2, quantum_chip: 1 },
+         2: { quantum_chip: 2, alien_processor: 1 },
+         3: { quantum_chip: 3, alien_processor: 2, neural_chip: 2 } }
+  };
+  function getUpgradeRecipe(nextLevel, item){
+    var tier = (item && _RARITY_CHIP_TIER[item.rarity]) || 1;
+    var byLevel = _UPGRADE_RECIPES_BY_TIER[tier] || _UPGRADE_RECIPES_BY_TIER[1];
+    if (byLevel[nextLevel]) return byLevel[nextLevel];
+    // legacy fallback (economy.config.js) for any level outside 1-3
     return (typeof UPGRADE_CHIP_RECIPES !== 'undefined' && UPGRADE_CHIP_RECIPES[nextLevel])
-      || (typeof UPGRADE_CHIP_RECIPES !== 'undefined' ? UPGRADE_CHIP_RECIPES[3] : { energy_core: 3 });
+      || byLevel[3] || { energy_core: 3 };
   }
 
   function chipTotal(){ var t = 0; for (var k in state.chips) t += (state.chips[k] || 0); return t; }

@@ -246,8 +246,10 @@
         agTopBar('🔢 Mini Sudoku · ' + conf.name, 'openSudoku()') +
         '<div class="wond-hud" id="sudHud"></div>' +
         '<div class="sud-grid" id="sudGrid"></div>' +
-        '<p class="wond-tip">Tap a cell to cycle 1 → 2 → 3 → 4 → empty. Given numbers are locked.</p>' +
+        '<div class="sud-tray" id="sudTray"></div>' +
+        '<p class="wond-tip">DRAG a number tile into an empty cell — or tap a tile, then tap cells to stamp it. 🧽 erases.</p>' +
       '</div>';
+    SUD.sel = 0;
     if (typeof playSfx === 'function') playSfx('ui-click');
     sudRender();
   }
@@ -258,9 +260,46 @@
     g.innerHTML = SUD.cells.map(function(v, i){
       var r = Math.floor(i / 4), c = i % 4;
       var cls = 'sud-cell' + (SUD.given[i] ? ' sud-given' : '') + (bad[i] ? ' sud-bad' : '') + (c === 1 ? ' sud-redge' : '') + (r === 1 ? ' sud-bedge' : '');
-      return '<button type="button" class="' + cls + '" onclick="sudTap(' + i + ')"' + (SUD.given[i] ? ' disabled' : '') + '>' + (v || '') + '</button>';
+      var dnd = SUD.given[i] ? '' : ' ondragover="event.preventDefault()" ondrop="sudDrop(event,' + i + ')"';
+      return '<button type="button" class="' + cls + '" onclick="sudTap(' + i + ')"' + (SUD.given[i] ? ' disabled' : '') + dnd + '>' + (v || '') + '</button>';
     }).join('');
+    // Draggable 1-4 tiles + eraser. Click selects (stamp mode); drag drops straight in.
+    var tray = document.getElementById('sudTray');
+    if (tray){
+      var tiles = [1, 2, 3, 4].map(function(n){
+        return '<button type="button" class="sud-tile' + (SUD.sel === n ? ' sud-sel' : '') + '" draggable="true"' +
+          ' ondragstart="sudDragStart(event,' + n + ')" onclick="sudPick(' + n + ')">' + n + '</button>';
+      }).join('');
+      tiles += '<button type="button" class="sud-tile sud-eraser' + (SUD.sel === -1 ? ' sud-sel' : '') + '" draggable="true"' +
+        ' ondragstart="sudDragStart(event,-1)" onclick="sudPick(-1)" title="Eraser">🧽</button>';
+      tray.innerHTML = tiles;
+    }
     sudHud();
+  }
+
+  function sudPick(n){
+    SUD.sel = (SUD.sel === n) ? 0 : n;                        // tap again to deselect
+    if (typeof playSfx === 'function') playSfx('ui-click');
+    sudRender();
+  }
+  function sudDragStart(ev, n){
+    try { ev.dataTransfer.setData('text/plain', String(n)); ev.dataTransfer.effectAllowed = 'copy'; } catch (e) {}
+    SUD.drag = n;
+  }
+  function sudDrop(ev, i){
+    ev.preventDefault();
+    if (!SUD.active || SUD.given[i]) return;
+    var n = SUD.drag;
+    try { var d = parseInt(ev.dataTransfer.getData('text/plain'), 10); if (!isNaN(d)) n = d; } catch (e) {}
+    if (!n) return;
+    SUD.cells[i] = (n === -1) ? 0 : n;
+    SUD.drag = 0;
+    if (typeof playSfx === 'function') playSfx('ui-click');
+    sudRender();
+    sudCheckWin();
+  }
+  function sudCheckWin(){
+    if (SUD.active && SUD.cells.every(function(v){ return v > 0; }) && Object.keys(sudConflicts(SUD.cells)).length === 0) sudWin();
   }
 
   function sudHud(){
@@ -271,10 +310,14 @@
 
   function sudTap(i){
     if (!SUD.active || SUD.given[i]) return;
-    SUD.cells[i] = (SUD.cells[i] + 1) % 5;                    // 0(empty) → 1 → 2 → 3 → 4 → 0
+    if (SUD.sel){                                             // stamp mode: place the selected tile
+      SUD.cells[i] = (SUD.sel === -1) ? 0 : SUD.sel;
+    } else {
+      SUD.cells[i] = (SUD.cells[i] + 1) % 5;                  // no tile selected: cycle 1→2→3→4→empty
+    }
     if (typeof playSfx === 'function') playSfx('ui-click');
     sudRender();
-    if (SUD.cells.every(function(v){ return v > 0; }) && Object.keys(sudConflicts(SUD.cells)).length === 0) sudWin();
+    sudCheckWin();
   }
 
   function sudStop(){ SUD.active = false; }

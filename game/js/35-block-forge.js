@@ -100,6 +100,7 @@
     QBF.active = true; QBF.diff = diff; QBF.size = QBF_SIZES[diff] || 8;
     QBF.board = qbfNewBoard(QBF.size);
     QBF.score = 0; QBF.combo = 0; QBF.lines = 0; QBF.placed = 0; QBF.sel = -1;
+    QBF.goal = { easy: 250, normal: 350, hard: 450 }[diff] || 350;   // reach it to WIN the forge
     QBF.best = wgMini('blockForge').highScore || 0;
     qbfRefillTray();
     view.innerHTML =
@@ -109,7 +110,7 @@
         '<div class="wond-hud" id="qbfHud"></div>' +
         '<div class="qbf-wrap"><div class="qbf-grid" id="qbfGrid"></div></div>' +
         '<div class="qbf-tray" id="qbfTray"></div>' +
-        '<p class="wond-tip">Click a block below, then click the grid to place it. Fill a whole row or column to clear it!</p>' +
+        '<p class="wond-tip">DRAG a block onto the grid (or click it, then click the grid). Fill a row or column to clear it — reach the 🎯 goal score to master the forge!</p>' +
       '</div>';
     if (typeof playSfx === 'function') playSfx('ui-click');
     qbfRender();
@@ -128,7 +129,8 @@
       for (var r = 0; r < QBF.size; r++) for (var c = 0; c < QBF.size; c++){
         var v = QBF.board[r][c];
         html += '<button type="button" class="qbf-cell' + (v ? ' qbf-fill' : '') + '" ' +
-          (v ? 'style="background:' + v + '"' : '') + ' onclick="qbfCellClick(' + r + ',' + c + ')" aria-label="cell ' + r + ',' + c + '"></button>';
+          (v ? 'style="background:' + v + '"' : '') + ' onclick="qbfCellClick(' + r + ',' + c + ')"' +
+          ' ondragover="event.preventDefault()" ondrop="qbfDrop(event,' + r + ',' + c + ')" aria-label="cell ' + r + ',' + c + '"></button>';
       }
       grid.innerHTML = html;
     }
@@ -144,7 +146,8 @@
           mini += '<span class="qbf-mini' + (on ? ' on' : '') + '"' + (on ? ' style="background:' + p.color + '"' : '') + '></span>';
         }
         return '<button type="button" class="qbf-piece' + (QBF.sel === i ? ' qbf-sel' : '') + '" onclick="qbfSelectPiece(' + i + ')" ' +
-          'style="grid-template-columns:repeat(' + (maxC + 1) + ',14px)" data-tooltip="Select this block, then click the grid.">' + mini + '</button>';
+          'draggable="true" ondragstart="qbfDragStart(event,' + i + ')" ' +
+          'style="grid-template-columns:repeat(' + (maxC + 1) + ',14px)" data-tooltip="Drag this block onto the grid (or click it, then click the grid).">' + mini + '</button>';
       }).join('');
     }
     qbfUpdateHud();
@@ -155,12 +158,27 @@
     if (!hud) return;
     hud.innerHTML =
       '<span class="wond-chip">⭐ Score: <b>' + QBF.score + '</b></span>' +
+      '<span class="wond-chip' + (QBF.score >= QBF.goal ? ' wond-chip-hot' : '') + '">🎯 Goal: <b>' + QBF.score + ' / ' + QBF.goal + '</b></span>' +
       '<span class="wond-chip">🔥 Combo: <b>×' + Math.max(1, QBF.combo) + '</b></span>' +
       '<span class="wond-chip">🧹 Lines: <b>' + QBF.lines + '</b></span>' +
       '<span class="wond-chip">🏆 Best: <b>' + QBF.best + '</b></span>';
   }
 
   function qbfSelectPiece(i){ if (!QBF.active || !QBF.tray[i]) return; QBF.sel = i; qbfRender(); }
+
+  // Drag-and-drop placement: drag a tray piece, drop it on the grid (anchor = the piece's
+  // top-left cell). Falls back to the classic click-select + click-place flow.
+  function qbfDragStart(ev, i){
+    if (!QBF.active || !QBF.tray[i]) return;
+    QBF.sel = i;
+    try { ev.dataTransfer.setData('text/plain', String(i)); ev.dataTransfer.effectAllowed = 'move'; } catch (e) {}
+  }
+  function qbfDrop(ev, r, c){
+    ev.preventDefault();
+    if (!QBF.active) return;
+    try { var i = parseInt(ev.dataTransfer.getData('text/plain'), 10); if (!isNaN(i) && QBF.tray[i]) QBF.sel = i; } catch (e) {}
+    qbfCellClick(r, c);
+  }
 
   function qbfCellClick(r, c){
     if (!QBF.active || QBF.sel < 0) return;
@@ -187,20 +205,23 @@
     }
     if (QBF.tray.every(function(x){ return !x; })) qbfRefillTray();  // new tray when all placed
     qbfRender();
-    if (!qbfAnyPlaceable(QBF.board, QBF.tray, QBF.size)) qbfEnd();
+    if (QBF.score >= QBF.goal){ qbfEnd(true); return; }              // 🎯 goal reached = WIN!
+    if (!qbfAnyPlaceable(QBF.board, QBF.tray, QBF.size)) qbfEnd(false);
   }
 
-  function qbfEnd(){
+  function qbfEnd(won){
     QBF.active = false;
     var score = QBF.score, diff = QBF.diff, lines = QBF.lines;
     var newHigh = wgRecordScore('blockForge', score, diff);
     var r = qbfReward(score, diff, newHigh);
     wgPayReward(r);
+    // Mastering the forge (hitting the goal) also opens the gold treasure chest.
+    if (won && typeof a2Reward === 'function') a2Reward(1);
     var view = document.getElementById('wonderlandView');
     if (!view) return;
     view.innerHTML =
       '<div class="wond-board">' +
-        '<div class="wond-head"><h2 class="wond-title">' + (newHigh ? '🏆 NEW HIGH SCORE!' : '🧩 Board full!') + '</h2>' +
+        '<div class="wond-head"><h2 class="wond-title">' + (won ? '🌟 FORGE MASTERED! 🎯' : (newHigh ? '🏆 NEW HIGH SCORE!' : '🧩 Board full!')) + '</h2>' +
           '<p class="wond-sub">Score <b>' + score + '</b> · ' + lines + ' lines cleared · ' + diff + '</p></div>' +
         '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + (r.coins || 0) + '</span>' +

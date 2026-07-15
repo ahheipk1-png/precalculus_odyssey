@@ -410,3 +410,15 @@ body:has(#wonderlandView.active) .wond-tip{ font-size: 16px; }
 body:has(#wonderlandView.active) .stage{ padding:10px 12px; }
 body:has(#wonderlandView.active) .frame{ max-width:none; width:100%; }
 body:has(#wonderlandView.active) .board{ max-width:none !important; }
+
+/* ---- Sudoku drag tray ---- */
+.sud-tray{ display:flex; gap:12px; justify-content:center; margin:16px 0 6px; }
+.sud-tile{ width:54px; height:54px; font-family:'Quicksand',sans-serif; font-weight:800; font-size:26px;
+  color:var(--chalk,#f4f1e8); background:rgba(110,193,228,.12); border:2px solid rgba(110,193,228,.45);
+  border-radius:12px; cursor:grab; }
+.sud-tile:active{ cursor:grabbing; }
+.sud-tile.sud-sel{ background:rgba(242,193,78,.22); border-color:var(--yellow,#f2c14e); color:var(--yellow,#f2c14e);
+  box-shadow:0 0 10px rgba(242,193,78,.35); }
+.sud-tile.sud-eraser{ font-size:22px; }
+/* ---- Monster drop preview line ---- */
+.monster-drops{ font-size:13px; color:var(--sky,#6ec1e4); }

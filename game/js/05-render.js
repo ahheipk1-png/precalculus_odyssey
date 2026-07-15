@@ -44,7 +44,7 @@
     }
     updateHeroStatsDisplay();
     if (leveledUp) {
-      showToast(`🎉 HERO LEVEL UP! Reached Lv. ${state.heroLvl}! Max HP/MP increased!`);
+      showToast(`🎉 HERO LEVEL UP! Lv. ${state.heroLvl}! +20 HP · +10 MP · +2 ⚔️AP · +1 🛡️DP` + (state.heroLvl % 2 ? ' · +1 💨SPD' : '') + `!`);
       burst(15);
       if (state.heroLvl === 3) {
         setTimeout(function(){ showToast('✨ Learned Spells: GREATER HEAL (80 HP, 30 MP)!'); }, 2000);

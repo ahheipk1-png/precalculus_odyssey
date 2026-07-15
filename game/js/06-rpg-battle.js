@@ -1,13 +1,22 @@
+  // Hero-level base stats: every level past 1 grants +2 AP and +1 DP; every 2 levels +1 Speed.
+  // Derived from heroLvl (not stored), so old saves get their bonus automatically.
+  function heroStatBonus(kind){
+    var lv = Math.max(1, (state && state.heroLvl) || 1) - 1;
+    if (kind === 'power') return lv * 2;
+    if (kind === 'defense') return lv;
+    if (kind === 'speed') return Math.floor(lv / 2);
+    return 0;
+  }
   function getPlayerAp() {
     var w = state.weapons.find(function(x){ return x.id === state.equippedWeapon; }) || state.weapons[0];
     var base = w.power + w.upgradeLvl * getUpgradeGain(w, 'weapon');
-    return base + (typeof socketBonusTotal === 'function' ? socketBonusTotal('power') : 0);
+    return base + heroStatBonus('power') + (typeof socketBonusTotal === 'function' ? socketBonusTotal('power') : 0);
   }
   function getPlayerDp() {
     var s = state.shields.find(function(x){ return x.id === state.equippedShield; }) || state.shields[0];
     var base = s.defense + s.upgradeLvl * getUpgradeGain(s, 'shield');
     var armor = (typeof getArmorDefense === 'function') ? getArmorDefense() : 0;
-    return base + armor + (typeof socketBonusTotal === 'function' ? socketBonusTotal('defense') : 0);
+    return base + armor + heroStatBonus('defense') + (typeof socketBonusTotal === 'function' ? socketBonusTotal('defense') : 0);
   }
   // Equipped weapon's Wu Xing element (used for combat matchups).
   function getPlayerElement() {
@@ -50,7 +59,7 @@
     var curStat = (type === 'weapon' ? item.power : item.defense) + item.upgradeLvl * gain;
     var nextStat = curStat + gain;
     var afterUpgradeLvl = item.upgradeLvl + 1;
-    var recipe = getUpgradeRecipe(afterUpgradeLvl);
+    var recipe = getUpgradeRecipe(afterUpgradeLvl, item);
     var need = hasMaterials(recipe);
     return statLabel + ': ' + curStat + ' → ' + nextStat + ' (+' + gain + ') · needs ' +
       chipsSummary(recipe) + (need ? '' : ' ⚠️ (short on chips)') +
@@ -152,7 +161,7 @@
       var item = g.arr.find(function(x){ return x.id === id; });
       if (item.upgradeLvl >= maxUpgradeLevel) { showToast('Already maxed at +3!'); renderShopList(); return; }
       var upgCost = getUpgradeCost(item);
-      var recipe = getUpgradeRecipe(item.upgradeLvl + 1);
+      var recipe = getUpgradeRecipe(item.upgradeLvl + 1, item);
       if (state.coins < upgCost) { showToast('Not enough Cash for upgrade!'); return; }
       if (!hasChips(recipe)) { showToast('Need AI chips: ' + chipsSummary(recipe)); return; }
       state.coins -= upgCost; spendChips(recipe); item.upgradeLvl++;
@@ -288,7 +297,8 @@
       reward: entry.room * rank.reward,
       difficulty: rank.difficulty,
       element: getMonsterElement(entry),
-      requiredHeroLvl: entry.room + (entry.rank - 1)
+      // Grows at half the arena pace so late arenas stay reachable without endless grinding.
+      requiredHeroLvl: Math.ceil(entry.room / 2) + (entry.rank - 1)
     };
   }
   // Deterministic Wu Xing element per enemy robot (same for every player).
@@ -301,8 +311,20 @@
     return monster.id;
   }
 
+  // The 30-name catalog covers rooms 1-10; higher arenas CYCLE the roster with an
+  // era suffix, and every stat/loot scales with the REAL arena number (65 arenas total).
+  var MONSTER_ERAS = ['', ' Elite', ' Mega', ' Ultra', ' Cosmic', ' Omega', ' Astral'];
   function getRoomMonsters(room) {
-    return monsterCatalog.filter(function(m){ return m.room === room; }).map(buildMonster);
+    var base = ((room - 1) % 10) + 1;
+    var eraIdx = Math.floor((room - 1) / 10);
+    var era = (eraIdx < MONSTER_ERAS.length) ? MONSTER_ERAS[eraIdx] : ' Astral';   // '' is a valid era (rooms 1-10)
+    return monsterCatalog.filter(function(m){ return m.room === base; }).map(function(entry){
+      return buildMonster({
+        id: 'r' + room + '_' + entry.rank,      // rooms 1-10 keep their original save keys
+        room: room, rank: entry.rank,
+        name: entry.name + era
+      });
+    });
   }
 
   function getRoomBoss(room) {
@@ -419,7 +441,8 @@
     if (el.bountyLvlText) el.bountyLvlText.textContent = state.level;
 
     var currentRoomMonsters = getRoomMonsters(state.level);
-    var allMonsters = monsterCatalog.map(buildMonster);
+    // Show THIS arena's three foes (with 65 arenas, listing every monster was noise).
+    var allMonsters = currentRoomMonsters;
 
     if (el.bountyChecklist) {
       var bHTML = '';
@@ -453,6 +476,7 @@
         <div class="monster-select-stat">ATK: ${m.attack} &nbsp;|&nbsp; DEF: ${m.defense}</div>
         <div class="monster-select-stat">Needs Hero Lv. ${m.requiredHeroLvl}</div>
         <div class="monster-select-reward">Reward: ${m.reward} 💵</div>
+        <div class="monster-select-stat monster-drops" title="Chip drops scale with the monster's strength — ? = not guaranteed">🎁 Drops: ${typeof monsterDropPreview === 'function' ? monsterDropPreview(m) : ''}</div>
         ${isLocked ? `<div class="monster-lock-note">🔒 Locked: ${lockReason}</div>` : ''}
       `;
       if (!isDefeated && !isLocked) {
