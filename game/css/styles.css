@@ -469,6 +469,47 @@
   }
   .hint-text[hidden]{ display:none; }
 
+  /* Progressive hint ladder panel */
+  .hint-panel{
+    margin-top:12px;
+    padding:12px 13px 11px;
+    border:1px solid rgba(102,224,255,.22);
+    border-radius:14px;
+    background:rgba(102,224,255,.06);
+    text-align:left;
+  }
+  .hint-panel[hidden]{ display:none; }
+  .hint-panel.hint-solution{
+    border-color:rgba(126,231,159,.45);
+    background:rgba(126,231,159,.08);
+  }
+  .hint-panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:6px;
+  }
+  .hint-level-label{
+    font-size:12px; font-weight:700; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--sky);
+  }
+  .hint-panel.hint-solution .hint-level-label{ color:var(--green, #7ee79f); }
+  .hint-close{
+    background:none; border:none; cursor:pointer;
+    color:var(--chalk-dim, #9fb3c8); font-size:15px; line-height:1;
+    padding:2px 5px; border-radius:7px;
+  }
+  .hint-close:hover{ color:var(--chalk, #eef4fb); background:rgba(255,255,255,.08); }
+  .hint-panel .hint-text{
+    text-align:left; margin:0; font-size:15px; color:var(--chalk, #dfeaf5);
+    font-style:normal; line-height:1.5;
+  }
+  .hint-nav{
+    display:flex; gap:8px; margin-top:10px;
+  }
+  .hint-nav-btn{
+    flex:1; font-size:13px; padding:7px 10px;
+  }
+  .hint-nav-btn:disabled{ opacity:.4; cursor:default; }
+
   .scene-panel{
     margin-top: 18px;
     padding-top: 14px;
@@ -1700,12 +1741,8 @@
   .quest-control-panel .secondary-actions .btn{
     width:100%;
   }
-  .quest-control-panel .hint-text{
+  .quest-control-panel .hint-panel{
     text-align:left;
-    padding:11px 12px;
-    border:1px solid rgba(102,224,255,.18);
-    border-radius:13px;
-    background:rgba(102,224,255,.055);
   }
 
   #shopView.active,

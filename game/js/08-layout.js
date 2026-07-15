@@ -49,7 +49,7 @@
     if(scene) main.appendChild(scene);
 
     controls.appendChild(heading);
-    ['moveLabel','opRow','applyForm','expandPanel','directAnswerPanel','levelGateActions','eqActions','hintText'].forEach(function(id){
+    ['moveLabel','opRow','applyForm','expandPanel','directAnswerPanel','levelGateActions','eqActions','hintPanel'].forEach(function(id){
       var n=document.getElementById(id);if(n)controls.appendChild(n);
     });
     eq.appendChild(main);

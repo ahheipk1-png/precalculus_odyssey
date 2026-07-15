@@ -468,6 +468,20 @@
     return modeRegistry[state.mode].hint();
   }
 
+  // 6-level progressive hint ladder. Bible questions carry a hintSequenceId that resolves to
+  // HINT_REGISTRY[id] = [nudge, concept, focus, guided step, nearly-complete, full solution].
+  // Native Equation-Battle / fallback modes have no ladder, so we serve one live, state-aware
+  // hint (which updates as the equation morphs) as a single-rung "ladder".
+  function getHintLadder(){
+    var p = state.problem;
+    if (p && p.hintSequenceId && typeof HINT_REGISTRY !== 'undefined' && HINT_REGISTRY[p.hintSequenceId]) {
+      var arr = HINT_REGISTRY[p.hintSequenceId];
+      if (arr && arr.length) return arr;
+    }
+    try { return [ modeRegistry[state.mode].hint() ]; }
+    catch (e) { return ['Read the question carefully, then choose your answer.']; }
+  }
+
   // ---------- Move application ----------
 
   function gcd(x, y) {

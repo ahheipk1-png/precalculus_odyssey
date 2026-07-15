@@ -227,7 +227,7 @@
         handleSolved();
       } else {
         showMsg('Nice \u2014 keep going!', false);
-        if (!el.hintText.hidden) el.hintText.textContent = getHint();
+        if (state.hintLevel > 0) renderHintPanel();   // Equation Battle hint updates as the eq morphs
         el.numberInput.focus();
       }
     }, 700);
@@ -294,10 +294,19 @@
     }
   });
 
+  // Hint button: opens the progressive ladder at level 1 (or re-opens where it was).
   el.hintBtn.addEventListener('click', function(){
-    el.hintText.textContent = getHint();
-    el.hintText.hidden = false;
+    if (!state.hintLevel || state.hintLevel < 1) state.hintLevel = 1;
+    renderHintPanel();
   });
+  if (el.hintNextBtn) el.hintNextBtn.addEventListener('click', function(){
+    var ladder = (typeof getHintLadder === 'function') ? getHintLadder() : [];
+    if (state.hintLevel < ladder.length) { state.hintLevel++; renderHintPanel(); }
+  });
+  if (el.hintPrevBtn) el.hintPrevBtn.addEventListener('click', function(){
+    if (state.hintLevel > 1) { state.hintLevel--; renderHintPanel(); }
+  });
+  if (el.hintCloseBtn) el.hintCloseBtn.addEventListener('click', function(){ hideHintPanel(); });
 
   if (el.revealBtn) el.revealBtn.addEventListener('click', function(){
     if (state.locked) return;

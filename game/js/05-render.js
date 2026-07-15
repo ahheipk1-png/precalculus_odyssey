@@ -301,6 +301,40 @@
     }
   }
 
+  // ----- Progressive hint ladder (6 levels for Bible questions, 1 live rung otherwise) -----
+  function hideHintPanel(){
+    state.hintLevel = 0;
+    if (el.hintPanel) el.hintPanel.hidden = true;
+    if (el.hintText) el.hintText.textContent = '';
+  }
+
+  function renderHintPanel(){
+    if (!el.hintPanel) return;
+    var ladder = (typeof getHintLadder === 'function') ? getHintLadder() : [getHint()];
+    var n = ladder.length;
+    var lvl = state.hintLevel || 0;
+    if (lvl < 1) { el.hintPanel.hidden = true; return; }
+    if (lvl > n) lvl = n;
+    state.hintLevel = lvl;
+    el.hintPanel.hidden = false;
+    el.hintLevelLabel.textContent = (n > 1) ? ('Hint ' + lvl + ' of ' + n) : 'Hint';
+    el.hintText.textContent = ladder[lvl - 1];
+    // Last rung of a full ladder = the worked solution; flag it visually.
+    el.hintPanel.classList.toggle('hint-solution', n > 1 && lvl === n);
+    el.hintPrevBtn.disabled = (lvl <= 1);
+    el.hintPrevBtn.style.visibility = (n > 1) ? '' : 'hidden';
+    el.hintNextBtn.style.visibility = (n > 1) ? '' : 'hidden';
+    if (lvl >= n) {
+      el.hintNextBtn.disabled = true;
+      el.hintNextBtn.textContent = 'That’s all';
+    } else {
+      el.hintNextBtn.disabled = false;
+      // Level 5 -> 6 is the full solution; label it as an opt-in reveal.
+      el.hintNextBtn.textContent = (n > 1 && lvl === n - 1) ? 'Show full solution ›' : 'Next clue ›';
+    }
+    if (typeof state.highestHintLevel !== 'number' || lvl > state.highestHintLevel) state.highestHintLevel = lvl;
+  }
+
   function setControlsEnabled(enabled){
     el.numberInput.disabled = !enabled;
     el.applyBtn.disabled = !enabled;
@@ -417,14 +451,13 @@
     updateFormulaCaption();
     updateLevelProgress();
     renderScene();
-    el.hintText.hidden = true;
-    el.hintText.textContent = '';
+    hideHintPanel();
     showMsg('', false);
     el.movesInfo.textContent = 'Moves: 0';
     el.numberInput.value = '';
     setControlsEnabled(true);
-    // Hints are a beginner aid — offered only on the FIRST 2 questions of each room.
-    el.hintBtn.style.display = (state.levelSolves < 2) ? '' : 'none';
+    // Progressive hints are available on every question (6-level ladder for Bible arenas).
+    el.hintBtn.style.display = '';
     // (The arena "Back to Earth" button was removed — Earth is on the global header nav.)
     renderLives();
     if (state.mode === 'directInput'){ if (el.directInput) el.directInput.focus(); }
