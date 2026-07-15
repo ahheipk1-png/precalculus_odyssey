@@ -532,7 +532,10 @@
     text-align: center;
     padding: 20px;
   }
-  .start-screen-overlay[hidden]{ display: none; }
+  /* Must win over the auth-mode display (.auth-dock-mode sets display:flex at equal
+     specificity, loaded later) — otherwise hiding the start screen after login leaves
+     the full-screen overlay covering the game. */
+  .start-screen-overlay[hidden]{ display: none !important; }
   .start-screen-card{ max-width: 400px; width: 100%; }
   .start-screen-title{
     font-family:'Patrick Hand', cursive;
