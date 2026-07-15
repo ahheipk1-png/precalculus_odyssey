@@ -227,6 +227,7 @@
       '<div class="bim-card" style="--astro-accent:' + accent + '">' +
         '<button class="bim-close" onclick="atlasCloseBodyInfo()">✕</button>' +
         '<div class="bim-art">' + art + '</div>' +
+        (bodyPhotoUrl(b) ? '' : '<div class="bim-artlabel">🎨 Artist’s impression — no real photo exists yet</div>') +
         '<h2 class="bim-name">' + esc(b.name) + '</h2>' +
         '<div class="bim-kind">' + esc(b.kind || '') + (b.real === false ? ' · imagined' : ' · real astronomy') + '</div>' +
         '<p class="bim-fact">' + esc(b.fact || '') + '</p>' +

@@ -433,6 +433,7 @@
     border-radius:20px; padding:22px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.5); }
   .bim-close{ position:absolute; top:12px; right:14px; background:none; border:none; color:var(--chalk-dim); font-size:22px; cursor:pointer; }
   .bim-art{ width:120px; height:120px; margin:4px auto 10px; }
+  .bim-artlabel{ font-size:12px; font-style:italic; color:var(--chalk-dim,#9fb3c8); margin:-4px 0 10px; letter-spacing:.02em; }
   .bim-name{ font-family:'Quicksand',sans-serif; font-weight:800; font-size:28px; color:var(--chalk); margin:0; }
   .bim-kind{ font-size:14px; color:var(--astro-accent,var(--sky)); margin:2px 0 12px; font-weight:700; }
   .bim-fact{ font-size:16px; color:var(--chalk); line-height:1.5; margin:0 0 16px; }
