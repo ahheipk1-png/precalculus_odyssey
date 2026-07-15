@@ -157,7 +157,7 @@
   }
 
   function showMsg(text, isWarn){
-    el.feedback.textContent = text;
+    el.feedback.innerHTML = text;   // game-generated only; allows <b>/<sup> from mathPretty
     el.feedback.className = 'feedback' + (isWarn ? ' bad' : '');
   }
 
@@ -258,38 +258,84 @@
     el.mcChoices.style.display = 'grid';
     el.mcChoices.innerHTML = state.problem.choices.map(function(c, i){
       return '<button type="button" class="mc-btn" data-idx="' + i + '">' + mathPretty(c) + '</button>';
-    }).join('');
+    }).join('') +
+      '<div class="mc-confirm" id="mcConfirm" hidden>' +
+        '<span class="mc-confirm-label" id="mcConfirmLabel">Confirm your answer?</span>' +
+        '<div class="mc-confirm-btns">' +
+          '<button type="button" class="btn btn-primary" id="mcConfirmYes">✓ Yes</button>' +
+          '<button type="button" class="btn btn-ghost" id="mcConfirmNo">✗ No</button>' +
+        '</div>' +
+      '</div>';
     var btns = el.mcChoices.querySelectorAll('.mc-btn');
     for (var i = 0; i < btns.length; i++){
-      (function(b){ b.addEventListener('click', function(){ answerMcOnly(parseInt(b.getAttribute('data-idx'), 10)); }); })(btns[i]);
+      (function(b){ b.addEventListener('click', function(){ selectMcChoice(parseInt(b.getAttribute('data-idx'), 10)); }); })(btns[i]);
     }
+    var yes = document.getElementById('mcConfirmYes'), no = document.getElementById('mcConfirmNo');
+    if (yes) yes.addEventListener('click', confirmMcAnswer);
+    if (no) no.addEventListener('click', cancelMcAnswer);
   }
 
-  // Identify: a correct tap ends the arena; a wrong one costs a life.
-  function answerMcOnly(idx){
+  // ----- Answer flow: tap a choice to SELECT, then confirm (Yes/No). 5 chances per question;
+  // after the 5th wrong the correct answer is revealed and we move on (no game-over here). -----
+  function _mcButtons(){ return el.mcChoices.querySelectorAll('.mc-btn'); }
+  function selectMcChoice(idx){
     if (state.locked) return;
-    if (idx === state.problem.correctIndex){
+    state.qSelected = idx;
+    var btns = _mcButtons();
+    for (var i = 0; i < btns.length; i++){ if (!btns[i].classList.contains('mc-wrong')) btns[i].classList.toggle('mc-selected', i === idx); }
+    var bar = document.getElementById('mcConfirm'); if (bar) bar.hidden = false;
+    var lbl = document.getElementById('mcConfirmLabel');
+    if (lbl) lbl.innerHTML = 'Submit “' + mathPretty(String(state.problem.choices[idx])) + '”?';
+  }
+  function cancelMcAnswer(){
+    state.qSelected = null;
+    var btns = _mcButtons(); for (var i = 0; i < btns.length; i++) btns[i].classList.remove('mc-selected');
+    var bar = document.getElementById('mcConfirm'); if (bar) bar.hidden = true;
+  }
+  function confirmMcAnswer(){
+    if (state.qSelected == null || state.locked) return;
+    var bar = document.getElementById('mcConfirm'); if (bar) bar.hidden = true;
+    gradeAnswer(state.qSelected === state.problem.correctIndex, state.qSelected);
+  }
+  // Kept for compatibility; instant-submit path now routes through the confirm flow.
+  function answerMcOnly(idx){ selectMcChoice(idx); }
+
+  // Grade a confirmed answer. `wrongBtnIdx` (mcOnly only) marks the tapped wrong choice.
+  function gradeAnswer(isCorrect, wrongBtnIdx){
+    if (state.locked) return;
+    if (isCorrect){
       state.movesTaken = 0; state.locked = true;
+      if (typeof wrongBtnIdx === 'number'){ var bs = _mcButtons(); if (bs[wrongBtnIdx]) bs[wrongBtnIdx].classList.add('mc-correct'); }
       handleSolved();
+      return;
+    }
+    if (typeof state.qChances !== 'number') state.qChances = 5;
+    state.qChances--;
+    wobbleBeam();
+    var btns = _mcButtons();
+    if (typeof wrongBtnIdx === 'number' && btns[wrongBtnIdx]){ btns[wrongBtnIdx].classList.remove('mc-selected'); btns[wrongBtnIdx].classList.add('mc-wrong'); btns[wrongBtnIdx].disabled = true; }
+    state.qSelected = null;
+    if (state.qChances <= 0){
+      state.locked = true;
+      var ci = state.problem.correctIndex;
+      if (typeof ci === 'number' && btns[ci]) btns[ci].classList.add('mc-reveal');
+      var correctTxt = (typeof ci === 'number' && state.problem.choices) ? state.problem.choices[ci] : (state.problem.answer != null ? state.problem.answer : '');
+      showMsg('Out of chances! The answer was <b>' + mathPretty(String(correctTxt)) + '</b>. On to the next one.', true);
+      if (typeof playSfx === 'function') playSfx('wrong');
+      setTimeout(loadProblem, reduceMotion ? 350 : 2400);
     } else {
-      wobbleBeam(); showMsg('Not quite — try again!', true);
-      if (typeof registerFail === 'function') registerFail();
+      showMsg('Not quite — <b>' + state.qChances + '</b> ' + (state.qChances === 1 ? 'chance' : 'chances') + ' left. Try again!', true);
     }
   }
 
-  // Compute: type one integer and Submit.
+  // Compute: type one integer and Submit (Submit is the deliberate confirm). Same 5-chances rule.
   function answerDirectInput(){
     if (state.locked) return;
     var raw = (el.directInput && el.directInput.value || '').trim();
     var v = parseInt(raw, 10);
     if (!Number.isInteger(v)){ showMsg('Type a whole number.', true); return; }
-    if (v === state.problem.answer){
-      state.movesTaken = 0; state.locked = true;
-      handleSolved();
-    } else {
-      wobbleBeam(); showMsg('Not quite — try again!', true);
-      if (typeof registerFail === 'function') registerFail();
-    }
+    if (el.directInput) el.directInput.value = '';
+    gradeAnswer(v === state.problem.answer);
   }
 
   function updateFormulaCaption(){
@@ -452,6 +498,8 @@
     updateLevelProgress();
     renderScene();
     hideHintPanel();
+    state.qChances = 5;           // 5 chances per question before the answer is revealed
+    state.qSelected = null;
     showMsg('', false);
     el.movesInfo.textContent = 'Moves: 0';
     el.numberInput.value = '';
