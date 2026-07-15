@@ -28,6 +28,7 @@
     farm: { plots: [], animals: [], houses: 1 }, // see 18-farm.js
     miniGames: {},     // Wonderland mini-game progress: id -> { unlockedCount, firstCleared, best, plays, highScore }. See 17-wonderland.js / 34-wonder-shell.js.
     settings: { musicVol: 38, sfxVol: 72 }, // volume 0-100, adjustable in the Settings panel; saved to profile/cloud. See 13-audio.js.
+    arenaStats: {},    // per-arena performance for the admin dashboard: arenaN -> { solves, fails, stars3 }.
     testMode: false,
     streak: 0,
     levelSolves: 0,

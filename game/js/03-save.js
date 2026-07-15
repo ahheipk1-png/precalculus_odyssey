@@ -69,6 +69,7 @@
       farm: state.farm,
       miniGames: state.miniGames,
       settings: state.settings,
+      arenaStats: state.arenaStats,
       streak: state.streak,
       levelSolves: state.levelSolves,
       equippedWeapon: state.equippedWeapon,
@@ -185,6 +186,7 @@
       ? { musicVol: (snap.settings.musicVol != null ? snap.settings.musicVol : 38), sfxVol: (snap.settings.sfxVol != null ? snap.settings.sfxVol : 72) }
       : { musicVol: 38, sfxVol: 72 };
     if (typeof applyAudioSettings === 'function') applyAudioSettings();
+    state.arenaStats = (snap.arenaStats && typeof snap.arenaStats === 'object') ? snap.arenaStats : {};
     state.bossDefeated = snap.bossDefeated || {};
     // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
     // the Boss Gate button is re-derived from levelSolves/bossDefeated in updatePanelVisibility.
@@ -214,6 +216,7 @@
     state.miniGames = {};
     state.settings = { musicVol: 38, sfxVol: 72 };
     if (typeof applyAudioSettings === 'function') applyAudioSettings();
+    state.arenaStats = {};
     state.gatePending = false;
     state.bossGateUnlocked = false;
     state.bossRoomEntered = false;

@@ -86,6 +86,25 @@
   .admin-small{ font-size:12px; color:var(--chalk-dim); }
   .admin-wait .admin-actions .btn-primary{ font-size:15px !important; }
 
+  /* ---------- Full-screen admin dashboard ---------- */
+  .admin-view.active{ display:block; }
+  .admin-page{ max-width:900px; margin:0 auto; padding:8px 6px 30px; }
+  .admin-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .admin-h{ margin:0; font-family:'Patrick Hand', cursive; font-size:30px; color:var(--yellow); }
+  .admin-h2{ margin:12px 0 8px; font-family:'Patrick Hand', cursive; font-size:26px; color:var(--chalk); }
+  .admin-body{ display:flex; flex-direction:column; gap:6px; }
+  .pd-card{ background:rgba(244,241,232,0.045); border:1px solid rgba(244,241,232,0.14); border-radius:14px; padding:12px 14px; margin-bottom:10px; }
+  .pd-title{ font-weight:800; font-size:16px; color:var(--sky); margin-bottom:8px; }
+  .pd-row{ display:flex; justify-content:space-between; gap:12px; padding:4px 0; border-bottom:1px dashed rgba(244,241,232,0.08); font-size:15px; }
+  .pd-row:last-child{ border-bottom:none; }
+  .pd-k{ color:var(--chalk-dim); } .pd-v{ color:var(--chalk); font-weight:600; text-align:right; }
+  .pd-v code, .admin-wait-meta code, .admin-small code{ color:var(--yellow); background:rgba(0,0,0,0.25); padding:1px 7px; border-radius:6px; }
+  .pd-tablewrap{ overflow-x:auto; }
+  .pd-table{ width:100%; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums; }
+  .pd-table th, .pd-table td{ padding:6px 8px; text-align:center; border-bottom:1px solid rgba(244,241,232,0.1); }
+  .pd-table th{ color:var(--chalk-dim); font-weight:700; }
+  .pd-table td:first-child, .pd-table th:first-child{ text-align:left; }
+
   /* ---------- Cloud Save (cloud-ui.js) ---------- */
   #cloudBtn.cst-ok{ color:#7bd88f; border-color:#7bd88f; }
   #cloudBtn.cst-busy{ color:var(--sky); border-color:var(--sky); }

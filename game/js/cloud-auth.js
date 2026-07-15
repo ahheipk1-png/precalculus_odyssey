@@ -104,6 +104,7 @@
     if (typeof startGame === 'function') startGame();
     if (!loaded && typeof showOpeningNarration === 'function' && typeof state === 'object' && !state.testMode) showOpeningNarration();
     injectHeaderAuth();
+    authStartProgressSync();
   }
 
   // Add Admin (if admin) + Log-out buttons to the header, once in-game.
@@ -126,64 +127,165 @@
     }
   }
 
-  // ---------- admin panel (item 2) ----------
-  async function openAdmin(){
-    var old = document.getElementById('adminOverlay'); if (old) old.remove();
-    var ov = document.createElement('div'); ov.id = 'adminOverlay'; ov.className = 'settings-overlay';
-    ov.innerHTML = '<div class="settings-card admin-card"><h2 class="settings-title">🛠️ Admin — Accounts</h2>' +
-      '<div id="adminList" class="admin-list">Loading…</div>' +
-      '<button type="button" class="btn btn-ghost" onclick="var o=document.getElementById(\'adminOverlay\');if(o)o.remove();">Close</button></div>';
-    ov.addEventListener('click', function (e){ if (e.target === ov) ov.remove(); });
-    document.body.appendChild(ov);
-    var r = await api('/api/admin/accounts', { method: 'GET', auth: true });
-    var list = document.getElementById('adminList'); if (!list) return;
-    if (!(r.ok && r.data.ok)){ list.innerHTML = '<p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load accounts.') + '</p>'; return; }
-    if (!r.data.accounts.length){ list.innerHTML = '<p class="admin-empty">No accounts yet.</p>'; return; }
+  // ---------- progress sync (so the admin dashboard can see each player's progress) ----------
+  function authProgressSummary(){
+    var s = (typeof state === 'object' && state) ? state : {};
+    return {
+      level: s.level, maxLevel: s.maxLevel,
+      arenasPassed: s.bossDefeated ? Object.keys(s.bossDefeated).length : 0,
+      bossDefeated: s.bossDefeated || {}, levelSolves: s.levelSolves,
+      streak: s.streak, score: s.score, heroLvl: s.heroLvl, heroXp: s.heroXp,
+      coins: s.coins, currencies: s.currencies, chips: s.chips, wonderPasses: s.wonderPasses,
+      settings: s.settings, miniGames: s.miniGames, arenaStats: s.arenaStats, testMode: !!s.testMode
+    };
+  }
+  window.authPushProgress = function(){
+    var sess = loadSession();
+    if (!sess || !sess.token || sess.username === 'mitb') return;   // don't sync the shared test account
+    try { api('/api/auth/progress', { body: { progress: authProgressSummary() }, auth: true }); } catch (e) {}
+  };
+  var _progTimer = null;
+  function authStartProgressSync(){
+    if (_progTimer) clearInterval(_progTimer);
+    window.authPushProgress();
+    _progTimer = setInterval(function(){ if (loadSession()) window.authPushProgress(); else { clearInterval(_progTimer); _progTimer = null; } }, 25000);
+  }
 
+  // ---------- admin: FULL-SCREEN dashboard (item 2) ----------
+  function ensureAdminView(){
+    var v = document.getElementById('adminView');
+    if (!v){ v = document.createElement('div'); v.id = 'adminView'; v.className = 'view-container admin-view'; (document.querySelector('.board') || document.body).appendChild(v); }
+    return v;
+  }
+  function openAdmin(){
+    var v = ensureAdminView();
+    document.querySelectorAll('.view-container').forEach(function (x){ x.classList.remove('active'); });
+    v.classList.add('active');
+    v.innerHTML =
+      '<div class="admin-page"><div class="admin-top">' +
+        '<h2 class="admin-h">🛠️ Admin Dashboard</h2>' +
+        '<button type="button" class="btn btn-ghost" onclick="closeAdmin()" data-tooltip="Return to the game.">← Back to game</button>' +
+      '</div><div id="adminBody" class="admin-body">Loading…</div></div>';
+    renderAdminAccounts();
+  }
+  window.closeAdmin = function(){
+    var v = document.getElementById('adminView'); if (v) v.classList.remove('active');
+    var eq = document.getElementById('equationView'); if (eq) eq.classList.add('active');
+    if (typeof loadProblem === 'function') loadProblem();
+  };
+
+  function loc(a){ var parts = [a.city, a.region, a.country].filter(function (x){ return x && x !== 'seed'; }); return (parts.join(', ') || '—') + (a.ip && a.ip !== 'seed' ? ' · ' + esc(a.ip) : ''); }
+  function when(t){ return t ? esc(String(t).replace('T', ' ').replace(/\..*/, '') + ' UTC') : '—'; }
+
+  async function renderAdminAccounts(){
+    var body = document.getElementById('adminBody'); if (!body) return;
+    var r = await api('/api/admin/accounts', { method: 'GET', auth: true });
+    if (!(r.ok && r.data.ok)){ body.innerHTML = '<p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load accounts.') + '</p>'; return; }
+    if (!r.data.accounts.length){ body.innerHTML = '<p class="admin-empty">No accounts yet. Ask someone to Request an account!</p>'; return; }
     var pending = r.data.accounts.filter(function (a){ return a.status === 'pending'; });
     var others  = r.data.accounts.filter(function (a){ return a.status !== 'pending'; });
 
-    function loc(a){
-      var parts = [a.city, a.region, a.country].filter(function (x){ return x && x !== 'seed'; });
-      return (parts.join(', ') || '—') + (a.ip && a.ip !== 'seed' ? ' · ' + esc(a.ip) : '');
-    }
-    function when(a){ return a.createdAt ? esc(String(a.createdAt).replace('T', ' ').replace(/\..*/, '') + ' UTC') : '—'; }
-
-    // Waiting list — full details + prominent Approve / Reject.
     var waitHtml = '<div class="admin-section-title">⏳ Waiting for approval (' + pending.length + ')</div>';
     waitHtml += pending.length ? pending.map(function (a){
       return '<div class="admin-wait">' +
         '<div class="admin-wait-head"><b>' + esc(a.username) + '</b> <span class="admin-status admin-pending">pending</span></div>' +
-        '<div class="admin-wait-meta">' +
-          '<div>🔑 Password: <code>' + esc(a.password || '—') + '</code></div>' +
-          '<div>📍 ' + loc(a) + '</div>' +
-          '<div>🕒 ' + when(a) + '</div>' +
-        '</div>' +
+        '<div class="admin-wait-meta"><div>🔑 Password: <code>' + esc(a.password || '—') + '</code></div><div>📍 ' + loc(a) + '</div><div>🕒 ' + when(a.createdAt) + '</div></div>' +
         '<div class="admin-actions">' +
           '<button class="btn btn-primary admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'approve\')">✓ Approve — let them play</button>' +
           '<button class="btn btn-ghost admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'reject\')">✕ Reject</button>' +
+          '<button class="btn btn-ghost admin-btn" onclick="authShowPlayer(\'' + esc(a.username) + '\')">🔍 Details</button>' +
         '</div></div>';
     }).join('') : '<p class="admin-empty">No accounts waiting. 🎉</p>';
 
-    // All other accounts — compact.
     var othHtml = '<div class="admin-section-title">All accounts (' + others.length + ')</div>';
     othHtml += others.map(function (a){
       return '<div class="admin-row">' +
-        '<div class="admin-who"><b>' + esc(a.username) + '</b> ' +
-          '<span class="admin-status admin-' + esc(a.status) + '">' + esc(a.status) + (a.isAdmin ? ' · admin' : '') + '</span> ' +
+        '<div class="admin-who"><b>' + esc(a.username) + '</b> <span class="admin-status admin-' + esc(a.status) + '">' + esc(a.status) + (a.isAdmin ? ' · admin' : '') + '</span> ' +
           '<span class="admin-small">🔑 ' + esc(a.password || '—') + ' · 📍 ' + loc(a) + '</span></div>' +
         '<div class="admin-actions">' +
+          '<button class="btn btn-primary admin-btn" onclick="authShowPlayer(\'' + esc(a.username) + '\')">🔍 Details</button>' +
           (a.status === 'approved' && !a.isAdmin ? '<button class="btn btn-ghost admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'disable\')">Disable</button>' : '') +
           (a.status !== 'approved' ? '<button class="btn btn-ghost admin-btn" onclick="authAdminAction(\'' + esc(a.username) + '\',\'approve\')">✓ Approve</button>' : '') +
           '<button class="btn btn-ghost admin-btn" onclick="authAdminSetPw(\'' + esc(a.username) + '\')">🔑 Set password</button>' +
         '</div></div>';
     }).join('');
 
-    list.innerHTML = waitHtml + othHtml;
+    body.innerHTML = waitHtml + othHtml;
   }
+
+  // Per-player details: account info + settings + progress + per-arena performance.
+  window.authShowPlayer = async function(username){
+    var body = document.getElementById('adminBody'); if (!body) return;
+    body.innerHTML = '<p>Loading ' + esc(username) + '…</p>';
+    var r = await api('/api/admin/player?username=' + encodeURIComponent(username), { method: 'GET', auth: true });
+    if (!(r.ok && r.data.ok)){ body.innerHTML = '<button class="btn btn-ghost" onclick="authOpenAdmin()">← Back</button><p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load player.') + '</p>'; return; }
+    body.innerHTML = renderPlayerDetail(r.data.account, r.data.progress);
+  };
+
+  function row(label, val){ return '<div class="pd-row"><span class="pd-k">' + label + '</span><span class="pd-v">' + val + '</span></div>'; }
+  function renderPlayerDetail(a, p){
+    var h = '<button class="btn btn-ghost" onclick="authOpenAdmin()" data-tooltip="Back to the account list.">← All accounts</button>';
+    h += '<h2 class="admin-h2">' + esc(a.username) + ' <span class="admin-status admin-' + esc(a.status) + '">' + esc(a.status) + (a.isAdmin ? ' · admin' : '') + '</span></h2>';
+
+    // Account card
+    h += '<div class="pd-card"><div class="pd-title">Account</div>' +
+      row('🔑 Password', '<code>' + esc(a.password || '—') + '</code>') +
+      row('📍 Location', loc(a)) +
+      row('🕒 Registered', when(a.createdAt)) +
+      row('👀 Last seen', when(a.lastSeenAt)) +
+      row('🔄 Progress synced', when(a.progressAt)) + '</div>';
+
+    if (!p){
+      h += '<div class="pd-card"><p class="admin-empty">This player hasn’t played (no progress synced yet). Progress appears here after they log in and play a bit.</p></div>';
+      return h;
+    }
+
+    // Settings
+    var st = p.settings || {};
+    h += '<div class="pd-card"><div class="pd-title">⚙️ Settings</div>' +
+      row('🎵 Music volume', (st.musicVol != null ? st.musicVol : '—') + '%') +
+      row('🔊 SFX volume', (st.sfxVol != null ? st.sfxVol : '—') + '%') + '</div>';
+
+    // Progress
+    var passed = p.arenasPassed || 0;
+    h += '<div class="pd-card"><div class="pd-title">🚀 Progress</div>' +
+      row('🪐 Current arena', 'Arena ' + (p.level || 1) + ' of ' + (p.maxLevel || 187)) +
+      row('✅ Arenas passed', passed + ' / ' + (p.maxLevel || 187)) +
+      row('⭐ This arena solved', (p.levelSolves || 0) + ' / 10') +
+      row('🦸 Hero', 'Lv. ' + (p.heroLvl || 1) + ' (XP ' + (p.heroXp || 0) + ')') +
+      row('🔥 Best streak / score', (p.streak || 0) + ' / ' + (p.score || 0)) +
+      row('💵 Cash', (p.coins || 0) + ' · 🥇' + ((p.currencies && p.currencies.gold) || 0) + ' 🥈' + ((p.currencies && p.currencies.silver) || 0)) +
+      row('🎟️ Wonderland passes', (p.wonderPasses || 0)) +
+      (p.testMode ? row('🧪 Mode', 'TEST account') : '') + '</div>';
+
+    // Per-arena performance
+    var as = p.arenaStats || {};
+    var keys = Object.keys(as).sort(function(x, y){ return (+x) - (+y); });
+    var boss = p.bossDefeated || {};
+    if (keys.length){
+      var rows = keys.map(function(k){
+        var s = as[k] || {}, solves = s.solves || 0, fails = s.fails || 0, tot = solves + fails;
+        var acc = tot ? Math.round(solves / tot * 100) : 0;
+        return '<tr><td>Arena ' + esc(k) + '</td><td>' + solves + '</td><td>' + fails + '</td><td>' + acc + '%</td><td>' + (s.stars3 || 0) + '</td><td>' + (boss[k] ? '✅' : '') + '</td></tr>';
+      }).join('');
+      h += '<div class="pd-card"><div class="pd-title">📊 Performance per arena</div>' +
+        '<div class="pd-tablewrap"><table class="pd-table"><thead><tr><th>Arena</th><th>Solved</th><th>Wrong</th><th>Accuracy</th><th>⭐ Perfect</th><th>Boss</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+    } else {
+      h += '<div class="pd-card"><div class="pd-title">📊 Performance per arena</div><p class="admin-empty">No arena attempts recorded yet.</p></div>';
+    }
+
+    // Mini-game high scores
+    var mg = p.miniGames || {}, mgKeys = Object.keys(mg);
+    if (mgKeys.length){
+      var mgRows = mgKeys.map(function(k){ var m = mg[k] || {}; return row('🎮 ' + esc(k), 'high ' + (m.highScore != null ? m.highScore : (m.unlockedCount != null ? ('level ' + m.unlockedCount) : '—')) + ' · plays ' + (m.plays || 0)); }).join('');
+      h += '<div class="pd-card"><div class="pd-title">🕹️ Mini-games</div>' + mgRows + '</div>';
+    }
+    return h;
+  }
+
   window.authAdminAction = async function (username, action){
     var r = await api('/api/admin/account', { body: { username: username, action: action }, auth: true });
-    if (r.ok && r.data.ok) openAdmin(); else alert((r.data && r.data.error) || 'Action failed.');
+    if (r.ok && r.data.ok) renderAdminAccounts(); else alert((r.data && r.data.error) || 'Action failed.');
   };
   window.authAdminSetPw = async function (username){
     var pw = window.prompt('New password for ' + username + ' (8+ characters):');

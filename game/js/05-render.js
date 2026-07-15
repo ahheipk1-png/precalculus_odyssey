@@ -496,6 +496,8 @@
   // choice) — input-format slips (letters in a number box) don't count.
   function registerFail(){
     state.roomFails = (state.roomFails || 0) + 1;
+    if (!state.arenaStats) state.arenaStats = {};
+    (state.arenaStats[state.level] || (state.arenaStats[state.level] = { solves: 0, fails: 0 })).fails++;
     renderLives();
     if (state.roomFails >= MAX_ROOM_FAILS) {
       setTimeout(showGameOver, 450);
@@ -588,6 +590,10 @@
     state.score += 10 * rating;
     state.streak++;
     state.levelSolves++;
+    if (!state.arenaStats) state.arenaStats = {};
+    var _as = state.arenaStats[oldLevel] || (state.arenaStats[oldLevel] = { solves: 0, fails: 0 });
+    _as.solves++;
+    if (rating === 3) _as.stars3 = (_as.stars3 || 0) + 1;   // perfect (par) solves
     state.solveClock = (state.solveClock || 0) + 1; // the Farm's growth clock (18-farm.js)
     
     // Gate logic moved to the end of handleSolved
