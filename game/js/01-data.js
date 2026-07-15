@@ -25,7 +25,7 @@
     inventory: {},     // consumables/ingredients: item id -> count (see ITEMS in 09-items.js)
     poisonArmed: false,// a Poison Vial was used — the NEXT battle's monster takes poison damage
     solveClock: 0,     // total problems ever solved — the farm's growth clock ("1 planet of practice" = 9 solves)
-    roomFails: 0,      // wrong answers in the CURRENT room; 5 = game over (room restarts). Perfect room = 0.
+    roomFails: 0,      // wrong answers in the CURRENT room (stats + perfect-run bonus only — no game over). Perfect room = 0.
     farm: { plots: [], animals: [], houses: 1 }, // see 18-farm.js
     miniGames: {},     // Wonderland mini-game progress: id -> { unlockedCount, firstCleared, best, plays, highScore }. See 17-wonderland.js / 34-wonder-shell.js.
     settings: { musicVol: 38, sfxVol: 72 }, // volume 0-100, adjustable in the Settings panel; saved to profile/cloud. See 13-audio.js.

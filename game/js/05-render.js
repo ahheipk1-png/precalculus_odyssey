@@ -311,6 +311,8 @@
     }
     if (typeof state.qChances !== 'number') state.qChances = 5;
     state.qChances--;
+    _failStats();
+    renderLives();
     wobbleBeam();
     var btns = _mcButtons();
     if (typeof wrongBtnIdx === 'number' && btns[wrongBtnIdx]){ btns[wrongBtnIdx].classList.remove('mc-selected'); btns[wrongBtnIdx].classList.add('mc-wrong'); btns[wrongBtnIdx].disabled = true; }
@@ -560,32 +562,75 @@
     setTimeout(function(){ el.toast.classList.remove('show'); }, 1800);
   }
 
-  // ---------- Room lives: 5 wrong answers in one room = game over (the room restarts) ----------
-  var MAX_ROOM_FAILS = 5;
+  // ---------- Question chances: 5 wrong on ONE question = reveal the answer & move on ----------
+  // (The old "5 wrong = the whole planet restarts" game-over is gone — no scary resets.)
+  var MAX_ROOM_FAILS = 5;   // now: chances per QUESTION
 
   function renderLives(){
     var row = document.getElementById('livesRow');
     if (!row) return;
-    var left = Math.max(0, MAX_ROOM_FAILS - (state.roomFails || 0));
+    var left = Math.max(0, (typeof state.qChances === 'number') ? state.qChances : MAX_ROOM_FAILS);
     var s = '';
     for (var i = 0; i < MAX_ROOM_FAILS; i++) s += (i < left) ? '❤️' : '🖤';
     row.textContent = s;
-    row.title = left + ' tr' + (left === 1 ? 'y' : 'ies') + ' left on this planet';
+    row.title = left + ' tr' + (left === 1 ? 'y' : 'ies') + ' left on this question';
   }
 
-  // Called on every genuinely WRONG answer (bad operation, wrong bracket expansion, wrong MC
-  // choice) — input-format slips (letters in a number box) don't count.
-  function registerFail(){
+  // Stats bookkeeping for a wrong answer (roomFails now only tracks the "perfect run" bonus
+  // and the admin dashboard — it never triggers a restart).
+  function _failStats(){
     state.roomFails = (state.roomFails || 0) + 1;
     if (!state.arenaStats) state.arenaStats = {};
     (state.arenaStats[state.level] || (state.arenaStats[state.level] = { solves: 0, fails: 0 })).fails++;
-    renderLives();
-    if (state.roomFails >= MAX_ROOM_FAILS) {
-      setTimeout(showGameOver, 450);
-    } else if (state.roomFails === MAX_ROOM_FAILS - 1) {
-      showToast('⚠️ Careful — only 1 try left on this planet!');
-    }
     saveGame();
+  }
+
+  // Called on every genuinely WRONG answer in the balance/graph modes (bad operation, wrong
+  // bracket expansion, wrong point) — input-format slips don't count. Burns one of the 5
+  // chances on the CURRENT question; out of chances = show the answer and advance.
+  function registerFail(){
+    _failStats();
+    if (typeof state.qChances !== 'number') state.qChances = MAX_ROOM_FAILS;
+    state.qChances--;
+    renderLives();
+    if (state.qChances <= 0) {
+      setTimeout(revealCurrentAnswer, 450);
+    } else if (state.qChances === 1) {
+      showToast('⚠️ Careful — only 1 try left on this question!');
+    }
+  }
+
+  // Out of chances: show this question's correct answer clearly, then load the next one.
+  function revealCurrentAnswer(){
+    if (state.locked) return;
+    state.locked = true;
+    state.streak = 0;
+    setControlsEnabled(false);
+    var msg;
+    if (state.mode === 'bracket'){
+      state.mode = 'numeric';
+      state.eq = { coeff: state.bracketEq.coeffA, denom: 1, add: state.bracketEq.coeffA * state.bracketEq.innerK, result: state.bracketEq.rhs };
+      updatePanelVisibility();
+    }
+    if (state.mode === 'numeric'){
+      state.eq = { coeff: 1, denom: 1, add: 0, result: state.problem.x };
+      renderEquation();
+      el.beamGroup.classList.add('balanced');
+      msg = 'x = ' + fmt(state.problem.x);
+    } else if (state.mode === 'formula'){
+      var final = solveFully(state.eq);
+      state.eq = { coeffToken: null, addToken: null, addSign: 1, resultText: final };
+      renderEquation();
+      el.beamGroup.classList.add('balanced');
+      msg = state.problem.subject + ' = ' + exprToText(final);
+    } else {
+      var reg = modeRegistry[state.mode];
+      msg = (reg && reg.describeAnswer) ? String(reg.describeAnswer()) : '';
+    }
+    showMsg('Out of chances! The answer was <b>' + mathPretty(msg) + '</b>. On to the next one!', true);
+    if (typeof playSfx === 'function') playSfx('wrong');
+    updateStats();
+    setTimeout(loadProblem, reduceMotion ? 350 : 2400);
   }
 
   function showGameOver(){
