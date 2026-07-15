@@ -184,3 +184,104 @@
     if (g.interactive === 'line') return 'y = ' + g.targetLine.m + 'x + ' + g.targetLine.c;
     return '';
   }
+
+  // ---------- Interval illustration (for "A graph has ..." prose questions) ----------
+  // Draws the described graph from parsed interval notation (see _parseIntervals, 04-logic.js).
+  // axis 'x' = domain question (curve over x-intervals); axis 'y' = range question.
+  function buildIntervalIllu(illu){
+    try {
+      return (illu.axis === 'y') ? _illuRange(illu.intervals) : _illuDomain(illu.intervals);
+    } catch (e) { return ''; }
+  }
+
+  var _ILLU_CURVE = '#66e0ff', _ILLU_AXIS = '#5a6c84', _ILLU_BG = '#101b2c', _ILLU_TXT = '#9fb3c8';
+
+  function _illuDot(x, y, closed){
+    return '<circle cx="' + x + '" cy="' + y + '" r="6" fill="' + (closed ? _ILLU_CURVE : _ILLU_BG) +
+      '" stroke="' + _ILLU_CURVE + '" stroke-width="3"/>';
+  }
+  function _illuArrow(x, y, dir){    // dir: 1 = right, -1 = left, -2 = up
+    if (dir === -2) return '<path d="M' + (x - 6) + ' ' + (y + 9) + ' L' + x + ' ' + y + ' L' + (x + 6) + ' ' + (y + 9) + '" fill="none" stroke="' + _ILLU_CURVE + '" stroke-width="3"/>';
+    return '<path d="M' + (x - dir * 9) + ' ' + (y - 6) + ' L' + x + ' ' + y + ' L' + (x - dir * 9) + ' ' + (y + 6) + '" fill="none" stroke="' + _ILLU_CURVE + '" stroke-width="3"/>';
+  }
+
+  function _illuDomain(raw){
+    // merge open-open neighbours sharing an endpoint into one curve with a HOLE
+    var iv = raw.slice().sort(function(a, b){ return a.lo - b.lo; });
+    var merged = [], holes = [];
+    iv.forEach(function(cur){
+      var prev = merged[merged.length - 1];
+      if (prev && !cur.point && !prev.point && prev.hi === cur.lo && !prev.hiC && !cur.loC){
+        holes.push(cur.lo); prev.hi = cur.hi; prev.hiC = cur.hiC;
+      } else merged.push({ lo: cur.lo, hi: cur.hi, loC: cur.loC, hiC: cur.hiC, point: cur.point });
+    });
+    var fin = [];
+    merged.forEach(function(v){ if (isFinite(v.lo)) fin.push(v.lo); if (isFinite(v.hi)) fin.push(v.hi); });
+    holes.forEach(function(h){ fin.push(h); });
+    if (!fin.length){ fin = [-4, 4]; }
+    var lo = Math.min.apply(null, fin) - 2, hi = Math.max.apply(null, fin) + 2;
+    var W = 440, H = 190, L = 26, R = 414;
+    function X(v){ return L + (v - lo) / (hi - lo) * (R - L); }
+    function CY(x, k){ return 86 - 32 * Math.sin(x / 46 + k * 1.9); }
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="graph">';
+    s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="12" fill="' + _ILLU_BG + '"/>';
+    s += '<line x1="14" y1="158" x2="426" y2="158" stroke="' + _ILLU_AXIS + '" stroke-width="2"/>';
+    s += '<path d="M420 152 L428 158 L420 164" fill="none" stroke="' + _ILLU_AXIS + '" stroke-width="2"/>';
+    var ticks = {};
+    fin.forEach(function(v){ ticks[v] = 1; });
+    Object.keys(ticks).forEach(function(v){
+      var tx = X(parseFloat(v));
+      s += '<line x1="' + tx + '" y1="153" x2="' + tx + '" y2="163" stroke="' + _ILLU_AXIS + '" stroke-width="2"/>';
+      s += '<text x="' + tx + '" y="180" font-size="13" text-anchor="middle" fill="' + _ILLU_TXT + '">' + v + '</text>';
+    });
+    merged.forEach(function(v, k){
+      if (v.point){ s += _illuDot(X(v.lo), CY(X(v.lo), k), true); return; }
+      var A = isFinite(v.lo) ? X(v.lo) : 18, B = isFinite(v.hi) ? X(v.hi) : 422;
+      var pts = [];
+      for (var i = 0; i <= 30; i++){ var x = A + (B - A) * i / 30; pts.push(x.toFixed(1) + ',' + CY(x, k).toFixed(1)); }
+      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + _ILLU_CURVE + '" stroke-width="3.5" stroke-linecap="round"/>';
+      if (isFinite(v.lo)) s += _illuDot(A, CY(A, k), v.loC); else s += _illuArrow(18, CY(18, k), -1);
+      if (isFinite(v.hi)) s += _illuDot(B, CY(B, k), v.hiC); else s += _illuArrow(422, CY(422, k), 1);
+      holes.forEach(function(h){ if (h > v.lo && h < v.hi) s += _illuDot(X(h), CY(X(h), k), false); });
+    });
+    return s + '</svg>';
+  }
+
+  function _illuRange(raw){
+    var v = raw[0] || { lo: 1, hi: Infinity, loC: true, hiC: false };
+    var W = 440, H = 190;
+    var yLow = 138, yHigh = 42;                 // canvas y for the range's low/high value
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="graph">';
+    s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="12" fill="' + _ILLU_BG + '"/>';
+    s += '<line x1="60" y1="170" x2="60" y2="16" stroke="' + _ILLU_AXIS + '" stroke-width="2"/>';
+    s += '<path d="M54 24 L60 14 L66 24" fill="none" stroke="' + _ILLU_AXIS + '" stroke-width="2"/>';
+    function guide(y, label){
+      s += '<line x1="60" y1="' + y + '" x2="426" y2="' + y + '" stroke="' + _ILLU_AXIS + '" stroke-width="1.5" stroke-dasharray="5 5" opacity="0.55"/>';
+      s += '<line x1="55" y1="' + y + '" x2="65" y2="' + y + '" stroke="' + _ILLU_AXIS + '" stroke-width="2"/>';
+      s += '<text x="46" y="' + (y + 5) + '" font-size="13" text-anchor="end" fill="' + _ILLU_TXT + '">' + label + '</text>';
+    }
+    var pts = [], i, t;
+    if (isFinite(v.lo) && !isFinite(v.hi)){          // [a, inf) — upward parabola, vertex = lowest point
+      guide(yLow, v.lo);
+      for (i = -20; i <= 20; i++){ t = i / 20; pts.push((240 + 150 * t).toFixed(1) + ',' + (yLow - (yLow - 26) * t * t).toFixed(1)); }
+      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + _ILLU_CURVE + '" stroke-width="3.5" stroke-linecap="round"/>';
+      s += _illuArrow(90, 26, -2) + _illuArrow(390, 26, -2);
+      s += _illuDot(240, yLow, v.loC);
+    } else if (!isFinite(v.lo) && isFinite(v.hi)){   // (-inf, b] — downward parabola, vertex = highest point
+      guide(yHigh, v.hi);
+      for (i = -20; i <= 20; i++){ t = i / 20; pts.push((240 + 150 * t).toFixed(1) + ',' + (yHigh + (160 - yHigh) * t * t).toFixed(1)); }
+      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + _ILLU_CURVE + '" stroke-width="3.5" stroke-linecap="round"/>';
+      s += _illuDot(240, yHigh, v.hiC);
+    } else if (isFinite(v.lo) && isFinite(v.hi)){    // [a, b] — a wave that touches both bounds
+      guide(yLow, v.lo); guide(yHigh, v.hi);
+      var mid = (yLow + yHigh) / 2, amp = (yLow - yHigh) / 2;
+      for (i = 0; i <= 60; i++){ var x = 84 + i * (330 / 60); pts.push(x.toFixed(1) + ',' + (mid - amp * Math.sin((i / 60) * Math.PI * 2.5)).toFixed(1)); }
+      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + _ILLU_CURVE + '" stroke-width="3.5" stroke-linecap="round"/>';
+      s += _illuDot(84 + (0.2 * 330), yHigh, v.hiC);           // peak touches the top bound
+      s += _illuDot(84 + (0.6 * 330), yLow, v.loC);            // trough touches the bottom bound
+    } else {                                          // all reals — a rising S-curve
+      for (i = 0; i <= 40; i++){ var x2 = 70 + i * (330 / 40); pts.push(x2.toFixed(1) + ',' + (92 - 60 * Math.tanh((i - 20) / 9)).toFixed(1)); }
+      s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + _ILLU_CURVE + '" stroke-width="3.5" stroke-linecap="round"/>';
+    }
+    return s + '</svg>';
+  }

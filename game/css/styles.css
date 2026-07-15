@@ -2241,3 +2241,7 @@
     .gameover-card{ animation:none; }
   }
 
+
+  /* Drawn graph illustration under "A graph has ..." question prompts */
+  .qp-illu{ display:flex; justify-content:center; margin-top:14px; }
+  .qp-illu svg{ max-width:100%; height:auto; }

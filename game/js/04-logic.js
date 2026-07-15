@@ -417,6 +417,24 @@
     return out.length >= 2 ? out.slice(0, 4) : null;
   }
 
+  // Parse interval notation out of an answer string: "[-4,1) union [3,5) union (5,infinity)"
+  // -> [{lo,hi,loC,hiC}...] plus {5}-style singletons. Used to DRAW the described graph.
+  function _parseIntervals(s){
+    s = String(s || '').toLowerCase()
+      .replace(/∞|infinity|\binf\b/g, 'inf')
+      .replace(/union|∪/g, ' U ');
+    var out = [], m;
+    var re = /([\[\(])\s*(-?\d+(?:\.\d+)?|-inf)\s*,\s*(-?\d+(?:\.\d+)?|inf)\s*([\]\)])/g;
+    while ((m = re.exec(s))){
+      out.push({ lo: m[2] === '-inf' ? -Infinity : parseFloat(m[2]),
+                 hi: m[3] === 'inf' ? Infinity : parseFloat(m[3]),
+                 loC: m[1] === '[', hiC: m[4] === ']' });
+    }
+    var re2 = /\{\s*(-?\d+(?:\.\d+)?)\s*\}/g;
+    while ((m = re2.exec(s))) out.push({ lo: parseFloat(m[1]), hi: parseFloat(m[1]), loC: true, hiC: true, point: true });
+    return out;
+  }
+
   // Shape signature of a choice: does it look like "equation; solution", a single equation,
   // or a plain value? If the RIGHT answer's shape is unique among the choices, a kid can pick
   // it by FORMAT alone without doing any maths.
@@ -479,6 +497,14 @@
     var meta = { templateId: t.templateId, phaseId: phaseId, questionType: t.questionType,
       hintSequenceId: t.hintSequenceId, tutorialId: t.tutorialId, socraticId: t.socraticId,
       explanation: t.explanation, distractorVia: via };
+    // "A graph has a closed point at x=-4 …" questions describe a picture in words — draw it!
+    // The correct answer IS the interval notation, so we parse it and render the curve below
+    // the prompt (31-graph.js buildIntervalIllu). Reading the picture is the skill being tested.
+    var exs = String(t.example || '');
+    if (/graph/i.test(String(t.questionType || '') + ' ' + exs) && /domain|range/i.test(exs)){
+      var iv = _parseIntervals(ans);
+      if (iv.length) meta.graphIllu = { axis: /range/i.test(exs) ? 'y' : 'x', intervals: iv };
+    }
     if (ds.length >= 1 && ans){
       var choices = [ans].concat(ds);
       choices = choices.filter(function(v, i){ return choices.indexOf(v) === i; }).slice(0, 5);

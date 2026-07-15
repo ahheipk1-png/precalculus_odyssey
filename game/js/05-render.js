@@ -232,12 +232,15 @@
     }
 
     // New question styles: fill the prompt + choices/input.
+    // "A graph has …" questions get the described graph DRAWN below the words (31-graph.js).
+    var illu = (state.problem && state.problem.graphIllu && typeof buildIntervalIllu === 'function')
+      ? '<div class="qp-illu">' + buildIntervalIllu(state.problem.graphIllu) + '</div>' : '';
     if (controls === 'mcOnly'){
       el.expandBtn.hidden = true;
-      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>';
+      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>' + illu;
       renderMcOnlyChoices();
     } else if (controls === 'directInput'){
-      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>';
+      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>' + illu;
       if (el.directInput) el.directInput.value = '';
     } else if (controls === 'comingSoon'){
       if (el.questionPrompt) el.questionPrompt.innerHTML =
