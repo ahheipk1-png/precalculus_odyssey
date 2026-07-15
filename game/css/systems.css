@@ -120,7 +120,7 @@
      ============================================================================ */
   .start-screen-overlay.auth-dock-mode{
     display:block; padding:0; overflow:auto; isolation:isolate;
-    background:#050918 url('../assets/welcome-hero.png?v=1') center top / cover no-repeat;
+    background:#050918 url('../assets/welcome-hero.png?v=2') center top / cover no-repeat;
   }
   /* Darken only the bottom so the title/compass stay clear */
   .auth-dock-mode::after{
