@@ -309,7 +309,7 @@
       handleSolved();
       return;
     }
-    if (typeof state.qChances !== 'number') state.qChances = 5;
+    if (typeof state.qChances !== 'number') state.qChances = MAX_ROOM_FAILS;
     state.qChances--;
     _failStats();
     renderLives();
@@ -500,7 +500,7 @@
     updateLevelProgress();
     renderScene();
     hideHintPanel();
-    state.qChances = 5;           // 5 chances per question before the answer is revealed
+    state.qChances = MAX_ROOM_FAILS;   // fresh chances for each question (3)
     state.qSelected = null;
     showMsg('', false);
     el.movesInfo.textContent = 'Moves: 0';
@@ -562,9 +562,10 @@
     setTimeout(function(){ el.toast.classList.remove('show'); }, 1800);
   }
 
-  // ---------- Question chances: 5 wrong on ONE question = reveal the answer & move on ----------
-  // (The old "5 wrong = the whole planet restarts" game-over is gone — no scary resets.)
-  var MAX_ROOM_FAILS = 5;   // now: chances per QUESTION
+  // ---------- Question chances: 3 wrong on ONE question = reveal the answer & move on ----------
+  // (3, not 5 — with 4-5 multiple-choice options, 5 chances made questions impossible to miss.
+  //  The old "wrong answers restart the whole planet" game-over is gone — no scary resets.)
+  var MAX_ROOM_FAILS = 3;   // chances per QUESTION
 
   function renderLives(){
     var row = document.getElementById('livesRow');

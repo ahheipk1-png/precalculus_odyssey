@@ -384,14 +384,15 @@
   // number. The wrong answers LOOK like the right one, so the format never gives it away.
   function _exprVariants(ans){
     var s = _normChoice(ans);
-    if (!s || s.length > 48 || !/\d/.test(s)) return null;
+    if (!s || s.length > 60 || !/\d/.test(s)) return null;
     var out = [], i, c;
     var flips = 0;
     for (i = 0; i < s.length && flips < 3; i++){
       c = s.charAt(i);
-      if ((c === '+' || c === '-') && /[0-9a-zA-Z(]/.test(s.charAt(i + 1) || '')){
+      // flip "+45t", "- 3", "x+2" … (sign may be followed by a space: "20 + 45t")
+      if ((c === '+' || c === '-') && /^\s?[0-9a-zA-Z(]/.test(s.slice(i + 1, i + 3))){
         var v = s.slice(0, i) + (c === '+' ? '-' : '+') + s.slice(i + 1);
-        v = v.replace(/([=(,<\s])\+/g, '$1').replace(/^\+/, '');   // "x=+3" -> "x=3"
+        v = v.replace(/([=(,<\s])\+(?=\d)/g, '$1').replace(/^\+/, '');   // "x=+3" -> "x=3"
         out.push(v); flips++;
       }
     }
@@ -401,10 +402,33 @@
       if (nums.length > 1){
         var last = nums[nums.length - 1], li = s.lastIndexOf(last);
         out.push(s.slice(0, li) + String(+last + 1) + s.slice(li + last.length));
+        // swap the first two DISTINCT numbers — the classic "used the numbers backwards" mistake
+        // ("20 + 45t = 155" -> "45 + 20t = 155")
+        var a = nums[0], b = nums.find(function(x){ return x !== nums[0]; });
+        if (b){
+          var ia = s.indexOf(a), ib = s.indexOf(b, ia + a.length);
+          if (ia >= 0 && ib > ia){
+            out.push(s.slice(0, ia) + b + s.slice(ia + a.length, ib) + a + s.slice(ib + b.length));
+          }
+        }
       }
     }
     out = out.filter(function(d, ix, arr){ return d !== s && arr.indexOf(d) === ix; });
     return out.length >= 2 ? out.slice(0, 4) : null;
+  }
+
+  // Shape signature of a choice: does it look like "equation; solution", a single equation,
+  // or a plain value? If the RIGHT answer's shape is unique among the choices, a kid can pick
+  // it by FORMAT alone without doing any maths.
+  function _choiceSig(s){
+    s = _normChoice(s);
+    var eqs = (s.match(/=/g) || []).length;
+    return (s.indexOf(';') >= 0 ? 'semi' : '') + '|' + (eqs >= 2 ? 'multi' : (eqs === 1 ? 'eq' : 'plain'));
+  }
+  function _formatGiveaway(ans, ds){
+    var a = _choiceSig(ans);
+    if (a === '|plain' || a === '|eq') return false;      // common shapes — no giveaway
+    return ds.every(function(d){ return _choiceSig(d) !== a; });
   }
 
   // Last resort: real answers from sibling templates of the same phase, same shape.
@@ -444,6 +468,13 @@
       }
     } else {
       ds = raw.map(_cleanChoice).filter(function(d){ return d && d !== ans; });
+      // Even AUTHORED distractors can leak the answer by shape (e.g. the only choice that reads
+      // "20 + 45t = 155; t = 3 hours." among bare "t = …" options). Rebuild same-format
+      // near-misses from the answer so every choice looks alike.
+      if (ds.length >= 1 && _formatGiveaway(ans, ds)){
+        var fv = _exprVariants(ans);
+        if (fv && fv.length >= 2){ ds = fv; via = 'format-fix'; }
+      }
     }
     var meta = { templateId: t.templateId, phaseId: phaseId, questionType: t.questionType,
       hintSequenceId: t.hintSequenceId, tutorialId: t.tutorialId, socraticId: t.socraticId,
