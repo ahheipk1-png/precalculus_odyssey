@@ -283,6 +283,7 @@
             '<div class="wond-card-desc">Drag 1–4 tiles so every row, column &amp; box has 1–4.</div>' +
             '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openSudoku\')" data-tooltip="A bite-size 4×4 Sudoku. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
+          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — three 7️⃣ pays 50× your bet!', 'openSlots') +
           _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring — classic warehouse puzzling!', 'openCargo') +
           _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes!', 'openGlacier') +
           _wondCard('🗼', 'Sky Stacker', 'Drop the swinging block dead-center and stack to the stars!', 'openStacker') +
