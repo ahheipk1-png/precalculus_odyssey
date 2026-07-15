@@ -75,29 +75,71 @@
     }).join('') + '</div>';
   }
 
+  // Inline icons (match the login design reference: game/assets/precalculus_odyssey_login_designed_fixed.html).
+  var AUTH_USER_ICON = '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4.8 20c.7-4.1 3.1-6.2 7.2-6.2s6.5 2.1 7.2 6.2"></path></svg>';
+  var AUTH_LOCK_ICON = '<svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>';
+
+  // Welcome screen = the illustrated hero (welcome-hero.png) as backdrop + a two-wing "auth dock"
+  // at the bottom straddling the portal: username (left wing) + tabs, password (right wing) + Log in.
+  // Every control is wired to the real auth flow (the reference mockup only had placeholders).
   function renderStart(){
     var screen = document.getElementById('startScreen');
     var card = screen && screen.querySelector('.start-screen-card');
     if (!card || !screen) return;
-    // The illustrated hero (game/assets/welcome-hero.png) supplies the title, tagline, intro,
-    // artwork and feature strip; we overlay only a compact, functional login panel. Drop any
-    // decor injected by an earlier CSS-hero render.
-    screen.classList.remove('auth-hero');
-    screen.classList.add('auth-photo');
+    screen.classList.remove('auth-hero', 'auth-photo');
+    screen.classList.add('auth-dock-mode');
     ['.auth-stars', '.auth-decor'].forEach(function (sel){ var e = screen.querySelector(sel); if (e && e.parentNode) e.parentNode.removeChild(e); });
+    var isLogin = authTab === 'login';
     card.innerHTML =
-      '<div class="auth-photo-head"><span class="auth-logo">✦</span>' +
-        '<span class="auth-photo-title">Precalculus Odyssey</span>' +
-        '<span class="auth-photo-sub">' + (authTab === 'login' ? 'Sign in to continue your journey' : 'Request an account to begin') + '</span></div>' +
-      '<div class="auth-tabs">' +
-        '<button type="button" class="auth-tab' + (authTab === 'login' ? ' active' : '') + '" onclick="authSetTab(\'login\')">Log in</button>' +
-        '<button type="button" class="auth-tab' + (authTab === 'register' ? ' active' : '') + '" onclick="authSetTab(\'register\')">Request account</button>' +
-      '</div>' +
-      formHtml() +
-      '<p class="auth-msg" id="authMsg"></p>';
+      '<section class="auth-dock" aria-label="Sign in to Precalculus Odyssey">' +
+        '<div class="dock-wing left">' +
+          '<div class="wing-top">' +
+            '<div class="welcome-copy">' +
+              '<p class="eyebrow">Account access</p>' +
+              '<h2 class="wing-title">' + (isLogin ? 'Continue your journey' : 'Start your journey') + '</h2>' +
+            '</div>' +
+            '<div class="tabs">' +
+              '<button type="button" class="tab' + (isLogin ? ' active' : ' secondary') + '" onclick="authSetTab(\'login\')">Log in</button>' +
+              '<button type="button" class="tab' + (!isLogin ? ' active' : ' secondary') + '" onclick="authSetTab(\'register\')">Request account</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="field-wrap">' +
+            '<span class="field-icon" aria-hidden="true">' + AUTH_USER_ICON + '</span>' +
+            '<input class="field" type="text" id="authUser" placeholder="' + (isLogin ? 'Username' : 'Choose a username (3–16)') + '" aria-label="Username" autocomplete="username" maxlength="16" />' +
+          '</div>' +
+        '</div>' +
+        '<div class="portal-gap" aria-hidden="true"><span class="journey-marker">Your path awaits</span></div>' +
+        '<div class="dock-wing right">' +
+          '<div class="wing-top">' +
+            '<div class="welcome-copy">' +
+              '<p class="eyebrow">' + (isLogin ? 'Welcome back' : 'New here') + '</p>' +
+              '<h2 class="wing-title">' + (isLogin ? 'Enter the Odyssey' : 'Join the Odyssey') + '</h2>' +
+            '</div>' +
+            (isLogin
+              ? '<p class="forgot">Forgot password? <span role="button" tabindex="0" onclick="authRecover()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();authRecover();}">Recover access</span></p>'
+              : '<p class="forgot forgot-note">An admin approves new accounts.</p>') +
+          '</div>' +
+          '<div class="password-row">' +
+            '<div class="field-wrap">' +
+              '<span class="field-icon" aria-hidden="true">' + AUTH_LOCK_ICON + '</span>' +
+              '<input class="field" type="password" id="authPass" placeholder="' + (isLogin ? 'Password' : 'Choose a password (8+)') + '" aria-label="Password" autocomplete="' + (isLogin ? 'current-password' : 'new-password') + '" maxlength="64" />' +
+              '<button type="button" class="auth-eye" id="authEye" onclick="authToggleEye()" aria-label="Show password" title="Show / hide password">👁</button>' +
+            '</div>' +
+            '<button type="button" class="login-button" onclick="' + (isLogin ? 'authLogin()' : 'authRegister()') + '">' + (isLogin ? 'Log in' : 'Request') + ' <span class="arrow" aria-hidden="true">▶</span></button>' +
+          '</div>' +
+          '<p class="auth-msg" id="authMsg"></p>' +
+        '</div>' +
+      '</section>';
+    var user = document.getElementById('authUser');
+    if (user) user.addEventListener('keydown', function (ev){ if (ev.key === 'Enter'){ ev.preventDefault(); var p = document.getElementById('authPass'); if (p) p.focus(); } });
     var pass = document.getElementById('authPass');
     if (pass) pass.addEventListener('keydown', function (ev){ if (ev.key === 'Enter'){ ev.preventDefault(); authTab === 'login' ? window.authLogin() : window.authRegister(); } });
   }
+
+  // No self-serve password reset exists (accounts are admin-approved) — guide the player honestly.
+  window.authRecover = function (){
+    msg('Password resets are handled by an admin — ask them to set a new password for you.', 'ok');
+  };
 
   // Show / hide the password (classic eye toggle).
   window.authToggleEye = function(){
