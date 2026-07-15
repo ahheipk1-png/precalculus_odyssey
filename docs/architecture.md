@@ -82,8 +82,9 @@ weapon/enemy/spell) is a config edit, not a code change.** Full schemas + recipe
 - **RPG-systems modules added (2026-07-13 full build):** `21-catalogue.js` (weaponSVG + Wu Xing
   `elementMultiplier` + gear stat helpers), `22-profile.js`, `24-trading.js`, `25-nav.js` (Star
   Atlas + goToEarth + the "About this body" info modal, which offers a **📷 See real photo**
-  lightbox — `BODY_PHOTOS`, verified NASA/Wikimedia public-domain images — only for the ~23
-  Sol-System bodies we actually have a photo for; exoplanets/stars/imagined worlds get no button),
+  lightbox — `BODY_PHOTOS` maps a normalised body name to a JPEG bundled LOCALLY under
+  `game/assets/bodies/` (NASA/Wikimedia public-domain, ~640px, no external URLs) — only for the
+  ~23 Sol-System bodies we have a photo for; exoplanets/stars/imagined worlds get no button),
   `26-spells.js` (status engine, loads after `06` to override `openSpellsMenu`),
   `27-hoohey.js`. All load before `07-main.js`. Views: `#profileView`/`#tradingView`/
   `#starAtlasView`/`#hooHeyView` (+ the hub reframed as **Earth** in `15-map.js`). Global nav lives

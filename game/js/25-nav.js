@@ -169,42 +169,27 @@
     return 'planet';
   }
 
-  // Real NASA / public-domain photographs (Wikimedia Commons, verified to load) for the
-  // Sol-System bodies. Keyed by a normalised body name. Only bodies we actually have a real
-  // photo for appear here, so distant exoplanets, stars, black holes and imagined worlds get
-  // NO "real photo" button. Commons Special:FilePath 302-redirects to the current file.
-  var BODY_PHOTO_BASE = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
+  // Real NASA / public-domain photographs of the Sol-System bodies, bundled LOCALLY under
+  // game/assets/bodies/ (downloaded from Wikimedia Commons, ~640px JPEGs — no external URLs,
+  // works offline). Keyed by a normalised body name; only bodies we actually have a photo for
+  // appear here, so distant exoplanets, stars, black holes and imagined worlds get NO button.
+  // Bump BODY_PHOTO_VER if you ever replace an image so browsers don't serve a stale cache.
+  var BODY_PHOTO_BASE = 'assets/bodies/';
+  var BODY_PHOTO_VER = '1';
   var BODY_PHOTOS = {
-    'the sun': "The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA's_Solar_Dynamics_Observatory_-_20100819.jpg",
-    'mercury': 'Mercury_in_color_-_Prockter07-edit1.jpg',
-    'venus': 'Venus_from_Mariner_10.jpg',
-    'earth': 'The_Earth_seen_from_Apollo_17.jpg',
-    'the moon': 'FullMoon2010.jpg',
-    'mars': 'OSIRIS_Mars_true_color.jpg',
-    'phobos': 'Phobos_colour_2008.jpg',
-    'deimos': 'Deimos-MRO.jpg',
-    'ceres': 'Ceres_-_RC3_-_Haulani_Crater_(22381131691)_(cropped).jpg',
-    'vesta': 'Vesta_in_natural_color.jpg',
-    'jupiter': 'Jupiter_and_its_shrunken_Great_Red_Spot.jpg',
-    'io': 'Io_highest_resolution_true_color.jpg',
-    'europa': 'PIA19048_realistic_color_Europa_mosaic.jpg',
-    'ganymede': 'Ganymede_g1_true-edit1.jpg',
-    'callisto': 'Callisto.jpg',
-    'saturn': 'Saturn_during_Equinox.jpg',
-    'titan': 'Titan_in_true_color.jpg',
-    'enceladus': 'PIA17202_-_Approaching_Enceladus.jpg',
-    'uranus': 'Uranus2.jpg',
-    'neptune': 'Neptune_Full.jpg',
-    'triton': 'Triton_moon_mosaic_Voyager_2_(large).jpg',
-    'pluto': 'Pluto_in_True_Color_-_High-Res.jpg',
-    'halleys comet': 'Lspn_comet_halley.jpg'
+    'the sun': 'sun.jpg', 'mercury': 'mercury.jpg', 'venus': 'venus.jpg', 'earth': 'earth.jpg',
+    'the moon': 'moon.jpg', 'mars': 'mars.jpg', 'phobos': 'phobos.jpg', 'deimos': 'deimos.jpg',
+    'ceres': 'ceres.jpg', 'vesta': 'vesta.jpg', 'jupiter': 'jupiter.jpg', 'io': 'io.jpg',
+    'europa': 'europa.jpg', 'ganymede': 'ganymede.jpg', 'callisto': 'callisto.jpg', 'saturn': 'saturn.jpg',
+    'titan': 'titan.jpg', 'enceladus': 'enceladus.jpg', 'uranus': 'uranus.jpg', 'neptune': 'neptune.jpg',
+    'triton': 'triton.jpg', 'pluto': 'pluto.jpg', 'halleys comet': 'halley.jpg'
   };
   function _bodyPhotoKey(name){ return String(name || '').toLowerCase().replace(/[’']/g, '').replace(/\s+/g, ' ').trim(); }
-  // Photo URL for a body, or '' if we have no real photo for it (imagined bodies never get one).
-  function bodyPhotoUrl(b, width){
+  // Local photo path for a body, or '' if we have no real photo for it (imagined bodies never get one).
+  function bodyPhotoUrl(b){
     if (!b || b.real === false) return '';
     var f = BODY_PHOTOS[_bodyPhotoKey(b.name)];
-    return f ? (BODY_PHOTO_BASE + encodeURIComponent(f) + '?width=' + (width || 640)) : '';
+    return f ? (BODY_PHOTO_BASE + f + '?v=' + BODY_PHOTO_VER) : '';
   }
 
   // "About this planet" info modal — real astronomy for the body.
@@ -257,7 +242,7 @@
   function atlasShowPhoto(n){
     var a = (typeof getArena === 'function') ? getArena(n) : null; if (!a) return;
     var b = a.body || {};
-    var url = bodyPhotoUrl(b, 900);
+    var url = bodyPhotoUrl(b);
     if (!url) return;
     var esc = (typeof escapeHtmlSafe === 'function') ? escapeHtmlSafe : function(x){ return x; };
     var lb = document.getElementById('bodyPhotoLightbox');
