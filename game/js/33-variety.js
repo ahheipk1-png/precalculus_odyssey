@@ -190,6 +190,10 @@
   // Build a 10-question trial for arena n, or null to fall back to the native generator.
   function buildArenaTrial(n) {
     if (!window.VARIETY_ENABLED || typeof generateProblem !== 'function') return null;
+    // Bible arenas already ship 20 pre-authored, varied templates — serve them directly
+    // (bibleProblem picks a fresh one each question) rather than running the numeric-style
+    // transforms, which assume computed numeric answers.
+    try { var _a = (typeof getArena === 'function') ? getArena(n) : null; if (_a && _a.phaseId) return null; } catch (e) {}
     var sample; try { sample = generateProblem(n); } catch (e) { return null; }
     if (!sample) return null;
     var pool = _poolFor(sample.mode);

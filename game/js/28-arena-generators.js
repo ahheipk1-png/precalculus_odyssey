@@ -262,11 +262,16 @@
     G[187] = function(){ return mc('The DERIVATIVE of a function measures…', 'the slope of the curve at a single point', ['the area under the curve', 'the length of a line', 'the number of roots']); };
 
     // ---- Stamp each arena's ACTUAL question style onto the curriculum (atlas labels) ----
+    // Skip Bible arenas (mechanic + questions come from the registry) and Equation Battle
+    // arenas (numeric/formula/bracket must stay the native balance solver).
     if (typeof CURRICULUM !== 'undefined'){
       for (var i = 0; i < CURRICULUM.length; i++){
         var a = CURRICULUM[i];
-        if (G[a.n]){
-          try { var p = G[a.n](a); if (p && p.mode) a.mechanic = p.mode; } catch (e) {}
+        if (a.phaseId) continue;
+        if (a.mechanic === 'numeric' || a.mechanic === 'formula' || a.mechanic === 'bracket') continue;
+        var g = a.gen || a.n;
+        if (G[g]){
+          try { var p = G[g](a); if (p && p.mode) a.mechanic = p.mode; } catch (e) {}
         }
       }
     }

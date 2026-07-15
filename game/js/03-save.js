@@ -137,6 +137,12 @@
   function applySnapshotToState(snap){
     migrateSave(snap);
     state.level = snap.level;
+    // Curriculum shrank 187 -> 65 arenas (Bible rebuild). Clamp any old save that was
+    // parked past the new final arena so getArena() never returns null (which would blank
+    // the board). Everything else (name/coins/gear/hero/farm/codex) is preserved as-is.
+    var _max = (typeof CURRICULUM_MAX === 'number' && CURRICULUM_MAX > 0) ? CURRICULUM_MAX : 65;
+    if (!(state.level >= 1)) state.level = 1;
+    if (state.level > _max) state.level = _max;
     state.score = snap.score;
     state.coins = snap.coins;
     state.currencies = { gold: (snap.currencies && snap.currencies.gold) || 0, silver: (snap.currencies && snap.currencies.silver) || 0 };

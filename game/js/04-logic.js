@@ -277,6 +277,37 @@
     return p;
   }
 
+  // Serve ONE Bible question for a phase arena, built from QUESTION_TEMPLATES. Picks a
+  // template not seen recently (per phase), so a 10-question run rarely repeats. The
+  // authored example/answer/distractors are used verbatim (NOT run through _sanitizeProblem,
+  // which is tuned for the numeric generators). True/False & 2-option items keep exactly
+  // their authored options (no numeric padding).
+  var _bibleRecent = {};
+  function bibleProblem(arena){
+    var tpls = QUESTION_TEMPLATES[arena.phaseId];
+    if (!tpls || !tpls.length) return { mode: 'comingSoon', prompt: arena.topic, par: 0 };
+    var recent = _bibleRecent[arena.phaseId] || (_bibleRecent[arena.phaseId] = []);
+    var pool = tpls.filter(function(t){ return recent.indexOf(t.templateId) === -1; });
+    if (!pool.length) { recent.length = 0; pool = tpls; }
+    var t = pool[rand(0, pool.length - 1)];
+    recent.push(t.templateId); if (recent.length > 12) recent.shift();
+    var ans = String(t.answer == null ? '' : t.answer);
+    var ds = (t.distractors || []).map(String).filter(function(d){ return d && d !== ans; });
+    var meta = { templateId: t.templateId, phaseId: arena.phaseId, questionType: t.questionType,
+      hintSequenceId: t.hintSequenceId, tutorialId: t.tutorialId, socraticId: t.socraticId, explanation: t.explanation };
+    if (ds.length >= 1 && ans){
+      var choices = [ans].concat(ds);
+      choices = choices.filter(function(v, i){ return choices.indexOf(v) === i; }).slice(0, 5);
+      shuffle(choices);
+      var mc = { mode: 'mcOnly', prompt: t.example, choices: choices, correctIndex: choices.indexOf(ans), par: 0 };
+      for (var k in meta) mc[k] = meta[k];
+      return mc;
+    }
+    var di = { mode: 'directInput', prompt: t.example, answer: ans, par: 0 };
+    for (var k2 in meta) di[k2] = meta[k2];
+    return di;
+  }
+
   function generateProblem(level){
     var arena = (typeof getArena === 'function') ? getArena(level) : null;
     if (!arena) {                                   // legacy safety (no curriculum): old behaviour
@@ -284,11 +315,20 @@
       return loc.chapter.generator ? loc.chapter.generator(loc.roomInChapter, level, loc.chapter)
                                    : generateBalanceQuestProblem(level);
     }
-    if (ARENA_GENS[arena.n]) {
-      try { return _sanitizeProblem(ARENA_GENS[arena.n](arena)); }
+    // Native Equation Battle (balance solver) for the linear-solving arenas — infinite variety.
+    if (arena.mechanic === 'numeric' || arena.mechanic === 'formula' || arena.mechanic === 'bracket') {
+      try { return _sanitizeProblem(generateBalanceQuestProblem(1 + rand(0, 5))); } catch (e) {}
+    }
+    // Bible-authored arenas (P001..P059) → served from the registry.
+    if (arena.phaseId && typeof QUESTION_TEMPLATES !== 'undefined' && QUESTION_TEMPLATES[arena.phaseId]) {
+      try { var bp = bibleProblem(arena); if (bp) return bp; } catch (e) {}
+    }
+    // Pre-algebra warm-ups reuse an existing generator (arena.gen), else fall back by arena number.
+    var g = arena.gen || arena.n;
+    if (ARENA_GENS[g]) {
+      try { return _sanitizeProblem(ARENA_GENS[g](arena)); }
       catch (e) { return { mode: 'comingSoon', prompt: arena.topic, par: 0 }; }
     }
-    // Not authored yet → a friendly "Coming soon" arena (never a mismatched question).
     return { mode: 'comingSoon', prompt: arena.topic, par: 0 };
   }
 

@@ -1,0 +1,60 @@
+from tools.phase_batch_021_024 import ex
+
+
+PHASES = [
+    {
+        "id": 25,
+        "topic": "Discriminant",
+        "subtopic": "Using the discriminant to classify quadratic solutions and graph intersections",
+        "prerequisites": "quadratic formula, standard form, integer arithmetic, square roots, graph intercepts",
+        "metadata_prereq": "quadratic formula, standard form, radicals, graph x-intercepts",
+        "metadata_misconceptions": "wrong coefficient substitution, sign error in b squared, confusing discriminant with solution, ignoring zero discriminant",
+        "review": [
+            "A quadratic in standard form is ax^2+bx+c=0.",
+            "The discriminant is b^2-4ac.",
+            "The discriminant is the expression under the radical in the quadratic formula.",
+            "A positive perfect-square discriminant gives two rational real solutions.",
+            "A zero discriminant gives one repeated real solution.",
+            "A negative discriminant gives no real x-intercepts and two complex solutions.",
+        ],
+        "concepts": [
+            "The sign of the discriminant tells how many real solutions a quadratic has.",
+            "The square status of a positive discriminant tells whether real solutions are rational or irrational.",
+            "The discriminant links algebraic roots to graph x-intercepts.",
+            "Parameter problems use inequalities or equations involving b^2-4ac.",
+            "The discriminant classifies roots before solving the quadratic.",
+            "The discriminant is not itself the solution set.",
+        ],
+        "misconceptions": [
+            "Treating the discriminant as x.",
+            "Using b^2+4ac instead of b^2-4ac.",
+            "Forgetting that a negative b still has positive b^2.",
+            "Saying D=0 means no solution instead of one repeated real solution.",
+            "Forgetting to put the equation in standard form first.",
+        ],
+        "next_topic": "Quadratic graphs",
+        "equation_battle": True,
+        "exercises": [
+            ex("Compute positive discriminant", "Find the discriminant of x^2-5x+6=0.", "1", "Here a=1, b=-5, c=6. The discriminant is (-5)^2-4(1)(6)=25-24=1."),
+            ex("Compute zero discriminant", "Find the discriminant of x^2+4x+4=0.", "0", "Here a=1, b=4, c=4. The discriminant is 16-16=0."),
+            ex("Compute negative discriminant", "Find the discriminant of x^2+2x+5=0.", "-16", "Here a=1, b=2, c=5. The discriminant is 4-20=-16."),
+            ex("Classify rational roots", "Use the discriminant to classify the roots of 2x^2-3x-2=0.", "two rational real roots", "The discriminant is (-3)^2-4(2)(-2)=9+16=25, a positive perfect square."),
+            ex("Classify complex roots", "Use the discriminant to classify the roots of 3x^2+2x+1=0.", "two complex roots and no real roots", "The discriminant is 2^2-4(3)(1)=4-12=-8, which is negative."),
+            ex("Classify repeated root", "Use the discriminant to classify the roots of 4x^2-12x+9=0.", "one repeated real root", "The discriminant is (-12)^2-4(4)(9)=144-144=0."),
+            ex("Positive non-square", "Use the discriminant to classify x^2-2x-7=0.", "two irrational real roots", "The discriminant is 4+28=32, positive but not a perfect square."),
+            ex("Graph intercept count", "How many x-intercepts does y=x^2+6x+10 have?", "0", "The discriminant is 36-40=-4, so the graph has no real x-intercepts.", visual=True),
+            ex("Tangent graph", "How many x-intercepts does y=x^2-8x+16 have?", "1", "The discriminant is 64-64=0, so the parabola touches the x-axis once.", visual=True),
+            ex("Two-intercept graph", "How many x-intercepts does y=-x^2+3x+4 have?", "2", "Here a=-1,b=3,c=4. The discriminant is 9-4(-1)(4)=25, so there are two real x-intercepts.", visual=True),
+            ex("Discriminant from roots type", "A quadratic has discriminant 18. What type of roots does it have?", "two irrational real roots", "18 is positive, so the roots are real; it is not a perfect square, so they are irrational."),
+            ex("Discriminant from formula", "For a quadratic, the formula gives x=(7+-sqrt(13))/4. What is the discriminant?", "13", "The discriminant is the number under the square root."),
+            ex("Parameter for one root", "Find k so x^2+kx+9=0 has one repeated real root.", "k=6 or k=-6", "Set the discriminant to zero: k^2-4(1)(9)=0, so k^2=36."),
+            ex("Parameter for no real roots", "For x^2+6x+c=0, what values of c give no real roots?", "c>9", "No real roots means 36-4c<0, so c>9."),
+            ex("Parameter for two real roots", "For x^2-4x+m=0, what values of m give two real roots?", "m<4", "Two real roots require 16-4m>0, so m<4."),
+            ex("Leading coefficient parameter", "Find p so 2x^2+px+8=0 has exactly one real solution.", "p=8 or p=-8", "Set p^2-4(2)(8)=0, so p^2=64."),
+            ex("Error analysis sign", "A student says the discriminant of x^2-3x-10=0 is 9-40=-31. What is the error?", "The c value is -10, so -4ac becomes +40; the discriminant is 49.", "The sign of c must be included in b^2-4ac."),
+            ex("Standard form first", "Use the discriminant to classify x^2+2x=8.", "two rational real roots", "Rewrite as x^2+2x-8=0. The discriminant is 4+32=36, a positive perfect square."),
+            ex("Connect to quadratic formula", "Why does a negative discriminant produce no real roots?", "Because the quadratic formula would require the square root of a negative number for real x-values.", "The discriminant is under the radical; negative radicands are not real numbers."),
+            ex("Boss classification set", "Classify the roots of 5x^2-2x+1=0 and say how many x-intercepts the graph has.", "two complex roots; 0 x-intercepts", "The discriminant is (-2)^2-4(5)(1)=4-20=-16, so there are no real roots and no x-intercepts.", boss=True),
+        ],
+    }
+]

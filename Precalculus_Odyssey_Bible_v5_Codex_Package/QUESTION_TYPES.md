@@ -1,0 +1,26 @@
+# Question Types
+
+- Direct computation
+- Equation Battle
+- Reverse problem
+- Build the model
+- Error detection
+- Best next step
+- Missing step
+- Order the steps
+- True/False
+- Always/Sometimes/Never
+- Multiple choice
+- Multiple select
+- Graph matching
+- Graph interpretation
+- Click graph feature
+- Table matching
+- Model interpretation
+- Estimate
+- Compare
+- Counterexample
+- Number of solutions
+- Practical solution selection
+- Multi-stage challenge
+- Boss challenge

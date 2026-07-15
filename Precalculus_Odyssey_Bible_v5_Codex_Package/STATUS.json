@@ -1,0 +1,303 @@
+{
+  "project": "Precalculus Odyssey Bible v5",
+  "total_phases": 59,
+  "next_phase": 60,
+  "completed_count": 59,
+  "phases": [
+    {
+      "phase": 1,
+      "topic": "One-step linear equations",
+      "status": "completed"
+    },
+    {
+      "phase": 2,
+      "topic": "Multi-step linear equations",
+      "status": "completed"
+    },
+    {
+      "phase": 3,
+      "topic": "Variables on both sides",
+      "status": "completed"
+    },
+    {
+      "phase": 4,
+      "topic": "Literal equations",
+      "status": "completed"
+    },
+    {
+      "phase": 5,
+      "topic": "Linear equation modeling",
+      "status": "completed"
+    },
+    {
+      "phase": 6,
+      "topic": "Equation Battle fundamentals",
+      "status": "completed"
+    },
+    {
+      "phase": 7,
+      "topic": "Linear inequalities",
+      "status": "completed"
+    },
+    {
+      "phase": 8,
+      "topic": "Compound inequalities",
+      "status": "completed"
+    },
+    {
+      "phase": 9,
+      "topic": "Absolute value equations",
+      "status": "completed"
+    },
+    {
+      "phase": 10,
+      "topic": "Absolute value inequalities",
+      "status": "completed"
+    },
+    {
+      "phase": 11,
+      "topic": "Systems by substitution",
+      "status": "completed"
+    },
+    {
+      "phase": 12,
+      "topic": "Systems by elimination",
+      "status": "completed"
+    },
+    {
+      "phase": 13,
+      "topic": "Systems by graphing",
+      "status": "completed"
+    },
+    {
+      "phase": 14,
+      "topic": "Function notation",
+      "status": "completed"
+    },
+    {
+      "phase": 15,
+      "topic": "Domain from formulas",
+      "status": "completed"
+    },
+    {
+      "phase": 16,
+      "topic": "Domain from graphs",
+      "status": "completed"
+    },
+    {
+      "phase": 17,
+      "topic": "Range from graphs",
+      "status": "completed"
+    },
+    {
+      "phase": 18,
+      "topic": "Function transformations",
+      "status": "completed"
+    },
+    {
+      "phase": 19,
+      "topic": "Function composition",
+      "status": "completed"
+    },
+    {
+      "phase": 20,
+      "topic": "Inverse functions",
+      "status": "completed"
+    },
+    {
+      "phase": 21,
+      "topic": "Piecewise functions",
+      "status": "completed"
+    },
+    {
+      "phase": 22,
+      "topic": "Quadratic factoring",
+      "status": "completed"
+    },
+    {
+      "phase": 23,
+      "topic": "Completing the square",
+      "status": "completed"
+    },
+    {
+      "phase": 24,
+      "topic": "Quadratic formula",
+      "status": "completed"
+    },
+    {
+      "phase": 25,
+      "topic": "Discriminant",
+      "status": "completed"
+    },
+    {
+      "phase": 26,
+      "topic": "Quadratic graphs",
+      "status": "completed"
+    },
+    {
+      "phase": 27,
+      "topic": "Quadratic modeling",
+      "status": "completed"
+    },
+    {
+      "phase": 28,
+      "topic": "Polynomial end behavior",
+      "status": "completed"
+    },
+    {
+      "phase": 29,
+      "topic": "Polynomial multiplicity",
+      "status": "completed"
+    },
+    {
+      "phase": 30,
+      "topic": "Polynomial division",
+      "status": "completed"
+    },
+    {
+      "phase": 31,
+      "topic": "Remainder theorem",
+      "status": "completed"
+    },
+    {
+      "phase": 32,
+      "topic": "Factor theorem",
+      "status": "completed"
+    },
+    {
+      "phase": 33,
+      "topic": "Rational expression simplification",
+      "status": "completed"
+    },
+    {
+      "phase": 34,
+      "topic": "Rational restrictions and holes",
+      "status": "completed"
+    },
+    {
+      "phase": 35,
+      "topic": "Rational asymptotes",
+      "status": "completed"
+    },
+    {
+      "phase": 36,
+      "topic": "Exponential growth",
+      "status": "completed"
+    },
+    {
+      "phase": 37,
+      "topic": "Exponential decay",
+      "status": "completed"
+    },
+    {
+      "phase": 38,
+      "topic": "Compound interest",
+      "status": "completed"
+    },
+    {
+      "phase": 39,
+      "topic": "Logarithm definitions",
+      "status": "completed"
+    },
+    {
+      "phase": 40,
+      "topic": "Logarithm properties",
+      "status": "completed"
+    },
+    {
+      "phase": 41,
+      "topic": "Logarithmic equations",
+      "status": "completed"
+    },
+    {
+      "phase": 42,
+      "topic": "Degree and radian measure",
+      "status": "completed"
+    },
+    {
+      "phase": 43,
+      "topic": "Reference angles",
+      "status": "completed"
+    },
+    {
+      "phase": 44,
+      "topic": "Unit circle",
+      "status": "completed"
+    },
+    {
+      "phase": 45,
+      "topic": "Exact trigonometric values",
+      "status": "completed"
+    },
+    {
+      "phase": 46,
+      "topic": "Trigonometric graphs",
+      "status": "completed"
+    },
+    {
+      "phase": 47,
+      "topic": "Amplitude and period",
+      "status": "completed"
+    },
+    {
+      "phase": 48,
+      "topic": "Phase and vertical shifts",
+      "status": "completed"
+    },
+    {
+      "phase": 49,
+      "topic": "Basic trigonometric identities",
+      "status": "completed"
+    },
+    {
+      "phase": 50,
+      "topic": "Trigonometric equations",
+      "status": "completed"
+    },
+    {
+      "phase": 51,
+      "topic": "Law of sines",
+      "status": "completed"
+    },
+    {
+      "phase": 52,
+      "topic": "Law of cosines",
+      "status": "completed"
+    },
+    {
+      "phase": 53,
+      "topic": "Sequences",
+      "status": "completed"
+    },
+    {
+      "phase": 54,
+      "topic": "Series",
+      "status": "completed"
+    },
+    {
+      "phase": 55,
+      "topic": "Conic sections",
+      "status": "completed"
+    },
+    {
+      "phase": 56,
+      "topic": "Vectors",
+      "status": "completed"
+    },
+    {
+      "phase": 57,
+      "topic": "Complex numbers",
+      "status": "completed"
+    },
+    {
+      "phase": 58,
+      "topic": "Mixed review",
+      "status": "completed"
+    },
+    {
+      "phase": 59,
+      "topic": "Final boss challenges",
+      "status": "completed"
+    }
+  ]
+}

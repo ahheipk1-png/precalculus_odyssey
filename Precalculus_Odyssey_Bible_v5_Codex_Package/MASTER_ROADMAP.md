@@ -1,0 +1,63 @@
+# Precalculus Odyssey Bible — Master Roadmap
+
+Every phase must include the Question, Hint, Tutorial, and Socratic Dialogue Bibles.
+
+- Phase 001: One-step linear equations
+- Phase 002: Multi-step linear equations
+- Phase 003: Variables on both sides
+- Phase 004: Literal equations
+- Phase 005: Linear equation modeling
+- Phase 006: Equation Battle fundamentals
+- Phase 007: Linear inequalities
+- Phase 008: Compound inequalities
+- Phase 009: Absolute value equations
+- Phase 010: Absolute value inequalities
+- Phase 011: Systems by substitution
+- Phase 012: Systems by elimination
+- Phase 013: Systems by graphing
+- Phase 014: Function notation
+- Phase 015: Domain from formulas
+- Phase 016: Domain from graphs
+- Phase 017: Range from graphs
+- Phase 018: Function transformations
+- Phase 019: Function composition
+- Phase 020: Inverse functions
+- Phase 021: Piecewise functions
+- Phase 022: Quadratic factoring
+- Phase 023: Completing the square
+- Phase 024: Quadratic formula
+- Phase 025: Discriminant
+- Phase 026: Quadratic graphs
+- Phase 027: Quadratic modeling
+- Phase 028: Polynomial end behavior
+- Phase 029: Polynomial multiplicity
+- Phase 030: Polynomial division
+- Phase 031: Remainder theorem
+- Phase 032: Factor theorem
+- Phase 033: Rational expression simplification
+- Phase 034: Rational restrictions and holes
+- Phase 035: Rational asymptotes
+- Phase 036: Exponential growth
+- Phase 037: Exponential decay
+- Phase 038: Compound interest
+- Phase 039: Logarithm definitions
+- Phase 040: Logarithm properties
+- Phase 041: Logarithmic equations
+- Phase 042: Degree and radian measure
+- Phase 043: Reference angles
+- Phase 044: Unit circle
+- Phase 045: Exact trigonometric values
+- Phase 046: Trigonometric graphs
+- Phase 047: Amplitude and period
+- Phase 048: Phase and vertical shifts
+- Phase 049: Basic trigonometric identities
+- Phase 050: Trigonometric equations
+- Phase 051: Law of sines
+- Phase 052: Law of cosines
+- Phase 053: Sequences
+- Phase 054: Series
+- Phase 055: Conic sections
+- Phase 056: Vectors
+- Phase 057: Complex numbers
+- Phase 058: Mixed review
+- Phase 059: Final boss challenges
