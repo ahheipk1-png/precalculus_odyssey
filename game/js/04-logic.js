@@ -283,6 +283,41 @@
   // which is tuned for the numeric generators). True/False & 2-option items keep exactly
   // their authored options (no numeric padding).
   var _bibleRecent = {};
+
+  // Some batch-generated phases (P021-P054) shipped placeholder "distractor recipe" text
+  // ("uses a nearby rule", etc.) instead of real wrong answers, which makes the real answer
+  // trivially identifiable. Detect those and substitute genuine, well-formatted, topic-matched
+  // wrong answers borrowed from SIBLING templates in the same phase.
+  var _GENERIC_DISTRACTORS = { 'uses a nearby rule':1, 'ignores the stated condition':1,
+    'makes a sign or order error':1, 'stops after the first step':1 };
+  function _cleanChoice(s){
+    s = String(s == null ? '' : s).replace(/\\"/g, '"').trim();
+    while (s.length >= 2 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') s = s.slice(1, -1).trim();
+    return s;
+  }
+  function _isGenericDistractor(d){
+    return !!_GENERIC_DISTRACTORS[_cleanChoice(d).toLowerCase().replace(/[.]+$/, '').trim()];
+  }
+  function _answerShape(s){
+    if (/^(yes|no|true|false)\b/i.test(s)) return 'bool';
+    if (/^-?\d+(\.\d+)?$/.test(s)) return 'num';
+    if (/(pi|theta|sqrt|\/)/i.test(s)) return 'sym';
+    return 'expr';
+  }
+  function _siblingDistractors(phaseId, ans){
+    var want = _answerShape(ans), same = [], other = [], seen = {};
+    seen[ans] = 1;
+    (QUESTION_TEMPLATES[phaseId] || []).forEach(function(t){
+      var a = _cleanChoice(t.answer);
+      if (!a || seen[a]) return;
+      seen[a] = 1;
+      (_answerShape(a) === want ? same : other).push(a);
+    });
+    shuffle(same); shuffle(other);
+    var pool = same.concat(other);   // prefer same-shape wrong answers, then fill from the rest
+    return pool.slice(0, 4);
+  }
+
   function bibleProblem(arena){
     var tpls = QUESTION_TEMPLATES[arena.phaseId];
     if (!tpls || !tpls.length) return { mode: 'comingSoon', prompt: arena.topic, par: 0 };
@@ -291,8 +326,15 @@
     if (!pool.length) { recent.length = 0; pool = tpls; }
     var t = pool[rand(0, pool.length - 1)];
     recent.push(t.templateId); if (recent.length > 12) recent.shift();
-    var ans = String(t.answer == null ? '' : t.answer);
-    var ds = (t.distractors || []).map(String).filter(function(d){ return d && d !== ans; });
+    var ans = _cleanChoice(t.answer);
+    var raw = (t.distractors || []);
+    var genericCount = raw.filter(_isGenericDistractor).length;
+    var ds;
+    if (genericCount >= 2) {
+      ds = _siblingDistractors(arena.phaseId, ans);            // placeholder distractors -> real siblings
+    } else {
+      ds = raw.map(_cleanChoice).filter(function(d){ return d && d !== ans; });
+    }
     var meta = { templateId: t.templateId, phaseId: arena.phaseId, questionType: t.questionType,
       hintSequenceId: t.hintSequenceId, tutorialId: t.tutorialId, socraticId: t.socraticId, explanation: t.explanation };
     if (ds.length >= 1 && ans){
