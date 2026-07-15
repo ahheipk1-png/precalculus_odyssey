@@ -23,10 +23,50 @@
     return { q: 'Solve the equation shown on the balance scale.', a: 'solve step by step' };
   }
 
+  // Light markdown -> HTML for the Bible tutorial sections (paragraphs, `code`, - and 1. lists).
+  function _mdLite(s){
+    s = String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    return s.split(/\n\s*\n/).map(function(b){
+      var lines = b.split(/\n/).filter(function(l){ return l.trim(); });
+      if (lines.length && lines.every(function(l){ return /^\s*-\s+/.test(l); }))
+        return '<ul>' + lines.map(function(l){ return '<li>' + l.replace(/^\s*-\s+/, '') + '</li>'; }).join('') + '</ul>';
+      if (lines.length && lines.every(function(l){ return /^\s*\d+\.\s+/.test(l); }))
+        return '<ol>' + lines.map(function(l){ return '<li>' + l.replace(/^\s*\d+\.\s+/, '') + '</li>'; }).join('') + '</ol>';
+      return '<p>' + b.trim().replace(/\n/g, '<br>') + '</p>';
+    }).join('');
+  }
+
+  // Build step-by-step pages from the authored Bible tutorial (TUTORIAL_REGISTRY[phaseId]).
+  function _bibleTutorialPages(phaseId){
+    // TUTORIAL_REGISTRY is keyed by tutorialId ("Tut-P001"); fall back to raw phaseId just in case.
+    var reg = (typeof TUTORIAL_REGISTRY !== 'undefined') ? TUTORIAL_REGISTRY : null;
+    var T = reg && (reg['Tut-' + phaseId] || reg[phaseId]);
+    if (!T) return null;
+    var order = [
+      ['🎯 Learning goal', 'Learning Goal'],
+      ['🌟 Why it matters', 'Why It Matters'],
+      ['💡 Core concept', 'Core Concept'],
+      ['✏️ Worked example', 'Worked Example'],
+      ['🌉 Fractions & decimals', 'Fraction/Decimal Bridge'],
+      ['⚠️ Common mistakes', 'Common Mistakes']
+    ];
+    var pages = [];
+    order.forEach(function(o){
+      var txt = T[o[1]];
+      if (txt && String(txt).trim()) pages.push({ type: 'section', title: o[0], md: String(txt) });
+    });
+    return pages.length ? pages : null;
+  }
+
   function openTutorial(level){
     level = level || (typeof state !== 'undefined' ? state.level : 1);
     _tutLevel = level;
-    _tutPages = [{ type: 'explain' }];
+    var a0 = (typeof getArena === 'function') ? getArena(level) : null;
+    var bib = (a0 && a0.phaseId) ? _bibleTutorialPages(a0.phaseId) : null;
+    _tutPages = bib ? bib.slice() : [{ type: 'explain' }];
     for (var i = 0; i < 3; i++){ var ex = _tutExample(level); if (ex) _tutPages.push({ type: 'example', ex: ex, i: i + 1 }); }
     _tutIdx = 0;
     var ov = document.getElementById('tutorialOverlay');
@@ -41,7 +81,11 @@
     var a = (typeof getArena === 'function') ? getArena(_tutLevel) : null;
     var page = _tutPages[_tutIdx];
     var body = '';
-    if (page.type === 'explain'){
+    if (page.type === 'section'){
+      body = '<div class="tut-kicker">📖 How to play · Arena ' + _tutLevel + (a && a.body ? ' · ' + a.body.name : '') + '</div>' +
+        '<h2 class="tut-topic">' + page.title + '</h2>' +
+        '<div class="tut-section">' + _mdLite(page.md) + '</div>';
+    } else if (page.type === 'explain'){
       body = '<div class="tut-kicker">📖 How to play · Arena ' + _tutLevel + (a && a.body ? ' · ' + a.body.name : '') + '</div>' +
         '<h2 class="tut-topic">' + (a ? a.topic : '') + '</h2>' +
         '<p class="tut-explain">' + tutorialFor(_tutLevel) + '</p>' +
