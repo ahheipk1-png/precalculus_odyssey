@@ -509,6 +509,40 @@
   .soc-chips{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
   .soc-chips .btn{ flex:1 1 auto; min-width:120px; font-size:14px; }
 
+  /* Arena Infinity — endless practice overlay */
+  .inf-overlay{ position:fixed; inset:0; z-index:134; display:none; }
+  .inf-overlay.open{ display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 30%, rgba(20,40,66,.96), rgba(6,12,22,.98)); }
+  .inf-card{ position:relative; width:min(640px,94vw); max-height:92vh; overflow:auto;
+    background:var(--panel,#12202f); border:1px solid rgba(102,224,255,.22); border-radius:20px;
+    padding:22px 22px 20px; box-shadow:0 24px 60px rgba(0,0,0,.5); text-align:center; }
+  .inf-close{ position:absolute; top:12px; right:14px; background:none; border:none; cursor:pointer;
+    color:var(--chalk-dim,#9fb3c8); font-size:20px; line-height:1; padding:4px 8px; border-radius:8px; }
+  .inf-close:hover{ color:var(--chalk,#eef4fb); background:rgba(255,255,255,.08); }
+  .inf-kicker{ font-size:14px; font-weight:800; letter-spacing:.05em; color:var(--sky); text-transform:uppercase; }
+  .inf-hud{ display:flex; gap:14px; justify-content:center; margin:10px 0 4px; font-size:16px; color:var(--chalk-dim); }
+  .inf-hud b{ color:var(--chalk); }
+  .inf-topic{ font-size:14px; color:var(--chalk-dim); margin-bottom:12px; }
+  .inf-q{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:24px; color:var(--chalk); line-height:1.4;
+    margin:8px 0 18px; text-wrap:balance; }
+  .inf-q sup{ font-size:.7em; } .inf-q sub{ font-size:.7em; }
+  .inf-choices{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .inf-choice{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:18px; color:var(--chalk);
+    background:rgba(244,241,232,0.05); border:1px solid rgba(102,224,255,.2); border-radius:13px;
+    padding:15px 12px; cursor:pointer; transition:background .12s,border-color .12s; }
+  .inf-choice:hover:not(:disabled){ background:rgba(102,224,255,.12); border-color:var(--sky); }
+  .inf-choice:disabled{ opacity:.7; cursor:default; }
+  .inf-input-row{ display:flex; gap:10px; justify-content:center; }
+  .inf-input{ flex:1; max-width:280px; font-family:'Quicksand',sans-serif; font-size:20px; text-align:center;
+    padding:12px 14px; border-radius:12px; border:1px solid rgba(102,224,255,.25); background:rgba(0,0,0,.2); color:var(--chalk); }
+  .inf-feedback{ min-height:24px; margin-top:14px; font-size:16px; font-weight:600; }
+  .inf-feedback.inf-ok{ color:var(--green,#7ee79f); } .inf-feedback.inf-bad{ color:var(--coral,#f0705e); }
+  .inf-headline{ font-family:'Patrick Hand',cursive; font-size:30px; color:var(--yellow); margin:8px 0; }
+  .inf-score{ font-size:26px; font-weight:800; color:var(--chalk); margin-bottom:8px; font-variant-numeric:tabular-nums; }
+  .inf-rewards{ font-size:16px; color:var(--sky); margin-bottom:18px; line-height:1.5; }
+  .inf-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  @media (max-width:560px){ .inf-choices{ grid-template-columns:1fr; } }
+
   /* ---- New question styles: Identify (mcOnly) & Compute (directInput) ---- */
   .question-prompt{ text-align:center; padding:18px 14px; min-height:120px; display:flex; flex-direction:column; justify-content:center; gap:10px; }
   .question-prompt .qp-text{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:clamp(20px,2.4vw,30px); color:var(--chalk); line-height:1.35; text-wrap:balance; }
