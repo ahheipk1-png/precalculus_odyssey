@@ -82,20 +82,27 @@ planets confirms every one is answerable this way — the factorise/expand/simpl
 topics are already `mcOnly` (you tap the correct expression). The only planets using the balance /
 change-of-subject / expand-then-solve manipulations are the 7 Equations-world arenas (5, 49–54).
 
-## The 187-planet curriculum (`curriculum.config.js` + `js/28-arena-generators.js`)
+## The 65-arena Bible curriculum (`curriculum.config.js` + `config/generated/*.js`)
 
-`generateProblem(level)` (`04-logic.js`) looks up the arena in `CURRICULUM` and dispatches to its
-authored generator (`ARENA_GENS[n]`) by question style. **All 187 planets are authored and playable**
-(a `comingSoon` fallback exists but is never hit). The full map of **187 planets × topic × question
-style × real star system × real body** is `curriculum.config.js`; the generators live in
-`js/28-arena-generators.js` — see [ROOMS_AND_CODES.md](../ROOMS_AND_CODES.md) for the per-system tables.
+The curriculum was **rebuilt from the 59-phase Question Bible** (2026-07 overnight batch). There are
+now **65 arenas**: 6 condensed pre-algebra warm-ups (integers → standard form) followed by the 59
+Bible phases, **one arena per phase** (linear equations → inequalities → functions → … → conics /
+vectors / complex numbers / final boss). `generateProblem(level)` (`04-logic.js`) dispatches by
+mechanic — see the "Bible curriculum & learning support" section in
+[architecture.md](architecture.md) for the full routing, distractor repair, and
+hint/tutorial/Socratic wiring.
 
-**11 math worlds** span 1–187 (`state.maxLevel = 187`): Numbers, Expressions, Equations, Factoring,
-Quadratics, Functions, Sequences, Logarithms, Trigonometry, Coordinate Geometry, and The Calculus
-Threshold (finale at Sagittarius A*). Each arena's `mechanic` is stamped from what its generator
-actually returns, so the Star Atlas labels always match. Correctness is verified by an in-browser
-sweep: ~28k structural generations + a semantic pass that expands/evaluates the algebra arenas to
-confirm each has exactly one correct answer, and that every Compute answer is a non-negative integer.
+- **Equation Battle is preserved (locked requirement):** the linear-solving arenas
+  (`numeric/formula/bracket`) use the native balance-scale solver; Bible templates flagged
+  equation-battle-compatible route INTO it, never flattened to multiple choice.
+- **Bible arenas** (those with a `phaseId`) serve authored `QUESTION_TEMPLATES` questions as
+  multiple choice; `33-variety.js` returns `null` for them so they bypass the pre-algebra variety
+  transforms. `28-arena-generators.js`'s atlas-stamping loop skips them so their config `mechanic`
+  survives.
+- **11 real star systems** span arenas 1–65 (`state.maxLevel = 65`, `CURRICULUM_MAX = 65`): Sol,
+  TRAPPIST-1, Tau Ceti, Proxima Centauri, Gliese 876, Upsilon Andromedae, Ross 128, Barnard's Star,
+  Kepler-90, Kepler-11, HD 40307. Each arena's astronomy body is pinned by slot number, so the
+  rebuild never shifts a planet's photo/facts.
 
 **Formula letters are case-insensitive** (`sameToken` in `04-logic.js` + input canonicalization in
 `07-main.js`). This fixed the `V=IR` bug where typing `r` (lowercased) never matched `R`.
@@ -136,7 +143,9 @@ planet.
 
 ## Lives, hints & game-over (this session)
 
-- **Hints** (`💡 Hint`) are offered only on the **first 2 questions** of each planet.
+- **Hints** (`💡 Hint`) are now available on **every question** via a 6-level progressive ladder
+  (see architecture.md). A `📖 How to play` tutorial and a `🦉 Ask the tutor` Socratic chat sit
+  beside it. Bodies with no real photo show a **🎨 Artist's impression** caption.
 - **5 wrong answers on a planet = Game Over → the planet restarts.** `registerFail()` fires only on
   a *genuine* error (invalid op, wrong bracket expansion, wrong MC choice, wrong formula letter) — a
   *legal-but-unproductive* balance move does **not** cost a life. UI: `#livesRow` (❤️/🖤),

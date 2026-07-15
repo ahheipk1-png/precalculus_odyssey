@@ -19,6 +19,8 @@ config/worlds.config.js     ← content data (pure). Loads FIRST so logic can re
 config/rooms.config.js
 config/planets.config.js
 config/story.config.js
+config/curriculum.config.js  65 arenas (6 condensed pre-algebra warm-ups + 59 Bible phases, one per phase); CURRICULUM_ROWS + getArena/arenaByCode/CURRICULUM_MAX
+config/generated/*.js        8 registries BUILT from the Question Bible by tools/build-registries.ps1 (do not hand-edit): curriculum-index, arena-registry, question-templates (QUESTION_TEMPLATES[phaseId]=[templates]), hint-registry (HINT_REGISTRY[hintSeqId]=[6 rungs]), tutorial-registry (TUTORIAL_REGISTRY["Tut-Pnnn"]={sections}), socratic-registry (SOCRATIC_REGISTRY["Soc-Pnnn"]={branches}), misconception-registry, prereq-graph
 js/01-data.js               state object, chapter range computation, getChapterForLevel
 js/02-dom.js               the `el` id-cache + reduceMotion
 js/03-save.js              localStorage profiles: load/save/migrate/dedupe/render/reset
@@ -34,12 +36,13 @@ js/17-wonderland.js        Wonderland lobby + Tile Ball minigame
 js/18-farm.js              Farm (crops/animals, market, solve-clock growth)
 js/19-alchemy.js           Laboratory (synthesize ingredients+materials → Super Medicine/Acid Vial)
 js/20-item-store.js        Item Store (buy/use consumables)
-js/28-arena-generators.js  ARENA_GENS — one question generator per arena (all 187)
-js/29-tutorial.js          "How to play" per-arena tutorial overlay
+js/28-arena-generators.js  ARENA_GENS — pre-algebra generators; a stamping loop labels the atlas but SKIPS Bible arenas (phaseId) and Equation-Battle arenas (numeric/formula/bracket) so their config mechanic is preserved
+js/29-tutorial.js          "How to play" tutorial overlay: renders TUTORIAL_REGISTRY sections (Learning goal→Common mistakes) as paged steps for Bible arenas + 3 live worked examples; _mdLite markdown-lite renderer (reused by Socratic)
 js/30-bodyart.js           window.bodyArtSVG — universal shaded-sphere art for every body (all systems)
 js/31-graph.js             coordinate-geometry graphs: buildGraphSVG + interactive tap-a-point / draw-a-line (#graphPanel)
 js/32-tooltip.js           global cursor-following tooltip (#gameTooltip): data-tooltip + auto-upgrades native title=; keyboard/touch aware
-js/33-variety.js           question-variety engine: buildArenaTrial(n) composes a 10-Q trial of mixed styles derived from the arena's own verified answer
+js/33-variety.js           question-variety engine: buildArenaTrial(n) composes a 10-Q trial of mixed styles; RETURNS NULL for Bible arenas (phaseId) so they use the native registry-served questions
+js/37-socratic.js          Socratic "Ask the tutor" chat: choose-your-response dialogue over SOCRATIC_REGISTRY branches (askTutor/socPick/closeTutor); exit screen routes to hint/tutorial ("I don't understand")
 js/34-wonder-games.js      Wonderland carnival games (Bullseye Numbers, Gone Fishin', Merry Math-Go-Round) + shared wg* mini-game helpers + wgStopAll
 js/35-block-forge.js       Quantum Block Forge — original turn-based block-placement puzzle (pure qbfCanPlace/qbfClearLines/qbfAnyPlaceable)
 js/36-arcade.js            Wonderland arcade games: Star Match (memory) + Mini Sudoku (4×4); shared agTopBar (← Back + player Cash/Passes) + agStopAll (wired into wgStopAll). FOCUSED PLAY MODE: wonderland.css uses body:has(#wonderlandView.active) to hide the whole app chrome so game rooms get the full screen
@@ -85,11 +88,35 @@ weapon/enemy/spell) is a config edit, not a code change.** Full schemas + recipe
   Atlas + goToEarth + the "About this body" info modal, which offers a **📷 See real photo**
   lightbox — `BODY_PHOTOS` maps a normalised body name to a JPEG bundled LOCALLY under
   `game/assets/bodies/` (NASA/Wikimedia public-domain, ~640px, no external URLs) — only for the
-  ~23 Sol-System bodies we have a photo for; exoplanets/stars/imagined worlds get no button),
+  ~23 Sol-System bodies we have a photo for. The 42 bodies with no real photo (exoplanets, Eris)
+  show a **🎨 Artist's impression** caption under the procedural art instead of the photo button
+  (condition: `!bodyPhotoUrl(b)`),
   `26-spells.js` (status engine, loads after `06` to override `openSpellsMenu`),
   `27-hoohey.js`. All load before `07-main.js`. Views: `#profileView`/`#tradingView`/
   `#starAtlasView`/`#hooHeyView` (+ the hub reframed as **Earth** in `15-map.js`). Global nav lives
   in `index.html`'s `.header-actions`. CSS for all of it is `game/css/systems.css`.
+
+## Bible curriculum & learning support (question engine + hints/tutorial/Socratic)
+
+The 59-phase **Question Bible** (`Precalculus_Odyssey_Bible_v5_Codex_Package/`) is compiled by
+`tools/build-registries.ps1` into `config/generated/*.js` (PowerShell only — no Node/Python). The
+game reads those registries at runtime; **there is no MD parsing in the browser**. Rebuild the
+65-arena `curriculum.config.js` from the stable body source with `tools/rebuild-curriculum.ps1`
+(preserves each arena's astronomy body by slot number, so photos/facts never shift).
+
+- **Serving (`04-logic.js generateProblem`)** routes by mechanic: `numeric/formula/bracket` →
+  native **Equation Battle** balance solver (LOCKED requirement — never flattened to MC); else if
+  the arena has a `phaseId` → `bibleProblem()` serves a `QUESTION_TEMPLATES[phaseId]` template
+  (recent-template memory avoids repeats); else pre-algebra `ARENA_GENS`.
+- **Distractor repair:** batch-generated phases P021–P054 shipped placeholder "recipe" distractors;
+  `bibleProblem` detects these and substitutes real, shape-matched **sibling-answer** distractors,
+  and strips escaped-quote artifacts. (Upstream fix — regenerate real distractors — still pending.)
+- **Hints:** `getHintLadder()` → `HINT_REGISTRY[hintSeqId]` = 6 rungs (nudge→…→full solution);
+  `renderHintPanel()`/`hideHintPanel()` (05-render.js) drive the `#hintPanel` ladder UI. Native
+  battle modes fall back to one live, state-aware rung. Available on every question.
+- **Tutorial:** `29-tutorial.js` renders `TUTORIAL_REGISTRY["Tut-Pnnn"]` sections as paged steps.
+- **Socratic:** `37-socratic.js` renders `SOCRATIC_REGISTRY["Soc-Pnnn"]` as a choose-your-response
+  chat. Registries are keyed by tutorialId/socraticId, looked up from the arena's `phaseId`.
 
 ## Global `state`
 
