@@ -302,6 +302,35 @@
 }
 .wond-item-chip{ border-color: var(--sky); }
 
+/* ============================================================================
+   FOCUSED PLAY MODE â€” while a Wonderland game room is open (#wonderlandView is
+   the active view), hide the whole app chrome (header nav, HUD stats, hero bar,
+   trophies, progress) so the game gets the entire screen. Each game keeps its
+   own top bar with a â† Back button + compact player info (Cash / Passes).
+   ============================================================================ */
+body:has(#wonderlandView.active) .board-header,
+body:has(#wonderlandView.active) .hud-shell,
+body:has(#wonderlandView.active) .stats-row,
+body:has(#wonderlandView.active) .hero-stats-row,
+body:has(#wonderlandView.active) #trophiesPanel,
+body:has(#wonderlandView.active) .level-progress,
+body:has(#wonderlandView.active) #warpPanel{ display: none !important; }
+body:has(#wonderlandView.active) .board{ max-width: 1200px; }
+body:has(#wonderlandView.active) #wonderlandView{ min-height: 80vh; }
+
+/* Bigger play area + controls in focus mode */
+body:has(#wonderlandView.active) .wond-canvas{ max-width: min(880px, 94vw); border-width: 3px; }
+body:has(#wonderlandView.active) .wond-title-sm{ font-size: clamp(26px, 4vw, 34px); }
+body:has(#wonderlandView.active) .wond-chip{ font-size: 16px; padding: 7px 13px; }
+body:has(#wonderlandView.active) .wond-tip{ font-size: 16px; }
+
+/* Shared Back + player-info top bar (used by the arcade games in 36-arcade.js) */
+.wg-topbar{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.wg-topbar-left{ display: flex; align-items: center; gap: 12px; }
+.wg-topbar h2{ margin: 0; font-family: 'Patrick Hand', cursive; font-size: clamp(24px, 4vw, 34px); color: var(--chalk); letter-spacing: .5px; }
+.wg-pinfo{ display: flex; gap: 8px; flex-wrap: wrap; }
+.wg-back{ font-size: 16px; padding: 9px 16px; }
+
 /* ---- Narrow screens ---- */
 @media (max-width: 640px){
   .wond-grid{ grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -312,9 +341,34 @@
   .wond-tip{ font-size:14px; }
 }
 
+/* ---- Star Match (memory) ---- */
+.mem-grid{ display: grid; gap: 10px; max-width: 660px; margin: 0 auto 6px; }
+.mem-card{ aspect-ratio: 3/4; border: none; border-radius: 12px; cursor: pointer; padding: 0;
+  background: linear-gradient(160deg,#3a4a7a,#26325c); box-shadow: 0 3px 0 rgba(0,0,0,.3); transition: transform .12s; }
+.mem-card:hover:not(:disabled){ transform: translateY(-2px); }
+.mem-card .mem-face{ display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+  font-size: clamp(24px, 5vw, 44px); color: rgba(255,255,255,.28); }
+.mem-up{ background: linear-gradient(160deg,#f4f1e8,#d7dbe8) !important; }
+.mem-up .mem-face{ color: #1a2340; }
+.mem-done{ background: linear-gradient(160deg,#7bd88f,#4fae6b) !important; opacity: .9; }
+.mem-done .mem-face{ color: #0d2216; }
+
+/* ---- Mini Sudoku ---- */
+.sud-grid{ display: grid; grid-template-columns: repeat(4,1fr); width: min(380px,90vw); margin: 0 auto 6px;
+  background: #0f1424; padding: 4px; border-radius: 12px; }
+.sud-cell{ aspect-ratio: 1; box-sizing: border-box; border: 1px solid rgba(244,241,232,0.15); cursor: pointer;
+  font-family: 'Patrick Hand', cursive; font-size: clamp(28px,7vw,46px); font-weight: 700; color: var(--sky); background: rgba(20,28,50,0.9); }
+.sud-cell:hover:not(:disabled){ background: rgba(40,52,88,0.95); }
+.sud-given{ color: var(--chalk) !important; background: rgba(60,70,100,0.7) !important; cursor: default; }
+.sud-bad{ color: #ff6b6b !important; background: rgba(120,30,30,0.55) !important; }
+.sud-redge{ border-right: 3px solid rgba(242,193,78,0.55); }
+.sud-bedge{ border-bottom: 3px solid rgba(242,193,78,0.55); }
+
 /* ---- Reduced motion: no decorative animation ---- */
 @media (prefers-reduced-motion: reduce){
   .wond-wheel{ animation: none; }
   .wond-card{ transition: none; }
   .wond-card:not(.wond-locked):hover{ transform: none; }
+  .mem-card{ transition: none; }
+  .mem-card:hover{ transform: none; }
 }

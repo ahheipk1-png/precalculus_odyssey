@@ -244,6 +244,7 @@
     if (typeof fishStop === 'function') fishStop();
     if (typeof mgrStop === 'function') mgrStop();
     if (typeof qbfStop === 'function') qbfStop();
+    if (typeof agStopAll === 'function') agStopAll();   // arcade games (36-arcade.js)
   }
 
   // ===========================================================================

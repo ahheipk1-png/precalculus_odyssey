@@ -253,6 +253,18 @@
             '<div class="wond-card-desc">Place blocks to fill rows &amp; columns — clear lines for combos!</div>' +
             '<button type="button" class="btn btn-primary wond-play" onclick="openBlockForge()" data-tooltip="An original block-placement puzzle. Free to play.">Play! (Free)</button>' +
           '</div>' +
+          '<div class="wond-card">' +
+            '<div class="wond-card-icon">🃏</div>' +
+            '<div class="wond-card-name">Star Match</div>' +
+            '<div class="wond-card-desc">Flip cards two at a time and match every cosmic pair!</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openMemory()" data-tooltip="A memory / concentration game. Free to play.">Play! (Free)</button>' +
+          '</div>' +
+          '<div class="wond-card">' +
+            '<div class="wond-card-icon">🔢</div>' +
+            '<div class="wond-card-name">Mini Sudoku</div>' +
+            '<div class="wond-card-desc">Fill the 4×4 grid so every row, column &amp; box has 1–4.</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openSudoku()" data-tooltip="A bite-size 4×4 Sudoku. Free to play.">Play! (Free)</button>' +
+          '</div>' +
           locked +
         '</div>' +
         '<div class="wond-footer">' +
