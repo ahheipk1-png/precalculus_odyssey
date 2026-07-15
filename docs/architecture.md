@@ -44,9 +44,13 @@ js/34-wonder-games.js      Wonderland carnival games (Bullseye Numbers, Gone Fis
 js/35-block-forge.js       Quantum Block Forge — original turn-based block-placement puzzle (pure qbfCanPlace/qbfClearLines/qbfAnyPlaceable)
 js/cloud-save.js           OPT-IN cloud layer around localStorage: account/recovery, debounced sync, revision/conflict, offline retry (window.Cloud)
 js/cloud-ui.js             Cloud Save panel + header status chip (openCloudPanel, updateCloudStatusUI, export/import, conflict UI)
+js/cloud-auth.js           account login/register on a Cinzel gold-on-navy HERO welcome screen (renderStart, .auth-hero starfield + faint-formula decor + feature strip) with a classic show/hide password eye (authToggleEye); full-screen ADMIN dashboard (authOpenAdmin): approval waiting-list + per-player details (settings/level/arenas/per-arena stats); pushes progress to D1 every 25s (authStartProgressSync, mitb test-account excluded)
 --- server (Cloudflare, deployed from repo ROOT, not game/) — see CLOUD_SETUP.md ---
-functions/api/cloud/*      Pages Functions: account.js, account/recover.js, profiles.js, profiles/[profileId].js, _shared.js (D1 binding `DB`)
+functions/api/cloud/*      Pages Functions: account.js, account/recover.js, profiles.js, profiles/[profileId].js, _shared.js (D1 binding `DB`, auth helpers: hashPassword/authAccountFull/authAdmin/TEST_USERNAMES)
+functions/api/auth/*       account auth: register.js (captures cf.city/country + IP), login.js (approval-gated, single active login except test accounts), logout.js, progress.js (player pushes progress_json)
+functions/api/admin/*      admin-only: accounts.js (list), account.js (approve/reject/disable/makeAdmin/setPassword), player.js (one player + progress), bootstrap.js (idempotent column-adds + seeds admin/admin & mitb; key=odyssey-setup-2pi)
 migrations/0001_cloud_saves.sql   D1 schema (cloud_accounts, cloud_sessions, player_profiles)
+migrations/0002-0006_*.sql        auth columns, seed admin + mitb test account, registration details (ip/city/country), progress_json
 wrangler.toml              Pages config: static output = game/, D1 binding DB
 tools/local-save-server.ps1       optional localhost companion for C:\temp backups
 js/07-main.js              ALL event wiring + boot (loads last of the main scope); wires chapter generator, initLore(), initMuteBtn()

@@ -41,26 +41,71 @@
     var isLogin = authTab === 'login';
     return '<div class="auth-form">' +
       '<input type="text" id="authUser" class="auth-input" placeholder="' + (isLogin ? 'Username' : 'Choose a username (3–16)') + '" autocomplete="username" maxlength="16">' +
-      '<input type="password" id="authPass" class="auth-input" placeholder="' + (isLogin ? 'Password' : 'Choose a password (8+ characters)') + '" autocomplete="' + (isLogin ? 'current-password' : 'new-password') + '" maxlength="64">' +
+      '<div class="auth-pass-wrap">' +
+        '<input type="password" id="authPass" class="auth-input" placeholder="' + (isLogin ? 'Password' : 'Choose a password (8+ characters)') + '" autocomplete="' + (isLogin ? 'current-password' : 'new-password') + '" maxlength="64">' +
+        '<button type="button" class="auth-eye" id="authEye" onclick="authToggleEye()" aria-label="Show password" title="Show / hide password">👁</button>' +
+      '</div>' +
       '<button type="button" class="btn btn-primary auth-submit" onclick="' + (isLogin ? 'authLogin()' : 'authRegister()') + '">' + (isLogin ? 'Log in ▶' : 'Request account ▶') + '</button>' +
       (isLogin ? '' : '<p class="auth-note">An admin approves new accounts before your first log-in.</p>') +
       '</div>';
   }
+  // Faint gold math formulas scattered around the hero (decorative only).
+  var AUTH_FORMULAS = [
+    ['6%', '16%', 'y = \\sin x'], ['5%', '40%', 'e^{i\\theta} = \\cos\\theta + i\\sin\\theta'],
+    ['7%', '66%', 'y = a\\cos x + b'], ['82%', '20%', 'y = ax^2 + bx + c'],
+    ['84%', '46%', '\\tfrac{d}{dx}(x^n)=nx^{n-1}'], ['80%', '70%', '\\sin^2 x + \\cos^2 x = 1'],
+    ['20%', '82%', '\\pi'], ['70%', '84%', '\\theta']
+  ];
+  function heroDecorHtml(){
+    var f = AUTH_FORMULAS.map(function (p){
+      return '<span class="auth-formula" style="left:' + p[0] + ';top:' + p[1] + '">' + esc(p[2].replace(/\\\w+|[{}^]/g, function(m){
+        return ({ '\\sin':'sin','\\cos':'cos','\\theta':'θ','\\pi':'π','\\tfrac':'','\\frac':'','\\;':' ' })[m] || (m === '^' ? '^' : (m === '{' || m === '}' ? '' : m));
+      })) + '</span>';
+    }).join('');
+    return '<div class="auth-stars" aria-hidden="true"></div><div class="auth-decor" aria-hidden="true">' + f + '</div>';
+  }
+  function featureStripHtml(){
+    var items = [['🧭', 'Explore Realms', 'Journey through beautiful math worlds.'],
+                 ['⚔️', 'Solve Challenges', 'Tackle problems and level up your skills.'],
+                 ['🏆', 'Earn Rewards', 'Unlock achievements and powerful artifacts.'],
+                 ['📈', 'Track Progress', 'Watch yourself become a math master.']];
+    return '<div class="auth-features">' + items.map(function (i){
+      return '<div class="auth-feat"><span class="auth-feat-ico">' + i[0] + '</span><div><b>' + i[1] + '</b><span>' + i[2] + '</span></div></div>';
+    }).join('') + '</div>';
+  }
+
   function renderStart(){
-    var card = document.querySelector('#startScreen .start-screen-card');
-    if (!card) return;
+    var screen = document.getElementById('startScreen');
+    var card = screen && screen.querySelector('.start-screen-card');
+    if (!card || !screen) return;
+    screen.classList.add('auth-hero');
+    // decorative background (behind the card) — injected once
+    if (!screen.querySelector('.auth-stars')){ var d = document.createElement('div'); d.innerHTML = heroDecorHtml(); while (d.firstChild) screen.insertBefore(d.firstChild, screen.firstChild); }
     card.innerHTML =
-      '<h2 class="start-screen-title">Precalculus Odyssey</h2>' +
-      '<p class="start-screen-tagline">Knowledge Is Humanity’s Strongest Weapon</p>' +
+      '<div class="auth-logo">✦</div>' +
+      '<h2 class="start-screen-title auth-title"><span class="auth-title-1">Precalculus</span><span class="auth-title-2">Odyssey</span></h2>' +
+      '<p class="start-screen-tagline auth-tagline">✦ Knowledge Is Humanity’s Strongest Weapon ✦</p>' +
+      '<p class="auth-intro">Embark on an epic adventure through the world of precalculus — solve challenges, unlock new realms, and master the math that shapes our universe.</p>' +
       '<div class="auth-tabs">' +
         '<button type="button" class="auth-tab' + (authTab === 'login' ? ' active' : '') + '" onclick="authSetTab(\'login\')">Log in</button>' +
         '<button type="button" class="auth-tab' + (authTab === 'register' ? ' active' : '') + '" onclick="authSetTab(\'register\')">Request account</button>' +
       '</div>' +
       formHtml() +
-      '<p class="auth-msg" id="authMsg"></p>';
+      '<p class="auth-msg" id="authMsg"></p>' +
+      featureStripHtml();
     var pass = document.getElementById('authPass');
     if (pass) pass.addEventListener('keydown', function (ev){ if (ev.key === 'Enter'){ ev.preventDefault(); authTab === 'login' ? window.authLogin() : window.authRegister(); } });
   }
+
+  // Show / hide the password (classic eye toggle).
+  window.authToggleEye = function(){
+    var p = document.getElementById('authPass'), e = document.getElementById('authEye');
+    if (!p) return;
+    var show = p.type === 'password';
+    p.type = show ? 'text' : 'password';
+    if (e){ e.textContent = show ? '🙈' : '👁'; e.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); e.classList.toggle('on', show); }
+    p.focus();
+  };
 
   window.authSetTab = function (t){ authTab = t; renderStart(); };
 
