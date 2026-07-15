@@ -242,9 +242,10 @@
 
   .feedback{
     text-align:center;
-    min-height: 24px;
-    font-weight:700;
-    font-size: 16px;
+    min-height: 30px;
+    font-weight:800;
+    font-size: 22px;
+    line-height:1.3;
     color: var(--yellow);
     margin: 8px 0 0;
   }
@@ -1256,7 +1257,7 @@
     box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 -50px 100px rgba(0,0,0,.22);
   }
   .board::before{
-    content:"âœ¦";
+    content:"✦";
     position:absolute;
     top:18px;left:22px;
     color:rgba(102,224,255,.55);
@@ -1368,7 +1369,7 @@
   .left-pan-text{color:#ff9ac0;text-shadow:0 0 18px rgba(255,95,164,.44),0 4px 10px rgba(0,0,0,.55)}
   .right-pan-text{color:#ffe177;text-shadow:0 0 18px rgba(255,216,107,.44),0 4px 10px rgba(0,0,0,.55)}
 
-  .feedback{font-size:17px;min-height:26px}.moves-info{font-size:14px;color:#929cbc}
+  .feedback{font-size:22px;min-height:30px}.moves-info{font-size:14px;color:#929cbc}
   .move-label{font-size:14px;letter-spacing:1.6px;color:#a5afd0;margin-top:20px}
   .op-row{gap:10px}.op-btn{
     width:64px;height:58px;border-radius:16px;border:1px solid var(--line);
