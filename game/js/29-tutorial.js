@@ -29,7 +29,7 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
     s = s.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-    return s.split(/\n\s*\n/).map(function(b){
+    var html = s.split(/\n\s*\n/).map(function(b){
       var lines = b.split(/\n/).filter(function(l){ return l.trim(); });
       if (lines.length && lines.every(function(l){ return /^\s*-\s+/.test(l); }))
         return '<ul>' + lines.map(function(l){ return '<li>' + l.replace(/^\s*-\s+/, '') + '</li>'; }).join('') + '</ul>';
@@ -37,6 +37,7 @@
         return '<ol>' + lines.map(function(l){ return '<li>' + l.replace(/^\s*\d+\.\s+/, '') + '</li>'; }).join('') + '</ol>';
       return '<p>' + b.trim().replace(/\n/g, '<br>') + '</p>';
     }).join('');
+    return (typeof mathPretty === 'function') ? mathPretty(html) : html;
   }
 
   // Build step-by-step pages from the authored Bible tutorial (TUTORIAL_REGISTRY[phaseId]).

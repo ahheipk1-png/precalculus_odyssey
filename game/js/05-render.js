@@ -111,7 +111,7 @@
       if (_tag && _ar){
         var _w = (typeof MATH_WORLDS !== 'undefined') ? MATH_WORLDS.filter(function(w){ return w.id === _ar.worldId; })[0] : null;
         _tag.innerHTML = _w
-          ? '🌌 <span class="x-emph">' + _w.title + '</span> · Arena ' + state.level + ' of ' + (state.maxLevel || 187)
+          ? '🌌 <span class="x-emph">' + _w.title + '</span> · Arena ' + state.level + ' of ' + (state.maxLevel || (typeof CURRICULUM_MAX === 'number' ? CURRICULUM_MAX : 65))
           : 'A maths voyage across the galaxy — solve planets to explore the stars.';
       }
     }
@@ -234,18 +234,18 @@
     // New question styles: fill the prompt + choices/input.
     if (controls === 'mcOnly'){
       el.expandBtn.hidden = true;
-      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + (state.problem.prompt || '') + '</div>';
+      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>';
       renderMcOnlyChoices();
     } else if (controls === 'directInput'){
-      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + (state.problem.prompt || '') + '</div>';
+      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>';
       if (el.directInput) el.directInput.value = '';
     } else if (controls === 'comingSoon'){
       if (el.questionPrompt) el.questionPrompt.innerHTML =
         '<div class="qp-soon">🔒 Puzzles coming soon</div>' +
-        '<div class="qp-text">' + (state.problem.prompt || '') + '</div>' +
+        '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>' +
         '<div class="qp-hint">This planet’s challenges are still being forged — explore its astronomy, or travel on.</div>';
     } else if (controls === 'graph'){
-      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + (state.problem.prompt || '') + '</div>';
+      if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>';
     }
 
     // Coordinate graph: static plot (alongside a Compute/Identify answer) OR the interactive input.
@@ -257,7 +257,7 @@
     el.mcChoices.hidden = false;
     el.mcChoices.style.display = 'grid';
     el.mcChoices.innerHTML = state.problem.choices.map(function(c, i){
-      return '<button type="button" class="mc-btn" data-idx="' + i + '">' + c + '</button>';
+      return '<button type="button" class="mc-btn" data-idx="' + i + '">' + mathPretty(c) + '</button>';
     }).join('');
     var btns = el.mcChoices.querySelectorAll('.mc-btn');
     for (var i = 0; i < btns.length; i++){
@@ -318,7 +318,7 @@
     state.hintLevel = lvl;
     el.hintPanel.hidden = false;
     el.hintLevelLabel.textContent = (n > 1) ? ('Hint ' + lvl + ' of ' + n) : 'Hint';
-    el.hintText.textContent = ladder[lvl - 1];
+    el.hintText.innerHTML = mathPretty(ladder[lvl - 1]);
     // Last rung of a full ladder = the worked solution; flag it visually.
     el.hintPanel.classList.toggle('hint-solution', n > 1 && lvl === n);
     el.hintPrevBtn.disabled = (lvl <= 1);

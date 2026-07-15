@@ -49,7 +49,7 @@
   // ===========================================================================
   var MEM_SYMBOLS = ['🚀','🪐','⭐','☄️','🌙','👽','🛸','🔭','🌌','⚡','🔥','💎'];
   var MEM_CONF = { easy: { cols: 4, rows: 3, name: 'Easy' }, normal: { cols: 4, rows: 4, name: 'Normal' }, hard: { cols: 5, rows: 4, name: 'Hard' } };
-  var MEM = { active: false, diff: 'easy', cards: [], first: -1, matched: 0, moves: 0, lock: false, _t: null };
+  var MEM = { active: false, diff: 'easy', cards: [], first: -1, matched: 0, moves: 0, lock: false, _t: null, _pt: null, previewLeft: 0 };
 
   function memPairs(diff){ var c = MEM_CONF[diff] || MEM_CONF.easy; return c.cols * c.rows / 2; }
 
@@ -87,11 +87,31 @@
         '<p class="wond-tip">Click a card to flip it. Match all ' + pairs + ' pairs — fewer moves = more Cash!</p>' +
       '</div>';
     if (typeof playSfx === 'function') playSfx('ui-click');
+    // Preview: reveal every card first — 5s easy, 3s normal, 2s hard — then hide them.
+    var previewSecs = diff === 'hard' ? 2 : (diff === 'normal' ? 3 : 5);
+    MEM.lock = true;
+    MEM.previewLeft = previewSecs;
+    MEM.cards.forEach(function(c){ c.up = true; });
     memRender();
+    if (MEM._pt) clearInterval(MEM._pt);
+    MEM._pt = setInterval(function(){
+      MEM.previewLeft--;
+      if (MEM.previewLeft <= 0){
+        clearInterval(MEM._pt); MEM._pt = null; MEM.previewLeft = 0;
+        MEM.cards.forEach(function(c){ if (!c.done) c.up = false; });
+        MEM.lock = false;
+        memRender();
+        if (typeof playSfx === 'function') playSfx('ui-click');
+      } else { memHud(); }
+    }, 1000);
   }
 
   function memHud(){
     var h = document.getElementById('memHud'); if (!h) return;
+    if (MEM.previewLeft > 0){
+      h.innerHTML = '<span class="wond-chip wond-chip-hot">👀 Memorise the board! <b>' + MEM.previewLeft + 's</b></span>';
+      return;
+    }
     h.innerHTML = '<span class="wond-chip">🃏 Pairs: <b>' + MEM.matched + ' / ' + memPairs(MEM.diff) + '</b></span>' +
       '<span class="wond-chip">🔄 Moves: <b>' + MEM.moves + '</b></span>';
   }
@@ -127,7 +147,7 @@
     }
   }
 
-  function memStop(){ MEM.active = false; if (MEM._t){ clearTimeout(MEM._t); MEM._t = null; } }
+  function memStop(){ MEM.active = false; if (MEM._t){ clearTimeout(MEM._t); MEM._t = null; } if (MEM._pt){ clearInterval(MEM._pt); MEM._pt = null; } MEM.previewLeft = 0; }
 
   function memWin(){
     var pairs = memPairs(MEM.diff), moves = MEM.moves, diff = MEM.diff;

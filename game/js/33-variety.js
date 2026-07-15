@@ -87,15 +87,10 @@
 
   function _freshTF(n) {
     var p = generateProblem(n), isTrue = (rand(0, 1) === 0), claimStr;
+    // Only reframe SELF-CONTAINED compute questions. An mcOnly prompt like
+    // "Which number is the largest?" is meaningless without its choices, so skip it.
     if (p.mode === 'directInput' && typeof p.answer === 'number') {
       claimStr = _vfmt(isTrue ? p.answer : p.answer + _delta(p.answer));
-    } else if (p.mode === 'mcOnly' && Array.isArray(p.choices)) {
-      if (isTrue) { claimStr = p.choices[p.correctIndex]; }
-      else {
-        var wrong = p.choices.filter(function (c, i) { return i !== p.correctIndex; });
-        if (!wrong.length) return null;
-        claimStr = wrong[rand(0, wrong.length - 1)];
-      }
     } else { return null; }
     return { mode: 'mcOnly',
       prompt: '<b>True or False?</b><br>For “' + p.prompt + '”, the answer is <b>' + claimStr + '</b>.',
@@ -105,15 +100,9 @@
 
   function _freshError(n) {
     var p = generateProblem(n), ok = (rand(0, 1) === 0), claim;
+    // Same rule as _freshTF: only compute questions can be reframed without losing meaning.
     if (p.mode === 'directInput' && typeof p.answer === 'number') {
       claim = _vfmt(ok ? p.answer : p.answer + _delta(p.answer));
-    } else if (p.mode === 'mcOnly' && Array.isArray(p.choices)) {
-      if (ok) { claim = p.choices[p.correctIndex]; }
-      else {
-        var wrong = p.choices.filter(function (c, i) { return i !== p.correctIndex; });
-        if (!wrong.length) return null;
-        claim = wrong[rand(0, wrong.length - 1)];
-      }
     } else { return null; }
     return { mode: 'mcOnly',
       prompt: 'A cadet answered “' + p.prompt + '” with <b>' + claim + '</b>.<br>Is the cadet correct?',
@@ -172,7 +161,7 @@
 
   function _poolFor(native) {
     if (native === 'directInput') return ['direct', 'mc', 'trueFalse', 'errorAnalysis', 'compare', 'estimate'];
-    if (native === 'mcOnly') return ['direct', 'trueFalse', 'errorAnalysis'];
+    if (native === 'mcOnly') return ['direct'];   // serve mcOnly with its real choices; never reframe
     return [];
   }
 

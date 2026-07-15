@@ -51,13 +51,12 @@
   // or the landed dice.
   function _hhDiceStageHtml(){
     if (_hhRolling){
-      // Dice sit UNDER the bowl (tumbling, hidden); the bowl covers, shakes, then lifts.
-      var under = '<div class="hh-dice hh-dice-under">' +
+      // No bowl — the three dice tumble in the open, then land on their faces.
+      var rolling = '<div class="hh-dice hh-dice-tumbling">' +
         '<span class="hh-die hh-die-rolling">🎲</span>' +
         '<span class="hh-die hh-die-rolling">🎲</span>' +
         '<span class="hh-die hh-die-rolling">🎲</span></div>';
-      var bowl = '<div class="hh-bowl" id="hhBowl"><div class="hh-bowl-body">🥣</div><div class="hh-bowl-label">Shaking…</div></div>';
-      return '<div class="hh-dice-stage">' + under + bowl + '</div>';
+      return '<div class="hh-dice-stage">' + rolling + '</div>';
     }
     if (_hhDice){
       var cls = 'hh-dice' + (_hhOutcome ? ' hh-dice-' + _hhOutcome : '');
@@ -164,10 +163,9 @@
     renderHooHey();
 
     var reduce = (typeof reduceMotion !== 'undefined' && reduceMotion);
-    var bowl = document.getElementById('hhBowl');
     _hhClearTimers();
 
-    // Tumble the hidden dice under the bowl for extra life on reveal-adjacent frames.
+    // Tumble the open dice — each face flips through random symbols until it lands.
     var faces = document.querySelectorAll('#hooHeyView .hh-die-rolling');
     _hhRollTimer = setInterval(function(){
       for (var i = 0; i < faces.length; i++){ faces[i].textContent = HH_SYMBOLS[rand(0, 5)].icon; }
@@ -197,29 +195,12 @@
       renderHooHey();
     };
 
-    if (reduce || !bowl){
-      // Reduced motion (or missing bowl node): a short, quiet delay then reveal.
-      _hhPhaseTimers.push(setTimeout(doReveal, reduce ? 250 : (HH_COVER + HH_SHAKE + HH_PAUSE + HH_LIFT)));
-      return;
+    // Tumble in the open for a beat (a couple of shake ticks for feel), then land the dice.
+    var rollDur = reduce ? 250 : (HH_COVER + HH_SHAKE + HH_PAUSE + HH_LIFT);
+    if (!reduce && typeof playSfx === 'function'){
+      playSfx('click');
+      _hhPhaseTimers.push(setTimeout(function(){ playSfx('click'); }, Math.round(rollDur * 0.4)));
+      _hhPhaseTimers.push(setTimeout(function(){ playSfx('click'); }, Math.round(rollDur * 0.75)));
     }
-
-    // Phase 1 — cover: drop the bowl over the dice.
-    if (typeof playSfx === 'function') playSfx('click');
-    requestAnimationFrame(function(){ if (bowl) bowl.classList.add('hh-bowl-cover'); });
-    // Phase 2 — shake (keep the cover class so the bowl stays down; shake adds the wobble).
-    _hhPhaseTimers.push(setTimeout(function(){
-      if (bowl){ bowl.classList.add('hh-bowl-shake'); }
-      if (typeof playSfx === 'function') playSfx('click');
-    }, HH_COVER));
-    _hhPhaseTimers.push(setTimeout(function(){ if (typeof playSfx === 'function') playSfx('click'); }, HH_COVER + HH_SHAKE * 0.5));
-    // Phase 3 — pause (hold still), then Phase 4 — lift the bowl away.
-    _hhPhaseTimers.push(setTimeout(function(){
-      if (bowl){ bowl.classList.remove('hh-bowl-shake'); }
-    }, HH_COVER + HH_SHAKE));
-    _hhPhaseTimers.push(setTimeout(function(){
-      if (bowl){ bowl.classList.add('hh-bowl-lift'); }
-      if (typeof playSfx === 'function') playSfx('click');
-    }, HH_COVER + HH_SHAKE + HH_PAUSE));
-    // Phase 5 — reveal.
-    _hhPhaseTimers.push(setTimeout(doReveal, HH_COVER + HH_SHAKE + HH_PAUSE + HH_LIFT));
+    _hhPhaseTimers.push(setTimeout(doReveal, rollDur));
   }

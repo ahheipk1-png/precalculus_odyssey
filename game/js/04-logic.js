@@ -14,6 +14,24 @@
     return n < 0 ? ('\u2212' + Math.abs(n)) : ('' + n);
   }
 
+  // Pretty-print maths notation for DISPLAY ONLY (answers are matched by index/number, never by
+  // this text): 3^2 -> 3\u00b2, x^{n+1} -> superscript, log_3 -> log with a subscript 3 (no underscore),
+  // sqrt -> \u221a, pi -> \u03c0, theta -> \u03b8, <=/>=/!= -> \u2264 \u2265 \u2260, * -> \u00d7. Safe to run on strings that already
+  // contain <b>/<br> tags (the symbol swaps can't match tag syntax). Emits <sup>/<sub> HTML, so the
+  // result must be inserted with innerHTML.
+  function mathPretty(s){
+    if (s == null) return '';
+    s = String(s);
+    s = s.replace(/&lt;=/g, '\u2264').replace(/&gt;=/g, '\u2265')
+         .replace(/<=/g, '\u2264').replace(/>=/g, '\u2265').replace(/!=/g, '\u2260')
+         .replace(/\+\/-/g, '\u00b1').replace(/\binfinity\b/gi, '\u221e')
+         .replace(/\bsqrt\s*/gi, '\u221a').replace(/\bpi\b/g, '\u03c0').replace(/\btheta\b/gi, '\u03b8')
+         .replace(/(\d|\))\s*\*\s*(?=[\da-zA-Z(])/g, '$1\u00d7');
+    s = s.replace(/\^\{([^}]*)\}/g, '<sup>$1</sup>').replace(/\^(-?[0-9]+|[a-zA-Z])/g, '<sup>$1</sup>');
+    s = s.replace(/_\{([^}]*)\}/g, '<sub>$1</sub>').replace(/_(-?[0-9]+|[a-zA-Z])/g, '<sub>$1</sub>');
+    return s;
+  }
+
   function formatSideHTML(eq){
     var denom = eq.denom || 1;
     var left = '';
