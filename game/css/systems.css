@@ -114,6 +114,25 @@
   @media (max-width:760px){ .auth-hero .auth-decor{ display:none; } .auth-features{ display:none; } }
   @media (prefers-reduced-motion: reduce){ .auth-hero .auth-stars{ animation:none; } }
 
+  /* ---------- Illustrated hero welcome (welcome-hero.png) + compact login panel ---------- */
+  .start-screen-overlay.auth-photo{
+    background: #0a1024 url('../assets/welcome-hero.png?v=1') center top / cover no-repeat;
+    display:flex; align-items:flex-end; justify-content:center; padding:0 16px; overflow:auto;
+  }
+  .auth-photo .start-screen-card{
+    position:relative; width:min(420px,94vw); margin:0 0 clamp(16px,5vh,60px);
+    background:rgba(9,13,28,0.86); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+    border:1px solid rgba(242,193,78,0.42); border-radius:18px;
+    padding:16px 20px 20px; text-align:center; box-shadow:0 18px 55px rgba(0,0,0,.55);
+  }
+  .auth-photo-head{ margin-bottom:10px; }
+  .auth-photo .auth-logo{ display:block; font-size:26px; color:var(--yellow); text-shadow:0 0 16px rgba(242,193,78,.6); margin-bottom:2px; }
+  .auth-photo-title{ display:block; font-family:'Cinzel',serif; font-size:22px; font-weight:700; color:#fff; letter-spacing:.5px; }
+  .auth-photo-sub{ display:block; color:#c3cde6; font-size:13.5px; margin-top:3px; }
+  .auth-photo .auth-submit{ width:100%; background:linear-gradient(180deg,#ffdf7a,#e0a63a) !important; color:#3a2a08 !important;
+    box-shadow:0 4px 0 #a9781f, 0 6px 18px rgba(224,166,58,.35) !important; border:1px solid #ffe9a8 !important; font-weight:800 !important; }
+  .auth-photo .auth-submit:active{ transform:translateY(2px); box-shadow:0 2px 0 #a9781f !important; }
+
   .admin-card{ width:min(560px,94vw); }
   .admin-list{ max-height:56vh; overflow-y:auto; margin:6px 0 14px; display:flex; flex-direction:column; gap:8px; }
   .admin-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;

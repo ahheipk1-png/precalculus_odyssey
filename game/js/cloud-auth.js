@@ -79,21 +79,22 @@
     var screen = document.getElementById('startScreen');
     var card = screen && screen.querySelector('.start-screen-card');
     if (!card || !screen) return;
-    screen.classList.add('auth-hero');
-    // decorative background (behind the card) — injected once
-    if (!screen.querySelector('.auth-stars')){ var d = document.createElement('div'); d.innerHTML = heroDecorHtml(); while (d.firstChild) screen.insertBefore(d.firstChild, screen.firstChild); }
+    // The illustrated hero (game/assets/welcome-hero.png) supplies the title, tagline, intro,
+    // artwork and feature strip; we overlay only a compact, functional login panel. Drop any
+    // decor injected by an earlier CSS-hero render.
+    screen.classList.remove('auth-hero');
+    screen.classList.add('auth-photo');
+    ['.auth-stars', '.auth-decor'].forEach(function (sel){ var e = screen.querySelector(sel); if (e && e.parentNode) e.parentNode.removeChild(e); });
     card.innerHTML =
-      '<div class="auth-logo">✦</div>' +
-      '<h2 class="start-screen-title auth-title"><span class="auth-title-1">Precalculus</span><span class="auth-title-2">Odyssey</span></h2>' +
-      '<p class="start-screen-tagline auth-tagline">✦ Knowledge Is Humanity’s Strongest Weapon ✦</p>' +
-      '<p class="auth-intro">Embark on an epic adventure through the world of precalculus — solve challenges, unlock new realms, and master the math that shapes our universe.</p>' +
+      '<div class="auth-photo-head"><span class="auth-logo">✦</span>' +
+        '<span class="auth-photo-title">Precalculus Odyssey</span>' +
+        '<span class="auth-photo-sub">' + (authTab === 'login' ? 'Sign in to continue your journey' : 'Request an account to begin') + '</span></div>' +
       '<div class="auth-tabs">' +
         '<button type="button" class="auth-tab' + (authTab === 'login' ? ' active' : '') + '" onclick="authSetTab(\'login\')">Log in</button>' +
         '<button type="button" class="auth-tab' + (authTab === 'register' ? ' active' : '') + '" onclick="authSetTab(\'register\')">Request account</button>' +
       '</div>' +
       formHtml() +
-      '<p class="auth-msg" id="authMsg"></p>' +
-      featureStripHtml();
+      '<p class="auth-msg" id="authMsg"></p>';
     var pass = document.getElementById('authPass');
     if (pass) pass.addEventListener('keydown', function (ev){ if (ev.key === 'Enter'){ ev.preventDefault(); authTab === 'login' ? window.authLogin() : window.authRegister(); } });
   }
