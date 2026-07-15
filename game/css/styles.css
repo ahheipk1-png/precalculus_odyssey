@@ -456,11 +456,29 @@
 
   .secondary-actions{
     display:flex;
-    align-items:center;
-    justify-content:center;
+    flex-direction:column;
     gap: 10px;
     margin-top: 16px;
   }
+  /* Two grouped "canvases": learning help (How to play / Hint / Ask the tutor) and
+     arena controls (Restart / Boss Gate). Buttons flow and wrap so text never truncates. */
+  .action-group{
+    display:flex; flex-wrap:wrap; gap:8px;
+    padding:9px;
+    border:1px solid rgba(244,241,232,0.12);
+    border-radius:14px;
+    background:rgba(244,241,232,0.03);
+  }
+  .action-group .btn{
+    flex:1 1 30%;
+    min-width:92px;
+    white-space:normal;
+    line-height:1.2;
+    font-size:14px;
+    padding:9px 8px;
+    text-align:center;
+  }
+  #arenaActions .btn{ flex:1 1 44%; }
   .hint-text{
     text-align:center;
     font-size:15px;
@@ -1734,13 +1752,14 @@
     grid-template-columns:1fr;
   }
   .quest-control-panel .secondary-actions{
-    display:grid;
-    grid-template-columns:1fr 1fr;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
     width:100%;
     margin-top:18px;
   }
   .quest-control-panel .secondary-actions .btn{
-    width:100%;
+    width:auto;
   }
   .quest-control-panel .hint-panel{
     text-align:left;
