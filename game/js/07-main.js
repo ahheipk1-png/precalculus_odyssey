@@ -474,7 +474,7 @@
   // ---------- Start screen: New Player (named) / Continue as a saved profile ----------
   function startGame(){
     gameStarted = true;
-    // Secret test account (name is "mitb", case-insensitive) → test mode. Derived from the
+    // Test account (name is "admin", case-insensitive) → test mode. Derived from the
     // active profile name, so it works for both New Player and Continue without a save-schema
     // change, and turns off automatically for any normal player.
     state.testMode = TEST_NAMES.indexOf((activeProfileName || '').trim().toUpperCase()) !== -1;

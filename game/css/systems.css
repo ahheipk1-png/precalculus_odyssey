@@ -343,7 +343,21 @@
   .bim-rows > div{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:8px; text-align:left; }
   .bim-rows span{ display:block; font-size:14px; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:.5px; }
   .bim-rows b{ font-size:14px; color:var(--chalk); }
-  .bim-enter{ width:100%; font-size:17px; padding:12px; }
+  .bim-photo{ width:100%; font-size:16px; padding:10px; margin-bottom:10px; }
+
+  /* ---- Real-photo lightbox (over the info modal) ---- */
+  .body-photo-lb{ position:fixed; inset:0; z-index:140; display:none; }
+  .body-photo-lb.open{ display:block; }
+  .bpl-backdrop{ position:absolute; inset:0; background:rgba(3,5,12,0.86); backdrop-filter:blur(4px); }
+  .bpl-card{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,94vw); max-height:92vh; overflow:auto;
+    background:linear-gradient(160deg,#0f1424,#080b16); border:1px solid rgba(255,255,255,0.14); border-radius:18px; padding:16px; box-shadow:0 24px 70px rgba(0,0,0,.6); }
+  .bpl-close{ position:absolute; top:10px; right:14px; background:rgba(0,0,0,.35); border:none; color:#fff; font-size:22px; line-height:1; cursor:pointer; border-radius:50%; width:36px; height:36px; z-index:2; }
+  .bpl-close:hover{ background:rgba(0,0,0,.6); }
+  .bpl-imgwrap{ display:flex; align-items:center; justify-content:center; min-height:220px; }
+  .bpl-img{ max-width:100%; max-height:76vh; border-radius:12px; display:block; box-shadow:0 8px 30px rgba(0,0,0,.5); }
+  .bpl-loading, .bpl-fail{ color:var(--chalk-dim); font-size:16px; padding:40px 16px; text-align:center; }
+  .bpl-cap{ margin-top:12px; text-align:center; font-size:13.5px; color:var(--chalk-dim); }
+  .bpl-cap b{ color:var(--chalk); }
 
   /* ---- Tutorial overlay ("How to play") ---- */
   .tutorial-overlay{ position:fixed; inset:0; z-index:130; display:none; }

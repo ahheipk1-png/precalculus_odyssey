@@ -2,12 +2,14 @@
 // One-shot setup so you never have to open the D1 console:
 //   1) adds the auth columns to cloud_accounts (idempotent — ignores "duplicate column"),
 //   2) creates the username unique index,
-//   3) seeds two ready accounts:  admin / admin   and   mitb / Pi*2=6.2831853  (the test account).
-// Re-running it just resets those two accounts back to those passwords.
+//   3) removes the old separate `mitb` test account, then
+//   4) seeds one ready account:  admin / admin  — which is BOTH the admin dashboard owner AND the
+//      test account (test mode in-game + exempt from single-login).
+// Re-running it just resets admin back to admin/admin and clears any leftover mitb row.
 //
 // Gate: the `key` query param (or `x-seed-key` header) must equal env SEED_KEY if you set one in the
 // Pages dashboard, otherwise the baked default below. Change SETUP_KEY (or set a SEED_KEY secret),
-// and/or delete this file after you've bootstrapped, since anyone with the key can reset these two logins.
+// and/or delete this file after you've bootstrapped, since anyone with the key can reset this login.
 import { json, bad, nowIso, sha256hex } from '../cloud/_shared.js';
 
 const SETUP_KEY = 'odyssey-setup-2pi';   // <-- change me (or set a SEED_KEY secret in Cloudflare Pages)
@@ -41,11 +43,13 @@ export async function onRequest(context) {
     for (const sql of alters) { try { await DB.prepare(sql).run(); } catch (e) { /* column already exists — fine */ } }
     try { await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cloud_accounts_username ON cloud_accounts(username)").run(); } catch (e) {}
 
-    // 2) seed admin + test account (idempotent: delete + insert)
+    // 2) remove the old separate test account — `admin` is now BOTH admin AND the test account.
+    try { await DB.prepare("DELETE FROM cloud_accounts WHERE username IN ('mitb','michaelisthebest','michealisthebest')").run(); } catch (e) {}
+
+    // 3) seed the admin/test account (idempotent: delete + insert)
     const now = nowIso();
     const seeds = [
-      { id: 'acc_seed_admin', username: 'admin', salt: 'adminseed01', pw: 'admin',          admin: 1 },
-      { id: 'acc_seed_mitb',  username: 'mitb',  salt: 'mitbseed01',  pw: 'Pi*2=6.2831853',  admin: 0 }
+      { id: 'acc_seed_admin', username: 'admin', salt: 'adminseed01', pw: 'admin', admin: 1 }
     ];
     for (const s of seeds) {
       const hash = await sha256hex(s.salt + ':' + s.pw);   // same as the login endpoint's hashPassword
@@ -57,7 +61,7 @@ export async function onRequest(context) {
       ).bind(s.id, '0'.repeat(64), s.username, hash, s.salt, s.pw, s.admin, now).run();
     }
 
-    return json(200, { ok: true, message: 'Bootstrap complete. Log in as admin/admin (admin) or mitb / Pi*2=6.2831853 (test).' });
+    return json(200, { ok: true, message: 'Bootstrap complete. Log in as admin / admin — it is both the admin dashboard AND the test account (the old mitb test account was removed).' });
   } catch (e) {
     return bad('SERVER_ERROR', 'Bootstrap failed: ' + (e && e.message ? e.message : 'unknown'), 500);
   }

@@ -41,7 +41,7 @@
     if (!av) return;
     if (_atlasSystem){ av.innerHTML = _atlasPlanetsHtml(_atlasSystem); return; }
     var cur = _currentSystemId();
-    // TEST MODE (mitb) unlocks every star system so the tester can browse them all.
+    // TEST MODE (admin) unlocks every star system so the tester can browse them all.
     var testUnlockAll = !!state.testMode;
     var cards = (typeof STAR_SYSTEMS !== 'undefined' ? STAR_SYSTEMS : []).map(function(s){
       var here = s.id === cur;
@@ -169,6 +169,44 @@
     return 'planet';
   }
 
+  // Real NASA / public-domain photographs (Wikimedia Commons, verified to load) for the
+  // Sol-System bodies. Keyed by a normalised body name. Only bodies we actually have a real
+  // photo for appear here, so distant exoplanets, stars, black holes and imagined worlds get
+  // NO "real photo" button. Commons Special:FilePath 302-redirects to the current file.
+  var BODY_PHOTO_BASE = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
+  var BODY_PHOTOS = {
+    'the sun': "The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA's_Solar_Dynamics_Observatory_-_20100819.jpg",
+    'mercury': 'Mercury_in_color_-_Prockter07-edit1.jpg',
+    'venus': 'Venus_from_Mariner_10.jpg',
+    'earth': 'The_Earth_seen_from_Apollo_17.jpg',
+    'the moon': 'FullMoon2010.jpg',
+    'mars': 'OSIRIS_Mars_true_color.jpg',
+    'phobos': 'Phobos_colour_2008.jpg',
+    'deimos': 'Deimos-MRO.jpg',
+    'ceres': 'Ceres_-_RC3_-_Haulani_Crater_(22381131691)_(cropped).jpg',
+    'vesta': 'Vesta_in_natural_color.jpg',
+    'jupiter': 'Jupiter_and_its_shrunken_Great_Red_Spot.jpg',
+    'io': 'Io_highest_resolution_true_color.jpg',
+    'europa': 'PIA19048_realistic_color_Europa_mosaic.jpg',
+    'ganymede': 'Ganymede_g1_true-edit1.jpg',
+    'callisto': 'Callisto.jpg',
+    'saturn': 'Saturn_during_Equinox.jpg',
+    'titan': 'Titan_in_true_color.jpg',
+    'enceladus': 'PIA17202_-_Approaching_Enceladus.jpg',
+    'uranus': 'Uranus2.jpg',
+    'neptune': 'Neptune_Full.jpg',
+    'triton': 'Triton_moon_mosaic_Voyager_2_(large).jpg',
+    'pluto': 'Pluto_in_True_Color_-_High-Res.jpg',
+    'halleys comet': 'Lspn_comet_halley.jpg'
+  };
+  function _bodyPhotoKey(name){ return String(name || '').toLowerCase().replace(/[’']/g, '').replace(/\s+/g, ' ').trim(); }
+  // Photo URL for a body, or '' if we have no real photo for it (imagined bodies never get one).
+  function bodyPhotoUrl(b, width){
+    if (!b || b.real === false) return '';
+    var f = BODY_PHOTOS[_bodyPhotoKey(b.name)];
+    return f ? (BODY_PHOTO_BASE + encodeURIComponent(f) + '?width=' + (width || 640)) : '';
+  }
+
   // "About this planet" info modal — real astronomy for the body.
   function atlasShowBodyInfo(n){
     var a = (typeof getArena === 'function') ? getArena(n) : null; if (!a) return;
@@ -208,11 +246,42 @@
         '<div class="bim-kind">' + esc(b.kind || '') + (b.real === false ? ' · imagined' : ' · real astronomy') + '</div>' +
         '<p class="bim-fact">' + esc(b.fact || '') + '</p>' +
         '<div class="bim-rows">' + rows + '</div>' +
+        (bodyPhotoUrl(b) ? '<button class="btn btn-ghost bim-photo" onclick="atlasShowPhoto(' + n + ')" data-tooltip="See a real photograph of ' + esc(b.name) + '.">📷 See real photo</button>' : '') +
         '<button class="btn btn-primary bim-enter" onclick="atlasCloseBodyInfo();' + (n === 1 ? 'atlasEarthChoice()' : 'atlasTravel(' + n + ')') + '">Enter</button>' +
       '</div>';
     m.classList.add('open');
   }
   function atlasCloseBodyInfo(){ var m = document.getElementById('bodyInfoModal'); if (m) m.classList.remove('open'); }
+
+  // Real-photo lightbox — a real NASA/public-domain photograph of the body, over the info modal.
+  function atlasShowPhoto(n){
+    var a = (typeof getArena === 'function') ? getArena(n) : null; if (!a) return;
+    var b = a.body || {};
+    var url = bodyPhotoUrl(b, 900);
+    if (!url) return;
+    var esc = (typeof escapeHtmlSafe === 'function') ? escapeHtmlSafe : function(x){ return x; };
+    var lb = document.getElementById('bodyPhotoLightbox');
+    if (!lb){ lb = document.createElement('div'); lb.id = 'bodyPhotoLightbox'; lb.className = 'body-photo-lb'; document.body.appendChild(lb); }
+    lb.innerHTML =
+      '<div class="bpl-backdrop" onclick="atlasClosePhoto()"></div>' +
+      '<div class="bpl-card">' +
+        '<button class="bpl-close" onclick="atlasClosePhoto()" aria-label="Close photo">✕</button>' +
+        '<div class="bpl-imgwrap"><div class="bpl-loading">Loading photo…</div></div>' +
+        '<div class="bpl-cap"><b>' + esc(b.name) + '</b> — real photograph · NASA / Wikimedia Commons (public domain)</div>' +
+      '</div>';
+    lb.classList.add('open');
+    // Load the image via JS so we can show a graceful fallback if it ever fails.
+    var wrap = lb.querySelector('.bpl-imgwrap');
+    var img = new Image();
+    img.className = 'bpl-img';
+    img.alt = 'Real photograph of ' + b.name;
+    img.onload = function(){ if (wrap){ wrap.innerHTML = ''; wrap.appendChild(img); } };
+    img.onerror = function(){ if (wrap) wrap.innerHTML = '<p class="bpl-fail">Sorry — couldn’t load the photo right now. Please check your connection and try again.</p>'; };
+    img.src = url;
+  }
+  function atlasClosePhoto(){ var lb = document.getElementById('bodyPhotoLightbox'); if (lb) lb.classList.remove('open'); }
+  window.atlasShowPhoto = atlasShowPhoto;
+  window.atlasClosePhoto = atlasClosePhoto;
 
   // Travel to a planet: jump state.level there (like a Worm Hole) with the warp FX.
   function atlasTravel(room){

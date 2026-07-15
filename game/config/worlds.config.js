@@ -27,7 +27,7 @@
   // ONE region per world (fewer atlas cards). Each region is anchored by a real lead
   // star; its planets are real bodies gathered from nearby systems. `id` matches the
   // per-world systemId set in curriculum.config. Only Sol is unlocked by default;
-  // TEST MODE (mitb) unlocks all (see 25-nav.js).
+  // TEST MODE (admin) unlocks all (see 25-nav.js).
   var STAR_SYSTEMS = [
     { id: 'sol',          name: 'The Sol System',          worldId: 'numbers',     distanceLy: 0,  star: 'The Sun (yellow dwarf)',                 superEarth: null,                              fact: 'Our home system — planets, moons, dwarf planets and comets.',                 unlocked: true },
     { id: 'expressions',  name: 'The Expression Reach',    worldId: 'expressions', distanceLy: 12, star: 'TRAPPIST-1, Tau Ceti, Proxima & nearby red dwarfs', superEarth: 'TRAPPIST-1 & Tau Ceti worlds', fact: 'A cluster of the closest real exoplanet systems — TRAPPIST-1’s seven Earth-size worlds and more.', unlocked: false },

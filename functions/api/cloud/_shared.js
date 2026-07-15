@@ -58,7 +58,7 @@ export async function authAccount(context) {
 }
 
 // ---- Username / password auth (items 1,2,3,6) ----
-export const TEST_USERNAMES = ['mitb', 'michaelisthebest', 'michealisthebest']; // exempt from single-login
+export const TEST_USERNAMES = ['admin']; // the test/admin account — exempt from single-login
 
 export function normalizeUsername(u) { return String(u || '').trim().toLowerCase(); }
 export function validUsername(u) { return /^[a-z0-9_]{3,16}$/.test(u); }

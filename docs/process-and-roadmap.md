@@ -22,8 +22,8 @@ page → `document`/`localStorage`/`matchMedia` all work). Checklist for any cha
 2. Exercise the changed path via `javascript_tool` (call the functions, assert on `state`).
 3. After any change to problem generation / equation / solving logic, **re-run the algebra
    regression harness** (the 1132-assertion set) — must stay green.
-4. Use the **`mitb`** test account (infinite Cash/materials/passes/items, 1 question per planet,
-   boss gate always open) for reachability; a normal profile for exact-count assertions.
+4. Use the **`admin`** account — which is also the test account (infinite Cash/materials/passes/items,
+   1 question per planet, boss gate always open) — for reachability; a normal profile for exact-count assertions.
 5. **Screenshots time out** on this game (large bg image + infinite CSS animations) — verify via
    `read_page`/`javascript_tool`/DOM inspection instead.
 

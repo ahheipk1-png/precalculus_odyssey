@@ -1,7 +1,8 @@
-  // Secret test/dev account: creating a player named "mitb" (case-insensitive) turns on test
-  // mode — one question per room + effectively-infinite coins/gems. The old long spellings still
-  // work as aliases. See 07-main.js (sets state.testMode) and 05-render.js (effects).
-  var TEST_NAMES = ['MITB', 'MICHAELISTHEBEST', 'MICHEALISTHEBEST'];
+  // Test/dev account: logging in as "admin" (case-insensitive) turns on test mode — one question
+  // per room + effectively-infinite coins/gems + every star system unlocked. The admin account is
+  // both the admin dashboard owner AND the test account. See 07-main.js (sets state.testMode) and
+  // 05-render.js (effects). Kept exempt from single-login too (see TEST_USERNAMES in _shared.js).
+  var TEST_NAMES = ['ADMIN'];
 
   // Single source of truth for the Boss Gate requirement: the player must answer this many
   // questions correctly in an arena before the Boss Gate opens (question ARENA_GOAL is the

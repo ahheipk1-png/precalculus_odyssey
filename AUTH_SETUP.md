@@ -16,8 +16,11 @@ You should see `{"ok":true,"message":"Bootstrap complete..."}`. Then log in:
 
 | Account | Username | Password |
 |---|---|---|
-| **Admin** | `admin` | `admin` |
-| **Test**  | `mitb`  | `Pi*2=6.2831853`  *(literal text)* |
+| **Admin + Test** | `admin` | `admin` |
+
+The single **`admin`** account is now BOTH the admin dashboard owner AND the test account — logging in as
+`admin` turns on in-game test mode (1 question per planet, infinite resources, every system unlocked) and is
+exempt from single-login. (The old separate `mitb` test account has been removed; re-running bootstrap deletes it.)
 
 Log in as **admin**, click **🛠️ Admin** in the header, and change the admin password to something longer.
 
@@ -68,10 +71,10 @@ since anyone with the key can reset these two logins.
 - **Admin panel** (item 2): approve / reject / disable accounts, **override any password**, and see
   every account's status. It's the header **🛠️ Admin** button (admins only).
 - **Single login** (item 6): logging in revokes any other active session for that account — so the
-  same account can't be used on two devices at once. **Test accounts** (`mitb`) are exempt.
-- **Test account**: seed it with `migrations/0004_seed_test.sql`, then log in with **username `mitb`,
-  password `Pi*2=6.2831853`** (literal text). It unlocks in-game test mode and is exempt from single-login (can be
-  logged in on more than one device at once).
+  same account can't be used on two devices at once. The **`admin`** (test) account is exempt.
+- **Test account**: it's the **`admin`** account itself — log in with **username `admin`, password `admin`**.
+  It unlocks in-game test mode (1 question per planet, infinite resources, every system unlocked) and is exempt
+  from single-login (can be logged in on more than one device at once). The old separate `mitb` account was removed.
 
 ## Notes / limitations
 

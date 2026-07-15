@@ -5,9 +5,10 @@
 // (item 3) with a Log-in / Request-account form.
 //
 // NOTE: the network flows require the deployed Cloudflare Functions + the
-// migrations (0002 auth, 0003 seeds admin/admin, 0004 seeds the test account
-// mitb / 6.2831853). The test account `mitb` unlocks test mode in-game and is
-// exempt from single-login (see TEST_USERNAMES / TEST_NAMES).
+// migrations (run /api/admin/bootstrap once, which seeds admin/admin). The
+// `admin` account is BOTH the admin dashboard owner AND the test account: it
+// unlocks test mode in-game and is exempt from single-login (see TEST_USERNAMES
+// in _shared.js / TEST_NAMES in 01-data.js).
 // ============================================================================
 (function () {
   var AUTH_KEY = 'poAuthSession';
@@ -186,7 +187,7 @@
   }
   window.authPushProgress = function(){
     var sess = loadSession();
-    if (!sess || !sess.token || sess.username === 'mitb') return;   // don't sync the shared test account
+    if (!sess || !sess.token || (sess.username || '').toLowerCase() === 'admin') return;   // don't sync the admin/test account
     try { api('/api/auth/progress', { body: { progress: authProgressSummary() }, auth: true }); } catch (e) {}
   };
   var _progTimer = null;
