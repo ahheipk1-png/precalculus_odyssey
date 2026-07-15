@@ -285,3 +285,37 @@
     }
     return s + '</svg>';
   }
+
+  // ---------- Parabola illustration (equations named directly in the prompt) ----------
+  // curves: [{label,a,h,k}, ...] up to 2, for y = a(x-h)^2 + k. See _parseParabolasFromPrompt.
+  function buildParabolaIllu(curves){
+    try {
+      if (!curves || !curves.length) return '';
+      var W = 440, H = 220, cx = 220, cy = 128, scale = 15;
+      var cols = ['#66e0ff', '#f0705e'];
+      function px(x, y){ return { x: cx + x * scale, y: cy - y * scale }; }
+      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="graph">';
+      s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="12" fill="' + _ILLU_BG + '"/>';
+      s += '<line x1="0" y1="' + cy + '" x2="' + W + '" y2="' + cy + '" stroke="' + _ILLU_AXIS + '" stroke-width="1.5" opacity="0.55"/>';
+      s += '<line x1="' + cx + '" y1="0" x2="' + cx + '" y2="' + H + '" stroke="' + _ILLU_AXIS + '" stroke-width="1.5" opacity="0.55"/>';
+      curves.forEach(function(c, ci){
+        var pts = [], i;
+        for (i = -13; i <= 13; i++){
+          var xu = i * 0.5;
+          var yu = c.a * (xu - c.h) * (xu - c.h) + c.k;
+          var yc = Math.max(-7.2, Math.min(7.2, yu));
+          var p = px(xu, yc);
+          pts.push(p.x.toFixed(1) + ',' + p.y.toFixed(1));
+        }
+        var col = cols[ci % cols.length];
+        s += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="3" stroke-linecap="round"/>';
+        var vp = px(c.h, Math.max(-7.2, Math.min(7.2, c.k)));
+        s += '<circle cx="' + vp.x.toFixed(1) + '" cy="' + vp.y.toFixed(1) + '" r="4.5" fill="' + col + '"/>';
+        var tx = vp.x + (ci === 0 ? -9 : 9), anchor = ci === 0 ? 'end' : 'start';
+        var ty = vp.y - 9 < 12 ? vp.y + 18 : vp.y - 9;
+        s += '<text x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) + '" font-size="13" text-anchor="' + anchor + '" fill="' + col + '">' +
+          (curves.length > 1 ? String(c.label).replace(/</g, '&lt;') : 'vertex') + '</text>';
+      });
+      return s + '</svg>';
+    } catch (e) { return ''; }
+  }

@@ -37,7 +37,9 @@
         return '<ol>' + lines.map(function(l){ return '<li>' + l.replace(/^\s*\d+\.\s+/, '') + '</li>'; }).join('') + '</ol>';
       return '<p>' + b.trim().replace(/\n/g, '<br>') + '</p>';
     }).join('');
-    return (typeof mathPretty === 'function') ? mathPretty(html) : html;
+    // BASIC only (symbols + sup/sub) — html already has real <p>/<ul>/<code> tags from above, and
+    // the structural sqrt/frac/piecewise pipeline in mathPretty() expects plain text.
+    return (typeof mathPrettyBasic === 'function') ? mathPrettyBasic(html) : html;
   }
 
   // Build step-by-step pages from the authored Bible tutorial (TUTORIAL_REGISTRY[phaseId]).

@@ -232,9 +232,14 @@
     }
 
     // New question styles: fill the prompt + choices/input.
-    // "A graph has …" questions get the described graph DRAWN below the words (31-graph.js).
-    var illu = (state.problem && state.problem.graphIllu && typeof buildIntervalIllu === 'function')
-      ? '<div class="qp-illu">' + buildIntervalIllu(state.problem.graphIllu) + '</div>' : '';
+    // Graph-describable questions get the actual picture DRAWN below the words (31-graph.js):
+    // "A graph has …" prose -> the interval curve; a named parabola equation -> the parabola(s).
+    var illu = '';
+    if (state.problem && state.problem.graphIllu){
+      var gi = state.problem.graphIllu;
+      if (gi.kind === 'parabola' && typeof buildParabolaIllu === 'function') illu = '<div class="qp-illu">' + buildParabolaIllu(gi.curves) + '</div>';
+      else if (typeof buildIntervalIllu === 'function') illu = '<div class="qp-illu">' + buildIntervalIllu(gi) + '</div>';
+    }
     if (controls === 'mcOnly'){
       el.expandBtn.hidden = true;
       if (el.questionPrompt) el.questionPrompt.innerHTML = '<div class="qp-text">' + mathPretty(state.problem.prompt || '') + '</div>' + illu;
