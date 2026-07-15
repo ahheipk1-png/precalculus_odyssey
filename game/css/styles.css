@@ -76,11 +76,12 @@
     border: 1px solid rgba(244,241,232,0.25);
     color: var(--chalk-dim);
     font-family:'Quicksand', sans-serif;
-    font-size:14px;
+    font-size:16px;
     font-weight:700;
-    border-radius: 8px;
-    padding: 4px 8px;
+    border-radius: 9px;
+    padding: 7px 13px;
     cursor:pointer;
+    white-space:nowrap;
   }
   .reset-btn:hover{ color: var(--chalk); border-color: var(--chalk-dim); }
 

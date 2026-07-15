@@ -201,28 +201,37 @@
     closeWonderland();
   }
 
+  // ---------- Shared pass economy: every game room costs 1 Wonderland Pass to enter ----------
+  function wonderPassCount(){ return (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0; }
+  function wonderSpendPass(){
+    if (wonderPassCount() < 1){
+      if (typeof showToast === 'function') showToast('You need a Wonderland Pass! 🎟️ Earn some in the planet arenas or Arena Infinity.');
+      if (typeof playSfx === 'function') playSfx('wrong');
+      return false;
+    }
+    state.wonderPasses = wonderPassCount() - 1;
+    if (typeof updateStats === 'function') updateStats();   // HUD + autosave
+    return true;
+  }
+  // Charge a pass, then launch the named global (single-session games). Tile Ball charges
+  // per-play in startTileBall instead, so its lobby button goes straight to the level select.
+  function wonderPlay(launchName){
+    if (!wonderSpendPass()) return;
+    var fn = window[launchName];
+    if (typeof fn === 'function') fn();
+    if (typeof playSfx === 'function') playSfx('ui-click');
+  }
+
   // ---------- Lobby ----------
   function wondLobbyHtml(){
     var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
-    // Each carnival game becomes playable as it's built; `launch` null = still Coming soon.
-    var carnival = [
-      { icon: '🎯', name: 'Bullseye Numbers', desc: 'Hit the target that answers each maths question — beat the clock!', launch: 'openBullseye()', cost: 'Free' },
-      { icon: '🎣', name: 'Gone Fishin’', desc: 'Catch only the fish whose number matches the rule!', launch: 'openFishin()', cost: 'Free' },
-      { icon: '🎠', name: 'Merry Math-Go-Round', desc: 'Ride the carousel — click the horse whose number answers the sum!', launch: 'openCarousel()', cost: 'Free' }
-    ].map(function(g){
-      if (!g.launch){
-        return '<div class="wond-card wond-locked">' +
-          '<div class="wond-card-icon">' + g.icon + '</div>' +
-          '<div class="wond-card-name">' + g.name + '</div>' +
-          '<div class="wond-card-desc">' + g.desc + '</div>' +
-          '<span class="wond-soon">🔒 Coming soon</span></div>';
-      }
-      return '<div class="wond-card">' +
-        '<div class="wond-card-icon">' + g.icon + '</div>' +
-        '<div class="wond-card-name">' + g.name + '</div>' +
-        '<div class="wond-card-desc">' + g.desc + '</div>' +
-        '<button type="button" class="btn btn-primary wond-play" onclick="' + g.launch + '" data-tooltip="Play ' + g.name + ' — ' + g.cost + '.">Play! (' + g.cost + ')</button></div>';
-    }).join('');
+    // Carnival games (single card = Gone Fishin'; Bullseye & Merry-Go-Round were removed).
+    var carnival =
+      '<div class="wond-card">' +
+        '<div class="wond-card-icon">🎣</div>' +
+        '<div class="wond-card-name">Gone Fishin’</div>' +
+        '<div class="wond-card-desc">Catch only the fish whose number matches the rule!</div>' +
+        '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openFishin\')" data-tooltip="Play Gone Fishin — costs 1 Wonderland Pass.">Play! (1 🎟️)</button></div>';
     var locked = carnival;
     return '' +
       '<div class="wond-board">' +
@@ -245,25 +254,25 @@
             '<div class="wond-card-icon">🎲</div>' +
             '<div class="wond-card-name">Hoo Hey How</div>' +
             '<div class="wond-card-desc">Bet Cash on lucky symbols and roll three dice!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openHooHey()" data-tooltip="Bet Cash on symbols; three dice roll under the bowl.">Play! (Cash 💵)</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openHooHey\')" data-tooltip="Entry costs 1 Wonderland Pass; then bet Cash on symbols.">Play! (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🧩</div>' +
             '<div class="wond-card-name">Quantum Block Forge</div>' +
-            '<div class="wond-card-desc">Place blocks to fill rows &amp; columns — clear lines for combos!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openBlockForge()" data-tooltip="An original block-placement puzzle. Free to play.">Play! (Free)</button>' +
+            '<div class="wond-card-desc">Drag blocks to fill rows &amp; columns — clear lines for combos!</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openBlockForge\')" data-tooltip="An original block-placement puzzle. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🃏</div>' +
             '<div class="wond-card-name">Star Match</div>' +
-            '<div class="wond-card-desc">Flip cards two at a time and match every cosmic pair!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openMemory()" data-tooltip="A memory / concentration game. Free to play.">Play! (Free)</button>' +
+            '<div class="wond-card-desc">Memorise the board, then match every cosmic pair!</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openMemory\')" data-tooltip="A memory / concentration game. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🔢</div>' +
             '<div class="wond-card-name">Mini Sudoku</div>' +
-            '<div class="wond-card-desc">Fill the 4×4 grid so every row, column &amp; box has 1–4.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openSudoku()" data-tooltip="A bite-size 4×4 Sudoku. Free to play.">Play! (Free)</button>' +
+            '<div class="wond-card-desc">Drag 1–4 tiles so every row, column &amp; box has 1–4.</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openSudoku\')" data-tooltip="A bite-size 4×4 Sudoku. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           locked +
         '</div>' +

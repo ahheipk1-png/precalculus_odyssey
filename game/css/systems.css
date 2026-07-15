@@ -345,7 +345,7 @@
 
   /* ---- Generic view helpers ---- */
   .prof-tabs, .codex-tabs{ display:flex; gap:8px; margin:0 0 14px; flex-wrap:wrap; }
-  .prof-tab{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:14px;
+  .prof-tab{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:16px;
     background:rgba(244,241,232,0.05); border:1px solid rgba(244,241,232,0.14);
     color:var(--chalk-dim); border-radius:999px; padding:7px 16px; cursor:pointer; }
   .prof-tab.active{ background:rgba(110,193,228,0.16); border-color:var(--sky); color:var(--sky); }
@@ -364,8 +364,8 @@
   .prof-bar{ height:12px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; margin-top:5px; }
   .prof-bar-fill{ height:100%; border-radius:6px; }
   .prof-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
-  .prof-stat{ background:rgba(244,241,232,0.05); border:1px solid rgba(244,241,232,0.12); border-radius:12px; padding:12px 10px; text-align:center; display:flex; flex-direction:column; gap:3px; }
-  .prof-stat span{ font-size:14px; color:var(--chalk-dim); }
+  .prof-stat{ background:rgba(244,241,232,0.05); border:1px solid rgba(244,241,232,0.12); border-radius:12px; padding:10px 10px; text-align:center; display:flex; flex-direction:column; gap:2px; }
+  .prof-stat span{ font-size:16px; color:var(--chalk-dim); }
   .prof-stat b{ font-size:26px; color:var(--chalk); font-variant-numeric:tabular-nums; }
   .prof-worth{ font-size:14px; color:var(--sky); line-height:1.25; }
   .prof-worth em{ display:block; font-style:normal; font-size:14px; color:var(--chalk-dim); }

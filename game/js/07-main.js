@@ -345,7 +345,7 @@
     setTimeout(loadProblem, reduceMotion ? 150 : 1600);
   });
 
-  el.resetBtn.addEventListener('click', function(){
+  if (el.resetBtn) el.resetBtn.addEventListener('click', function(){
     if (!state.resetPending){
       state.resetPending = true;
       el.resetBtn.textContent = 'Sure?';
@@ -423,62 +423,9 @@
     el.arenaAdvanceBtn.addEventListener('click', advanceToNextLevel);
   }
 
-  el.warpDoorBtn.addEventListener('click', function(){
-    if (el.warpPanel.style.display === 'none') {
-      el.warpPanel.style.display = 'flex';
-      el.warpInput.value = '';
-      el.warpInput.focus();
-    } else {
-      el.warpPanel.style.display = 'none';
-    }
-  });
-
-  function executeWarp() {
-    var raw = el.warpInput.value.trim().toUpperCase();
-    var arena = (typeof arenaByCode === 'function') ? arenaByCode(raw) : null;
-    var idx = arena ? (arena.n - 1) : levelCodes.indexOf(raw);
-    if (idx !== -1) {
-      el.warpPanel.style.display = 'none';
-      el.warpInput.value = '';
-      // Swirl first; the actual room switch happens mid-animation (see playWarpFx).
-      playWarpFx(function(){
-        state.level = idx + 1;
-        state.streak = 0;
-        state.levelSolves = 0;
-        state.roomFails = 0;
-        state.gatePending = false;
-        state.bossGateUnlocked = false;
-        state.bossRoomEntered = false;
-
-        document.querySelectorAll('.view-container.active').forEach(function(v){ v.classList.remove('active'); });
-        el.equationView.classList.add('active');
-        el.levelGateActions.style.display = 'none';
-        el.eqActions.style.display = 'flex';
-        updatePanelVisibility();
-
-        showToast('Jumped through the worm hole to Arena ' + state.level + '! 🌀');
-
-        updateStats();
-        updateLevelProgress(0);
-        renderScene();
-        setControlsEnabled(true);
-        loadProblem();
-        if (typeof showPlanetArrival === 'function') showPlanetArrival(state.level);
-      });
-    } else {
-      showToast('Invalid worm hole code!');
-      el.warpInput.value = '';
-      el.warpInput.focus();
-    }
-  }
-
-  el.applyWarpBtn.addEventListener('click', executeWarp);
-  el.warpInput.addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter') {
-      ev.preventDefault();
-      executeWarp();
-    }
-  });
+  // Worm Hole + 4-letter code system removed — the Star Atlas already lets players travel to any
+  // planet directly, so the code jump was redundant. (arenaByCode/levelCodes remain in config,
+  // now unused by the UI.)
 
   // ---------- Start screen: New Player (named) / Continue as a saved profile ----------
   function startGame(){
