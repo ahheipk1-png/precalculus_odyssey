@@ -372,3 +372,21 @@ body:has(#wonderlandView.active) .wond-tip{ font-size: 16px; }
   .mem-card{ transition: none; }
   .mem-card:hover{ transform: none; }
 }
+
+/* ---- Arcade wave 2 (39-puzzles.js / 40-action.js) ---- */
+.a2-center{ display:flex; justify-content:center; margin:10px 0; }
+.a2-grid{ display:grid; gap:3px; }
+.a2-cell{ width:44px; height:44px; border-radius:8px; background:rgba(244,241,232,0.05);
+  border:1px solid rgba(244,241,232,0.08); display:flex; align-items:center; justify-content:center;
+  position:relative; padding:0; }
+.a2-cell.a2-wall{ background:#2c4a76; border-color:#3a5c8e; }
+.a2-cell.a2-target{ box-shadow:inset 0 0 0 3px rgba(242,193,78,.7); }
+.a2-emoji{ font-size:28px; line-height:1; }
+.a2-glow{ filter:drop-shadow(0 0 6px #7bd88f); }
+.a2-cell.a2-circ{ width:60px; height:60px; cursor:pointer; background:rgba(244,241,232,0.04); }
+.a2-cell.a2-circ:hover{ border-color:var(--sky,#6ec1e4); }
+.a2-cell.a2-lit{ background:rgba(255,215,94,0.10); border-color:rgba(255,215,94,.45); }
+.a2-canvas{ max-width:100%; height:auto; border-radius:12px; background:#0b1626; touch-action:none; }
+.a2-pad{ display:flex; flex-direction:column; align-items:center; gap:8px; margin:12px 0 4px; }
+.a2-pad > div{ display:flex; gap:8px; }
+.a2-pad .btn{ min-width:56px; font-size:20px; padding:10px 14px; }

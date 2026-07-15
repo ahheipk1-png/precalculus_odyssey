@@ -222,6 +222,15 @@
     if (typeof playSfx === 'function') playSfx('ui-click');
   }
 
+  // One lobby card for a pass-charged game (launcher = global function name).
+  function _wondCard(icon, name, desc, launcher){
+    return '<div class="wond-card">' +
+      '<div class="wond-card-icon">' + icon + '</div>' +
+      '<div class="wond-card-name">' + name + '</div>' +
+      '<div class="wond-card-desc">' + desc + '</div>' +
+      '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'' + launcher + '\')" data-tooltip="' + name + ' — costs 1 Wonderland Pass.">Play! (1 🎟️)</button></div>';
+  }
+
   // ---------- Lobby ----------
   function wondLobbyHtml(){
     var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
@@ -274,6 +283,15 @@
             '<div class="wond-card-desc">Drag 1–4 tiles so every row, column &amp; box has 1–4.</div>' +
             '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openSudoku\')" data-tooltip="A bite-size 4×4 Sudoku. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
+          _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring — classic warehouse puzzling!', 'openCargo') +
+          _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes!', 'openGlacier') +
+          _wondCard('🗼', 'Sky Stacker', 'Drop the swinging block dead-center and stack to the stars!', 'openStacker') +
+          _wondCard('🟦', 'Astro Drop', 'Falling blocks! Fill whole lines to clear them — speed rises!', 'openAstroDrop') +
+          _wondCard('💊', 'Virus Lab', 'Drop 2-color capsules; match 4 in a line to zap every virus!', 'openVirusLab') +
+          _wondCard('🔗', 'Circuit Loop', 'Rotate the wires so the power core lights every bulb!', 'openCircuit') +
+          _wondCard('👾', 'Comet Muncher', 'Munch every star in the maze — dodge the UFOs!', 'openComet') +
+          _wondCard('💣', 'Blast Bot', 'Bomb the crates and zap the drones — mind the blast!', 'openBlastBot') +
+          _wondCard('🫧', 'Bubble Blast', 'Trap gremlins in bubbles, then pop them platform-style!', 'openBubble') +
           locked +
         '</div>' +
         '<div class="wond-footer">' +
