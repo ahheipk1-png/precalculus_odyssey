@@ -209,6 +209,9 @@
     var parentLabel = /moon/.test(tl) ? 'Parent planet' : (/star|black hole|dwarf star/.test(tl) ? null : 'Star it orbits');
     var esc = (typeof escapeHtmlSafe === 'function') ? escapeHtmlSafe : function(x){ return x; };
     function row(label, val){ return val ? '<div><span>' + label + '</span><b>' + esc(String(val)) + '</b></div>' : ''; }
+    // Extra facts keyed by body name; real bodies with no data get an honest "not yet known".
+    var X = (typeof ASTRO_EXTRA !== 'undefined' && ASTRO_EXTRA[_bodyPhotoKey(b.name)]) || {};
+    var unknown = (b.real !== false) ? 'Not yet known — light-years away, telescopes are still checking!' : null;
     var rows =
       row('Type', typeStr + (b.real === false ? ' · imagined' : '')) +
       (parentLabel ? row(parentLabel, A.parent) : '') +
@@ -216,6 +219,9 @@
       row('Mass', A.mass) +
       row('Temperature', A.temperature) +
       row('Made of', A.composition) +
+      row('Most abundant', X.elements || unknown) +
+      row('Water?', X.water || unknown) +
+      row('Atmosphere', X.atmosphere || unknown) +
       row('Distance from Earth', A.distanceLy ? (A.distanceLy + (/^[0-9]/.test(String(A.distanceLy)) ? ' light-years' : '')) : '') +
       row('Region', sys ? sys.name : null) +
       row('Arena', '#' + n + ' · ' + (_ATLAS_STYLE[a.mechanic] || a.mechanic)) +

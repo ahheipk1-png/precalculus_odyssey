@@ -21,7 +21,7 @@
   // The seven buildings. x/y = CENTER of the building card in % of the scene box. The avatar
   // walks to the "door" (same x, y + 10) so it stands on the path, not on the roof.
   var WMAP_SPOTS = [
-    { id: 'practice', emoji: '♾️', name: 'Arena Infinity', x: 68, y: 26, accent: 'var(--sky)', desc: 'Endless mixed practice from every arena you’ve cleared — earn XP, passes & a gold chest.' },
+    { id: 'practice', emoji: '♾️', name: 'Arena Infinity', x: 68, y: 26, accent: 'var(--sky)', desc: 'Endless mixed practice from every arena you’ve cleared — earn XP, Wonderland Passes 🎟️ & a gold chest.' },
     { id: 'weapon',   emoji: '⚔️', name: 'Weapon Store',  x: 33, y: 58, accent: 'var(--coral)', desc: 'Buy and upgrade weapons & shields with Cash and chips.' },
     { id: 'item',     emoji: '🎒', name: 'Item Store',    x: 56, y: 70, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
     { id: 'hotel',    emoji: '🏨', name: 'Hotel',         x: 82, y: 62, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },

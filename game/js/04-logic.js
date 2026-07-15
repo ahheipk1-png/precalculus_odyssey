@@ -322,6 +322,92 @@
     if (/(pi|theta|sqrt|\/)/i.test(s)) return 'sym';
     return 'expr';
   }
+  function _normChoice(s){ return _cleanChoice(s).replace(/\s+/g, ' ').trim(); }
+
+  // "… X or Y?" questions: the ONLY sensible choices are the two things being compared.
+  // ("Which is narrower: y=x^2 or y=4x^2?" -> [y=x^2, y=4x^2]; "cross or bounce" -> [cross, bounce];
+  //  "greater maximum: A(x)=… or B(x)=…?" -> [A(x)=…, B(x)=…], matched to an answer of "A"/"B".)
+  function _orChoices(prompt, ans){
+    var seg = String(prompt || '');
+    var q = seg.indexOf('?'); if (q >= 0) seg = seg.slice(0, q);
+    var idx = seg.lastIndexOf(' or ');
+    if (idx < 0) return null;
+    var left = seg.slice(0, idx).trim();
+    var right = seg.slice(idx + 4).trim();
+    // Right disjunct: drop a trailing context clause ("… at x=-2", "… when t=3",
+    // "…, and what is its value").
+    right = right.split(',')[0].replace(/\s+(?:at|when|for|if|given|near)\s+.*$/, '').trim();
+    // Left disjunct: the last word if it's a plain word ("cross"), else the chunk after the
+    // last ":" or "," ("Which is narrower: y=x^2").
+    var toks = left.split(/\s+/);
+    var lastTok = toks[toks.length - 1] || '';
+    var ldis;
+    if (/^[A-Za-z-]+$/.test(lastTok)) ldis = lastTok;
+    else {
+      var cut = Math.max(left.lastIndexOf(':'), left.lastIndexOf(','));
+      ldis = (cut >= 0 ? left.slice(cut + 1) : lastTok).trim();
+    }
+    if (!ldis || !right || ldis.length > 42 || right.length > 42) return null;
+    var A = _normChoice(ldis), B = _normChoice(right);
+    var al = A.toLowerCase(), bl = B.toLowerCase(), nl = _normChoice(ans).toLowerCase();
+    function hit(d){ return !!nl && (d === nl || d.indexOf(nl) === 0 || nl.indexOf(d) === 0); }
+    var am = hit(al), bm = hit(bl);
+    if (!am && !bm){
+      // "A(x)=…" / "B(x)=…" compared against an answer that just says "A" (or "A; because …").
+      var fa = al.match(/^([a-z])\s*\(/), fb = bl.match(/^([a-z])\s*\(/), fn = nl.match(/^([a-z])\b/);
+      if (fa && fb && fn && fa[1] !== fb[1]){ am = (fa[1] === fn[1]); bm = (fb[1] === fn[1]); }
+    }
+    if (am === bm) return null;                 // neither (or both) matched — don't guess
+    return { correct: am ? A : B, wrong: [am ? B : A] };
+  }
+
+  // Believable wrong answers derived from the RIGHT answer's own structure
+  // (numbers -> near misses & sign flips; "x=10" -> x=9/x=11/x=-10; "(a,b)" -> swaps/sign flips).
+  function _perturbDistractors(ans){
+    var s = _normChoice(ans), m, out;
+    if (/^-?\d+$/.test(s)){
+      var n = parseInt(s, 10);
+      out = [n + 1, n - 1, (n === 0 ? 2 : -n), n + 2];
+    } else if ((m = s.match(/^([A-Za-z])\s*=\s*(-?\d+)$/))){
+      var v = m[1], k = parseInt(m[2], 10);
+      out = [v + '=' + (k + 1), v + '=' + (k - 1), v + '=' + (k === 0 ? 2 : -k)];
+    } else if ((m = s.match(/^\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)$/))){
+      var a = +m[1], b = +m[2];
+      out = ['(' + b + ',' + a + ')', '(' + (-a) + ',' + b + ')', '(' + a + ',' + (-b) + ')'];
+    } else return null;
+    out = out.map(String).filter(function(d, i, arr){ return d !== s && arr.indexOf(d) === i; });
+    return out.length >= 2 ? out.slice(0, 4) : null;
+  }
+
+  // Same-format near-misses for expression answers: toggle each sign (the classic mistakes —
+  // "(x+4)(x-3)" -> "(x-4)(x+3)"; "x=3 or x=-1/2" -> "x=-3 or x=-1/2") and bump the first/last
+  // number. The wrong answers LOOK like the right one, so the format never gives it away.
+  function _exprVariants(ans){
+    var s = _normChoice(ans);
+    if (!s || s.length > 48 || !/\d/.test(s)) return null;
+    var out = [], i, c;
+    var flips = 0;
+    for (i = 0; i < s.length && flips < 3; i++){
+      c = s.charAt(i);
+      if ((c === '+' || c === '-') && /[0-9a-zA-Z(]/.test(s.charAt(i + 1) || '')){
+        var v = s.slice(0, i) + (c === '+' ? '-' : '+') + s.slice(i + 1);
+        v = v.replace(/([=(,<\s])\+/g, '$1').replace(/^\+/, '');   // "x=+3" -> "x=3"
+        out.push(v); flips++;
+      }
+    }
+    var nums = s.match(/\d+/g);
+    if (nums && nums.length){
+      out.push(s.replace(/\d+/, function(n){ return String(+n + 1); }));
+      if (nums.length > 1){
+        var last = nums[nums.length - 1], li = s.lastIndexOf(last);
+        out.push(s.slice(0, li) + String(+last + 1) + s.slice(li + last.length));
+      }
+    }
+    out = out.filter(function(d, ix, arr){ return d !== s && arr.indexOf(d) === ix; });
+    return out.length >= 2 ? out.slice(0, 4) : null;
+  }
+
+  // Last resort: real answers from sibling templates of the same phase, same shape.
   function _siblingDistractors(phaseId, ans){
     var want = _answerShape(ans), same = [], other = [], seen = {};
     seen[ans] = 1;
@@ -336,25 +422,32 @@
     return pool.slice(0, 4);
   }
 
-  function bibleProblem(arena){
-    var tpls = QUESTION_TEMPLATES[arena.phaseId];
-    if (!tpls || !tpls.length) return { mode: 'comingSoon', prompt: arena.topic, par: 0 };
-    var recent = _bibleRecent[arena.phaseId] || (_bibleRecent[arena.phaseId] = []);
-    var pool = tpls.filter(function(t){ return recent.indexOf(t.templateId) === -1; });
-    if (!pool.length) { recent.length = 0; pool = tpls; }
-    var t = pool[rand(0, pool.length - 1)];
-    recent.push(t.templateId); if (recent.length > 12) recent.shift();
+  // Build the served problem for ONE template. Split out from bibleProblem so the QA audit
+  // can run every template deterministically.
+  function _bibleBuildFromTemplate(t, phaseId){
     var ans = _cleanChoice(t.answer);
     var raw = (t.distractors || []);
     var genericCount = raw.filter(_isGenericDistractor).length;
-    var ds;
+    var ds, via = 'authored';
     if (genericCount >= 2) {
-      ds = _siblingDistractors(arena.phaseId, ans);            // placeholder distractors -> real siblings
+      // Placeholder "recipe" distractors -> derive real choices from the question itself.
+      var orc = _orChoices(t.example, ans);
+      if (orc){ ans = orc.correct; ds = orc.wrong; via = 'or'; }
+      else {
+        ds = _perturbDistractors(ans);
+        if (ds){ via = 'perturb'; }
+        else {
+          ds = _exprVariants(ans);
+          if (ds){ via = 'variant'; }
+          else { ds = _siblingDistractors(phaseId, ans); via = 'sibling'; }
+        }
+      }
     } else {
       ds = raw.map(_cleanChoice).filter(function(d){ return d && d !== ans; });
     }
-    var meta = { templateId: t.templateId, phaseId: arena.phaseId, questionType: t.questionType,
-      hintSequenceId: t.hintSequenceId, tutorialId: t.tutorialId, socraticId: t.socraticId, explanation: t.explanation };
+    var meta = { templateId: t.templateId, phaseId: phaseId, questionType: t.questionType,
+      hintSequenceId: t.hintSequenceId, tutorialId: t.tutorialId, socraticId: t.socraticId,
+      explanation: t.explanation, distractorVia: via };
     if (ds.length >= 1 && ans){
       var choices = [ans].concat(ds);
       choices = choices.filter(function(v, i){ return choices.indexOf(v) === i; }).slice(0, 5);
@@ -366,6 +459,17 @@
     var di = { mode: 'directInput', prompt: t.example, answer: ans, par: 0 };
     for (var k2 in meta) di[k2] = meta[k2];
     return di;
+  }
+
+  function bibleProblem(arena){
+    var tpls = QUESTION_TEMPLATES[arena.phaseId];
+    if (!tpls || !tpls.length) return { mode: 'comingSoon', prompt: arena.topic, par: 0 };
+    var recent = _bibleRecent[arena.phaseId] || (_bibleRecent[arena.phaseId] = []);
+    var pool = tpls.filter(function(t){ return recent.indexOf(t.templateId) === -1; });
+    if (!pool.length) { recent.length = 0; pool = tpls; }
+    var t = pool[rand(0, pool.length - 1)];
+    recent.push(t.templateId); if (recent.length > 12) recent.shift();
+    return _bibleBuildFromTemplate(t, arena.phaseId);
   }
 
   function generateProblem(level){

@@ -241,7 +241,7 @@
         '</div>' +
         '<div class="wond-passrow">' +
           '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
-          '<span class="wond-hint">Finish a planet perfectly to earn passes!</span>' +
+          '<span class="wond-hint">Earn passes by answering questions in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
         '</div>' +
         '<div class="wond-grid">' +
           '<div class="wond-card">' +
