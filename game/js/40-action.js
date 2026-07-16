@@ -196,8 +196,8 @@
   function _vlRoll(){ return { c1: rand(1, 3), c2: rand(1, 3) }; }
   function _vlPillSwatch(p){
     if (!p) return '';
-    function dot(col){ return '<span style="display:inline-block;width:15px;height:15px;border-radius:5px;' +
-      'vertical-align:middle;background:' + VL_COLS[col] + ';box-shadow:0 0 0 1px rgba(0,0,0,.35) inset"></span>'; }
+    function dot(col){ return '<span style="display:inline-block;width:15px;height:15px;border-radius:50%;' +
+      'vertical-align:middle;background:' + VL_COLS[col] + ';box-shadow:0 0 0 1px rgba(0,0,0,.35) inset,-2px -2px 0 rgba(255,255,255,.3) inset"></span>'; }
     return '<span style="display:inline-block;white-space:nowrap;margin-left:3px">' + dot(p.c1) + dot(p.c2) + '</span>';
   }
 
@@ -346,17 +346,36 @@
     var cv = document.getElementById('vlCanvas'); if (!cv) return;
     var c = cv.getContext('2d'), CL = VL.CELL;
     c.fillStyle = '#101b2c'; c.fillRect(0, 0, cv.width, cv.height);
+    // Capsules (medicine) draw as glossy pill/stadium shapes — not flat "simple blocks" — while
+    // viruses draw as bumpy, angry-faced germ blobs, clearly distinct from the friendly medicine
+    // (2026-07-16: was a plain rounded block for capsules + a neutral happy-face for viruses).
     function cell(x, y, col, virus){
-      c.fillStyle = VL_COLS[col];
-      c.beginPath();
-      if (c.roundRect) c.roundRect(x * CL + 2, y * CL + 2, CL - 4, CL - 4, virus ? 4 : 10);
-      else c.rect(x * CL + 2, y * CL + 2, CL - 4, CL - 4);
-      c.fill();
+      var cx = x * CL + CL / 2, cy = y * CL + CL / 2;
       if (virus){
-        c.fillStyle = '#0b1626';
-        c.fillRect(x * CL + 8, y * CL + 9, 4, 4);
-        c.fillRect(x * CL + CL - 12, y * CL + 9, 4, 4);
-        c.fillRect(x * CL + 8, y * CL + CL - 11, CL - 16, 3);
+        var rad = CL / 2 - 4, spikes = 8;
+        c.fillStyle = VL_COLS[col];
+        c.beginPath();
+        for (var i = 0; i <= spikes; i++){
+          var ang = (i / spikes) * Math.PI * 2;
+          var r = rad + (i % 2 === 0 ? 3 : -1);
+          var px = cx + Math.cos(ang) * r, py = cy + Math.sin(ang) * r;
+          if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+        }
+        c.closePath(); c.fill();
+        c.strokeStyle = '#0b1626'; c.fillStyle = '#0b1626'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(cx - 8, cy - 5); c.lineTo(cx - 3, cy - 2); c.stroke();     // angled eyebrow
+        c.beginPath(); c.moveTo(cx + 8, cy - 5); c.lineTo(cx + 3, cy - 2); c.stroke();     // angled eyebrow
+        c.fillRect(cx - 5, cy - 1, 3, 3); c.fillRect(cx + 2, cy - 1, 3, 3);                // beady eyes
+        c.beginPath(); c.moveTo(cx - 6, cy + 7); c.lineTo(cx - 2, cy + 4); c.lineTo(cx + 1, cy + 7); c.lineTo(cx + 5, cy + 4); c.stroke(); // jagged frown
+      } else {
+        c.fillStyle = VL_COLS[col];
+        c.beginPath();
+        if (c.roundRect) c.roundRect(x * CL + 3, y * CL + 3, CL - 6, CL - 6, (CL - 6) / 2);
+        else c.rect(x * CL + 3, y * CL + 3, CL - 6, CL - 6);
+        c.fill();
+        c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 1; c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.35)';   // glossy pill highlight
+        c.beginPath(); c.ellipse(cx - CL * 0.14, cy - CL * 0.16, CL * 0.16, CL * 0.09, -0.5, 0, Math.PI * 2); c.fill();
       }
     }
     for (var y = 0; y < VL.ROWS; y++) for (var x = 0; x < VL.COLS; x++){
@@ -1166,7 +1185,7 @@
   }
 
   // ===========================================================================
-  // 🎵 Cosmic Rhythm — a 4-lane falling-note rhythm game. Press ← ↓ ↑ → (or tap
+  // 🎵 Cosmic Rhythm — a 4-lane falling-note rhythm game. Press D F J K (or tap
   // the lane buttons) exactly when a note crosses the hit line. Entered via
   // wonderPlay('openRhythm') (1 Wonderland Pass); difficulty picks the song
   // length + note density; replay/difficulty-change inside the game is free
@@ -1174,8 +1193,8 @@
   // Cash-only reward via wgPayReward, like the other carnival games.
   // ===========================================================================
   var RHY_LANES = 4;
-  var RHY_KEYS = ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight'];
-  var RHY_KEY_LABEL = ['←', '↓', '↑', '→'];
+  var RHY_KEYS = ['d', 'f', 'j', 'k'];   // classic 4-key rhythm-game layout, left to right
+  var RHY_KEY_LABEL = ['D', 'F', 'J', 'K'];
   var RHY_LANE_COL = ['#f0705e', '#f2c14e', '#7bd88f', '#5aa9ff'];
   var RHY_BEAT_MS = 500;          // 120 BPM
   var RHY_LEAD_MS = 2000;         // ms a note takes to fall from spawn to the hit line
@@ -1213,7 +1232,7 @@
     var best = (typeof wgMini === 'function') ? wgMini('rhythm').highScore || 0 : 0;
     v.innerHTML = '<div class="wond-board wond-game">' +
       (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm', 'openWonderland()') : '') +
-      '<p class="wond-sub" style="text-align:center;margin-bottom:10px">Hit ← ↓ ↑ → exactly when each note crosses the line. Pick a difficulty — replay is free until you leave!</p>' +
+      '<p class="wond-sub" style="text-align:center;margin-bottom:10px">Hit D F J K exactly when each note crosses the line. Pick a difficulty — replay is free until you leave!</p>' +
       '<div class="wg-diff-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
         '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'easy\')" data-tooltip="Slower, sparser notes.">🟢 Easy</button>' +
         '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'normal\')" data-tooltip="A steady beat.">🟡 Normal</button>' +
@@ -1234,7 +1253,7 @@
     v.innerHTML = '<div class="wond-board wond-game">' +
       (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm — ' + diff.charAt(0).toUpperCase() + diff.slice(1), 'openRhythm()') : '') +
       '<div class="wond-hud" id="rhyHud"></div>' +
-      a2KeyLegend('← ↓ ↑ → to hit each lane') +
+      a2KeyLegend('D F J K to hit each lane') +
       '<div class="wond-canvas-wrap"><canvas id="rhyCanvas" class="a2-canvas" width="' + W + '" height="' + H + '"></canvas></div>' +
       '<div class="a2-pad">' + RHY_KEY_LABEL.map(function(lb, i){
         return '<button type="button" class="btn btn-secondary" onclick="rhyHitLane(' + i + ')">' + lb + '</button>';
@@ -1243,7 +1262,7 @@
     if (typeof playSfx === 'function') playSfx('ui-click');
     _rhyHud();
     a2Keys(function(e){
-      var idx = RHY_KEYS.indexOf(e.key);
+      var idx = RHY_KEYS.indexOf(e.key.toLowerCase());
       if (idx !== -1){ e.preventDefault(); rhyHitLane(idx); }
     });
     A2.raf = requestAnimationFrame(_rhyLoop);

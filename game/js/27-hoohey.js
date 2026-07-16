@@ -1,13 +1,15 @@
   // ============================================================================
   // Hoo Hey How 🎲 (Bầu Cua / Fish-Prawn-Crab) — a dice betting game inside
-  // Wonderland (#hooHeyView). Bet Cash 💵 on symbols; three dice roll under a
-  // shaking BOWL; each die matching a bet pays 1:1 (plus your stake back).
-  // Cash-only, per the design. Entrance: a card in the Wonderland lobby (openHooHey).
+  // Wonderland (#hooHeyView). Bet Cash 💵 on symbols; three dice tumble in the
+  // open FOREVER — no auto-stop — until the player stops them, one at a time
+  // (⏹1/⏹2/⏹3, pure skill-stop) or all at once (Stop All); each die matching a
+  // bet pays 1:1 (plus your stake back). Cash-only, per the design.
   //
-  // Roll sequence (Phase 5): cover the dice with a bowl → shake (with sound) →
-  // suspense pause → lift the bowl → reveal the dice + payout. Roll is disabled
-  // during the animation. A persistent, scrollable history panel records the
-  // last rolls (dice, winning symbols, bets, amount, net).
+  // Entrance: wonderPlay('openHooHey') from the Wonderland lobby, 1 Wonderland
+  // Pass = HH_MAX_ROLLS (3) rolls; once exhausted, Play Again buys 3 more (same
+  // pattern as Star Slots). Total bet across all 6 symbols is capped at
+  // HH_MAX_BET (1000). A persistent, scrollable history panel records the last
+  // rolls (dice, winning symbols, bets, amount, net).
   // ============================================================================
   var HH_SYMBOLS = [
     { id: 'deer',    icon: '🦌', name: 'Deer' },
@@ -17,15 +19,14 @@
     { id: 'crab',    icon: '🦀', name: 'Crab' },
     { id: 'shrimp',  icon: '🦐', name: 'Shrimp' }
   ];
-  // Bowl-roll timing (ms). Tuned to the design's suggested cadence.
-  var HH_COVER = 200, HH_SHAKE = 1500, HH_PAUSE = 300, HH_LIFT = 400;
+  var HH_MAX_ROLLS = 3, HH_MAX_BET = 1000;
 
   var _hhBets = {}, _hhDice = null, _hhResult = '';
   var _hhRolling = false, _hhRollTimer = null, _hhOutcome = '';   // outcome: 'win' | 'lose' | 'even'
   var _hhPhaseTimers = [];
   // Per-die skill-stop state — each of the 3 dice can be stopped individually, like the slot reels.
   var _hhDieStopped = [false, false, false];
-  var _hhDieTimers = [null, null, null];   // auto-stop fallback timer per die
+  var _hhRollsLeft = HH_MAX_ROLLS;   // one Wonderland Pass buys HH_MAX_ROLLS rolls; Play Again buys 3 more
   var _hhFinal = null, _hhBetsSnapshot = null, _hhTotal = 0;   // decided up front; used once all 3 stop
   var HH_HIST_KEY = 'poHooHeyHistory';
   var _hhHistory = _hhLoadHistory();     // newest first; capped at 60
@@ -36,10 +37,13 @@
   function _hhClearTimers(){
     _hhPhaseTimers.forEach(function(t){ clearTimeout(t); }); _hhPhaseTimers = [];
     if (_hhRollTimer){ clearInterval(_hhRollTimer); _hhRollTimer = null; }
-    for (var i = 0; i < 3; i++){ if (_hhDieTimers[i]){ clearTimeout(_hhDieTimers[i]); _hhDieTimers[i] = null; } }
   }
 
   function openHooHey(){
+    _hhClearTimers();
+    _hhBets = {}; _hhDice = null; _hhResult = ''; _hhRolling = false; _hhOutcome = '';
+    _hhDieStopped = [false, false, false];
+    _hhRollsLeft = HH_MAX_ROLLS;   // fresh 3 rolls per Wonderland Pass (first entry or Play Again)
     document.querySelectorAll('.view-container').forEach(function(v){ v.classList.remove('active'); });
     var v = document.getElementById('hooHeyView');
     if (v) v.classList.add('active');
@@ -111,16 +115,18 @@
   function renderHooHey(){
     var v = document.getElementById('hooHeyView');
     if (!v) return;
+    var outOfRolls = _hhRollsLeft <= 0;
     var tiles = HH_SYMBOLS.map(function(s){
       var bet = _hhBets[s.id] || 0;
       var lit = _hhDice && _hhDice.indexOf(s.id) !== -1 ? ' hh-hit' : '';
-      var dis = _hhRolling ? ' disabled' : '';
+      var dis = (_hhRolling || outOfRolls) ? ' disabled' : '';
       return '<div class="hh-tile' + lit + '">' +
         '<div class="hh-icon">' + s.icon + '</div><div class="hh-name">' + s.name + '</div>' +
         '<div class="hh-bet">Bet: 💵' + bet + '</div>' +
         '<div class="hh-betbtns">' +
           '<button class="shop-btn"' + dis + ' onclick="hhBet(\'' + s.id + '\',10)" data-tooltip="Bet 10 Cash on ' + s.name + '.">+10</button>' +
           '<button class="shop-btn"' + dis + ' onclick="hhBet(\'' + s.id + '\',50)" data-tooltip="Bet 50 Cash on ' + s.name + '.">+50</button>' +
+          '<button class="shop-btn"' + dis + ' onclick="hhBet(\'' + s.id + '\',100)" data-tooltip="Bet 100 Cash on ' + s.name + '.">+100</button>' +
           (bet > 0 ? '<button class="shop-btn shop-btn-sell"' + dis + ' onclick="hhClear(\'' + s.id + '\')" data-tooltip="Remove your bet on ' + s.name + '.">✕</button>' : '') +
         '</div></div>';
     }).join('');
@@ -128,16 +134,21 @@
       '<div class="rpg-header"><h2 class="rpg-title">🎲 Hoo Hey How</h2>' +
       '<button class="btn btn-ghost" onclick="closeHooHey()" data-tooltip="Return to the Wonderland lobby.">← Wonderland</button></div>' +
       '<div class="currency-bar" id="hhCurBar"></div>' +
-      '<p class="hh-intro">Bet Cash 💵 on symbols, then roll — tap ⏹1/⏹2/⏹3 to stop each die yourself (skill-stop), or ⏹ Stop All to hurry every die at once. Every die that matches your bet pays your stake back <b>plus</b> the same again!</p>' +
+      '<div class="wond-hud" id="hhHud"><span class="wond-chip">🎲 Rolls left: <b>' + Math.max(0, _hhRollsLeft) + ' / ' + HH_MAX_ROLLS + '</b></span>' +
+        '<span class="wond-chip">🎯 Max bet: <b>💵' + HH_MAX_BET + '</b></span></div>' +
+      '<p class="hh-intro">Bet Cash 💵 on symbols, then roll — dice tumble forever until YOU stop them: tap ⏹1/⏹2/⏹3 to stop each die yourself (skill-stop), or ⏹ Stop All to lock in every die at once. Every die that matches your bet pays your stake back <b>plus</b> the same again! ' + HH_MAX_ROLLS + ' rolls per Wonderland Pass.</p>' +
       '<div class="hh-layout">' +
         '<div class="hh-main">' +
           _hhDiceStageHtml() +
           (_hhResult ? '<div class="hh-result' + (_hhOutcome ? ' hh-result-' + _hhOutcome : '') + '">' + _hhResult + '</div>' : '') +
           '<div class="hh-grid">' + tiles + '</div>' +
           '<div class="hh-roll-row"><span class="hh-totalbet">Total bet: 💵' + _hhTotalBet() + '</span>' +
-          '<button class="btn btn-primary hh-roll-btn"' + (_hhRolling ? ' disabled' : '') + ' onclick="hhRoll()" data-tooltip="Roll the three dice. Every die matching a bet pays your stake back plus the same again.">' +
-          (_hhRolling ? '🎲 Rolling…' : '🎲 Roll the dice!') + '</button>' +
-          (_hhRolling ? '<button class="btn btn-ghost hh-stop-btn" onclick="hhStop()" data-tooltip="Stop every die at once and reveal the result now.">⏹ Stop All</button>' : '') +
+          (outOfRolls ?
+            '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openHooHey\')" data-tooltip="Buy 3 more rolls for 1 Wonderland Pass.">🔁 Play Again (1 🎟️ · 3 rolls)</button>' :
+            '<button class="btn btn-primary hh-roll-btn"' + (_hhRolling ? ' disabled' : '') + ' onclick="hhRoll()" data-tooltip="Roll the three dice. Every die matching a bet pays your stake back plus the same again.">' +
+            (_hhRolling ? '🎲 Rolling…' : '🎲 Roll the dice!') + '</button>' +
+            (_hhRolling ? '<button class="btn btn-ghost hh-stop-btn" onclick="hhStop()" data-tooltip="Stop every die at once and reveal the result now.">⏹ Stop All</button>' : '')
+          ) +
           '</div>' +
         '</div>' +
         _hhHistoryHtml() +
@@ -148,7 +159,13 @@
 
   function hhBet(id, amt){
     if (_hhRolling) return;
+    if (_hhRollsLeft <= 0){ if (typeof showToast === 'function') showToast('Out of rolls for this pass — Play Again for 3 more!'); return; }
     if (state.coins < amt){ showToast('Not enough Cash to bet.'); return; }
+    if (_hhTotalBet() + amt > HH_MAX_BET){
+      if (typeof showToast === 'function') showToast('Max total bet is 💵' + HH_MAX_BET + '!');
+      if (typeof playSfx === 'function') playSfx('wrong');
+      return;
+    }
     _hhBets[id] = (_hhBets[id] || 0) + amt;
     _hhResult = ''; _hhDice = null; _hhOutcome = '';
     renderHooHey();
@@ -166,12 +183,19 @@
 
   function hhRoll(){
     if (_hhRolling) return;
+    if (_hhRollsLeft <= 0){ if (typeof showToast === 'function') showToast('Out of rolls for this pass — Play Again for 3 more!'); return; }
     var total = _hhTotalBet();
     if (total <= 0){ showToast('Place a bet first!'); return; }
+    if (total > HH_MAX_BET){   // defensive — hhBet()'s cap already prevents reaching this, but stay safe
+      if (typeof showToast === 'function') showToast('Max total bet is 💵' + HH_MAX_BET + '!');
+      if (typeof playSfx === 'function') playSfx('wrong');
+      return;
+    }
     if (state.coins < total){ showToast('Not enough Cash for that bet.'); return; }
     state.coins -= total;
+    _hhRollsLeft--;
 
-    // Decide the final dice now; each die reveals only once IT stops (auto or manual).
+    // Decide the final dice now; each die reveals only once the player stops it.
     _hhFinal = [HH_SYMBOLS[rand(0, 5)].id, HH_SYMBOLS[rand(0, 5)].id, HH_SYMBOLS[rand(0, 5)].id];
     _hhBetsSnapshot = {}; for (var k in _hhBets) _hhBetsSnapshot[k] = _hhBets[k];
     _hhTotal = total;
@@ -180,10 +204,10 @@
     if (typeof updateStats === 'function') updateStats();  // reflect the deducted stake
     renderHooHey();
 
-    var reduce = (typeof reduceMotion !== 'undefined' && reduceMotion);
     _hhClearTimers();
 
-    // Tumble the open dice — each face flips through random symbols until IT individually stops.
+    // Tumbles FOREVER — no auto-stop. Each die's face flips through random symbols until the
+    // player calls hhStopDie(i) or hhStop(), a pure skill-stop with no "wait it out" option.
     _hhRollTimer = setInterval(function(){
       for (var i = 0; i < 3; i++){
         if (_hhDieStopped[i]) continue;
@@ -191,17 +215,7 @@
         if (f) f.textContent = HH_SYMBOLS[rand(0, 5)].icon;
       }
     }, 90);
-
-    // Auto-stop fallback per die (staggered), so a player who never taps ⏹ still gets a normal roll.
-    var rollDur = reduce ? 250 : (HH_COVER + HH_SHAKE + HH_PAUSE + HH_LIFT);
-    var stagger = reduce ? [rollDur * 0.5, rollDur * 0.75, rollDur] : [rollDur * 0.72, rollDur * 0.86, rollDur];
-    for (var i2 = 0; i2 < 3; i2++){
-      _hhDieTimers[i2] = setTimeout(function(idx){ return function(){ _hhStopDie(idx); }; }(i2), stagger[i2]);
-    }
-    if (!reduce && typeof playSfx === 'function'){
-      playSfx('click');
-      _hhPhaseTimers.push(setTimeout(function(){ playSfx('click'); }, Math.round(rollDur * 0.4)));
-    }
+    if (typeof playSfx === 'function') playSfx('click');
   }
 
   // Locks ONE die to its decided face now (auto-timer or manual tap both funnel through here).
@@ -209,7 +223,6 @@
   function _hhStopDie(i){
     if (!_hhRolling || _hhDieStopped[i]) return;
     _hhDieStopped[i] = true;
-    if (_hhDieTimers[i]){ clearTimeout(_hhDieTimers[i]); _hhDieTimers[i] = null; }
     var f = document.getElementById('hhDie' + i);
     if (f){ f.textContent = _hhSym(_hhFinal[i]).icon; f.classList.add('hh-die-locked'); }
     var btn = document.getElementById('hhDieStop' + i);

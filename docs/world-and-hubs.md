@@ -142,12 +142,13 @@ sequential level systems on 3 more games, and 3 new games (Bowling, Cosmic Rhyth
   `wonderPlay('openSlots')` to buy another 3. `_slSettle()` rounds win amounts (`Math.round`) since the
   new 0.5 multiplier can otherwise produce fractional cash.
 - **🎲 Hoo Hey How: skill-stop ONE DIE AT A TIME (`js/27-hoohey.js`).** Previously one "Stop" button
-  jumped straight to the payout. Now each of the 3 dice has its own state (`_hhDieStopped[i]`), its own
-  auto-stop fallback timer (`_hhDieTimers[i]`), and its own ⏹ button; `_hhStopDie(i)` locks that die's
-  face immediately (writing straight to its `#hhDie{i}` DOM node — no full re-render mid-roll, so the
-  other two keep tumbling), and once all 3 are stopped `_hhFinishRoll()` runs the payout (same math as
-  before, now reading `_hhFinal`/`_hhBetsSnapshot`/`_hhTotal` instead of a closure). `hhStop()` remains
-  as "Stop All" (stops whichever dice aren't stopped yet, one by one).
+  jumped straight to the payout. Now each of the 3 dice has its own state (`_hhDieStopped[i]`) and its
+  own ⏹ button; `_hhStopDie(i)` locks that die's face immediately (writing straight to its `#hhDie{i}`
+  DOM node — no full re-render mid-roll, so the other two keep tumbling), and once all 3 are stopped
+  `_hhFinishRoll()` runs the payout (reading `_hhFinal`/`_hhBetsSnapshot`/`_hhTotal`). `hhStop()`
+  remains as "Stop All". (2026-07-16, later same day: the per-die auto-stop fallback timer this
+  originally had was removed entirely — see the batch note below, dice now tumble forever until the
+  player stops them.)
 - **🗼 Sky Stacker: level-select REMOVED — plays sequentially.** `openStacker()` now spends the pass
   itself and starts straight at level 1 (`stkStart(0)`); each `STK_LEVELS[i]` has a `target` floor count
   (6/8/10/12/14) — reach it to advance for FREE to the next (narrower block, faster swing) level;
@@ -184,8 +185,10 @@ sequential level systems on 3 more games, and 3 new games (Bowling, Cosmic Rhyth
   +100 🪙 Gold bonus** (`BOWL.strikeGold`, on top of the normal end-of-run `a2Reward`). One pass buys the
   whole 10-frame game (`openBowling` does NOT self-charge — entered via the standard `_wondCard`/
   `wonderPlay` pass, unlike Sky Stacker/Astro Drop which have their own level-select).
-- **🎵 Cosmic Rhythm (`js/40-action.js`, new).** A 4-lane falling-note rhythm game — press ← ↓ ↑ → (or
-  tap the lane buttons) as a note crosses the hit line. `rhyGenChart(diff)` (pure) procedurally builds a
+- **🎵 Cosmic Rhythm (`js/40-action.js`, new).** A 4-lane falling-note rhythm game — press D F J K (or
+  tap the lane buttons) as a note crosses the hit line. (2026-07-16, later same day: rebound from the
+  original ← ↓ ↑ → to D/F/J/K, the classic 4-key rhythm-game layout; `RHY_KEYS`/`RHY_KEY_LABEL`, matched
+  case-insensitively.) `rhyGenChart(diff)` (pure) procedurally builds a
   beatmap at 120 BPM (easy/normal/hard vary song length + note density + chord chance). Judging
   (`rhyHitLane` → `_rhyJudge`) finds the closest un-judged note in that lane: ≤90ms = Perfect, ≤180ms =
   Good, otherwise the tap is ignored (no penalty for an early stray tap); notes that scroll past the
@@ -193,6 +196,48 @@ sequential level systems on 3 more games, and 3 new games (Bowling, Cosmic Rhyth
   (`100/50 + min(combo,20)×5/2`). 1 pass to enter from the lobby; Replay/Difficulty inside the game are
   free (call `rhythmStart`/`openRhythm` directly, not `wonderPlay`) — same pattern as Pop-a-Tic-Tac-Toe.
   Cash-only reward via `wgPayReward`, scaled by final score + a first-high-score bonus.
+
+**2026-07-16 batch #2 — Hoo Hey How pure skill-stop + pass economy, Quantum Block Forge tray
+resize/reposition, Virus Lab medicine redesign, Cosmic Rhythm rebind, global Ranking leaderboard.**
+
+- **🎲 Hoo Hey How: removed the per-die auto-stop fallback, added a Wonderland-Pass roll economy
+  (`js/27-hoohey.js`).** Dice used to tumble for a fixed ~2.4s then auto-lock (staggered per die) even
+  if the player never tapped ⏹ — that fallback (`_hhDieTimers`) is gone; dice now tumble **forever**
+  until `hhStopDie(i)`/`hhStop()` is called, pure skill-stop like Star Slots. Entry already cost 1
+  Wonderland Pass (`wonderPlay('openHooHey')`), but a pass used to buy *unlimited* rolls — now it buys
+  `HH_MAX_ROLLS` (3) (`_hhRollsLeft`, reset in `openHooHey()` on every entry/re-entry); once exhausted
+  the Roll button is replaced by a "🔁 Play Again (1 🎟️ · 3 rolls)" button. Total bet across all 6
+  symbols is capped at `HH_MAX_BET` (1000), enforced in both `hhBet()` and `hhRoll()`. Added a `+100`
+  bet-increment button next to the existing `+10`/`+50` per symbol.
+- **🧩 Quantum Block Forge: tray pieces now render at the SAME size as the board, to the board's
+  RIGHT (`js/35-block-forge.js`, `css/wonderland.css`).** The tray's `.qbf-mini` cells were a fixed
+  14px/12px regardless of the board's actual (much larger, size-dependent) cell size — and a dead
+  `@media (max-width:520px)` rule with `!important` forced 12px even harder. Fixed by having
+  `qbfRender()` measure the board's real rendered cell width and write it to a `--qbf-cell` CSS custom
+  property on `.qbf-wrap`; `.qbf-mini`/`.qbf-piece-used`/tray-piece `grid-template-columns` all read
+  that variable, so a tray piece is pixel-identical to the board it's about to be dropped onto. Layout:
+  `.qbf-wrap` is `flex-direction:row` (grid left, tray right, `flex-direction:column` on the tray
+  itself) above 720px width, falling back to the original stacked (tray below, horizontal row) layout
+  under 720px for narrow screens — verified both breakpoints via rendered bounding-rect measurements.
+- **💊 Virus Lab: capsules redesigned as glossy medicine pills, viruses as spiky angry germs, not flat
+  blocks / a neutral happy-face (`js/40-action.js`).** The canvas `cell()` draw function used one flat
+  rounded-rect for every cell, with viruses getting a plain 2-dot-eyes + line-mouth face — visually just
+  "simple blocks" either way. Capsules now draw as a stadium/pill shape (`roundRect` with radius = half
+  the cell) plus a glossy highlight ellipse; viruses draw as a bumpy 8-point spiked blob with angled
+  angry eyebrows + a jagged frown, clearly distinct from the friendly medicine. The HUD's "Next"
+  pill-queue swatch (`_vlPillSwatch`) got a matching circular/glossy tweak.
+- **🎵 Cosmic Rhythm: rebound to D/F/J/K** — see the entry above (updated in place).
+- **🏆 Ranking — new global leaderboard (`functions/api/cloud/leaderboard.js`,
+  `js/17-wonderland.js`).** A "🏆 Ranking" button sits in the Wonderland lobby's pass row
+  (`openRanking()`). It calls the new `GET /api/cloud/leaderboard` Cloudflare Pages Function (same
+  Bearer-token auth as the rest of `/api/cloud/*`, but — unlike `profiles.js` — reads every non-deleted
+  `player_profiles` row, not just the caller's own), which parses each profile's `save_json` (no new D1
+  table needed) to build: the **top 20 by `state.level`**, and the **single best score per tracked
+  minigame** (`state.miniGames[id].highScore` for `blockForge`/`rhythm`/`fishin`/`memory`/`sudoku`) —
+  the ID + display label list lives in `leaderboard.js`'s `GAMES` array. Frontend renders both lists
+  (`_rankHtml`) or a friendly message if signed out / the request fails (verified: a fake/invalid
+  Bearer token correctly surfaces "Network error — is the game deployed to Cloudflare?" without
+  throwing, since this dev environment has no real D1-backed Functions runtime to test against live).
 
 ## Farm — `js/18-farm.js` (`#farmView`)
 

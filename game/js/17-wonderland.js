@@ -251,6 +251,7 @@
         '<div class="wond-passrow">' +
           '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
           '<span class="wond-hint">Earn passes by answering questions in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
+          '<button type="button" class="btn btn-secondary wond-rank-btn" onclick="openRanking()" data-tooltip="See the global leaderboard — top levels and top minigame scores across every player.">🏆 Ranking</button>' +
         '</div>' +
         '<div class="wond-grid">' +
           '<div class="wond-card">' +
@@ -313,6 +314,59 @@
           '<button type="button" class="btn btn-ghost" onclick="wonderBackToMap()">← Back to Earth</button>' +
         '</div>' +
       '</div>';
+  }
+
+  // ---------- Global Ranking (leaderboard) ----------
+  // Reads /api/cloud/leaderboard: highest state.level + best score per Wonderland minigame,
+  // aggregated across EVERY player's cloud profile (not just the signed-in account's own saves).
+  function openRanking(){
+    var view = wondShowView();
+    if (!view) return;
+    view.innerHTML =
+      '<div class="wond-board">' +
+        '<div class="wond-head"><h2 class="wond-title"><span class="wond-wheel">🏆</span> Ranking</h2>' +
+          '<p class="wond-sub">The global leaderboard — every signed-in player, every save.</p></div>' +
+        '<div id="rankBody" class="rank-body"><p class="wond-sub">Loading…</p></div>' +
+        '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()">← Wonderland</button></div>' +
+      '</div>';
+    _rankLoad();
+  }
+
+  function _rankLoad(){
+    var sess = (typeof authSession === 'function') ? authSession() : null;
+    var body = document.getElementById('rankBody');
+    if (!sess || !sess.token){
+      if (body) body.innerHTML = '<p class="wond-sub">Sign in with a cloud account to see the global leaderboard.</p>';
+      return;
+    }
+    fetch('/api/cloud/leaderboard', { headers: { Authorization: 'Bearer ' + sess.token } })
+      .then(function (res){ return res.json().then(function (data){ return { status: res.status, data: data }; }); })
+      .then(function (r){
+        var b = document.getElementById('rankBody'); if (!b) return;
+        if (!r.data || !r.data.ok){ b.innerHTML = '<p class="wond-sub">' + ((r.data && r.data.error) || 'Could not load the leaderboard.') + '</p>'; return; }
+        b.innerHTML = _rankHtml(r.data);
+      })
+      .catch(function (){
+        var b = document.getElementById('rankBody'); if (!b) return;
+        b.innerHTML = '<p class="wond-sub">Network error — is the game deployed to Cloudflare?</p>';
+      });
+  }
+
+  function _rankEsc(s){ return (typeof escapeHtml === 'function') ? escapeHtml(String(s)) : String(s == null ? '' : s); }
+
+  function _rankHtml(data){
+    var levelRows = (data.byLevel || []).map(function (row, i){
+      return '<div class="rank-row"><span class="rank-n">#' + (i + 1) + '</span>' +
+        '<span class="rank-name">' + _rankEsc(row.playerName) + '</span>' +
+        '<span class="rank-val">Level ' + row.level + '</span></div>';
+    }).join('');
+    var gameRows = (data.games || []).map(function (g){
+      var best = data.byGame && data.byGame[g.id];
+      return '<div class="rank-row"><span class="rank-name">' + g.label + '</span>' +
+        '<span class="rank-val">' + (best ? (_rankEsc(best.playerName) + ' — <b>' + best.score + '</b>') : '—') + '</span></div>';
+    }).join('');
+    return '<div class="rank-section"><h3>🌟 Top Levels</h3>' + (levelRows || '<p class="wond-sub">No players ranked yet.</p>') + '</div>' +
+      '<div class="rank-section"><h3>🎮 Top Minigame Scores</h3>' + gameRows + '</div>';
   }
 
   // ---------- Tile Ball: level select ----------

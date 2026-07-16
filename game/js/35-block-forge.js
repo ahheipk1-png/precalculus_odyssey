@@ -108,8 +108,7 @@
         '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🧩 Quantum Block Forge — ' + diff + '</h2>' +
           '<button type="button" class="btn btn-ghost" onclick="openBlockForge()" data-tooltip="Quit this run (score is not saved).">✕ Quit</button></div>' +
         '<div class="wond-hud" id="qbfHud"></div>' +
-        '<div class="qbf-wrap"><div class="qbf-grid" id="qbfGrid"></div></div>' +
-        '<div class="qbf-tray" id="qbfTray"></div>' +
+        '<div class="qbf-wrap"><div class="qbf-grid" id="qbfGrid"></div><div class="qbf-tray" id="qbfTray"></div></div>' +
         '<p class="wond-tip">DRAG a block onto the grid (or click it, then click the grid). Fill a row or column to clear it — reach the 🎯 goal score to master the forge!</p>' +
       '</div>';
     if (typeof playSfx === 'function') playSfx('ui-click');
@@ -133,6 +132,10 @@
           ' data-dropzone="1" data-r="' + r + '" data-c="' + c + '" aria-label="cell ' + r + ',' + c + '"></button>';
       }
       grid.innerHTML = html;
+      // Tray pieces are drawn at this SAME size (--qbf-cell, read by .qbf-mini/.qbf-piece-used in
+      // CSS) so a tray block never looks smaller than the board it's about to be dropped onto.
+      var wrap = grid.closest('.qbf-wrap'), firstCell = grid.querySelector('.qbf-cell');
+      if (wrap && firstCell) wrap.style.setProperty('--qbf-cell', firstCell.getBoundingClientRect().width + 'px');
     }
     var tray = document.getElementById('qbfTray');
     if (tray){
@@ -147,7 +150,7 @@
         }
         return '<button type="button" class="qbf-piece' + (QBF.sel === i ? ' qbf-sel' : '') + '" onclick="qbfSelectPiece(' + i + ')" ' +
           'onpointerdown="qbfPointerDown(event,' + i + ')" ' +
-          'style="grid-template-columns:repeat(' + (maxC + 1) + ',14px)" data-tooltip="Drag this block onto the grid (or click it, then click the grid).">' + mini + '</button>';
+          'style="grid-template-columns:repeat(' + (maxC + 1) + ',var(--qbf-cell,14px))" data-tooltip="Drag this block onto the grid (or click it, then click the grid).">' + mini + '</button>';
       }).join('');
     }
     qbfUpdateHud();
