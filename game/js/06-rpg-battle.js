@@ -377,6 +377,11 @@
     el.equationView.classList.remove('active');
     el.shopView.classList.remove('active');
     el.battleView.classList.add('active');
+    // The gate button now lives in the persistent header (visible across every view), so it must be
+    // hidden explicitly on entry — it used to disappear "for free" when it lived inside the equation
+    // view, which got deactivated here. It reappears via updatePanelVisibility if the player leaves
+    // undefeated (gate re-earns) or on the next arena's own gate.
+    if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'none';
 
     el.monsterSelectScreen.style.display = 'block';
     el.combatArenaScreen.style.display = 'none';

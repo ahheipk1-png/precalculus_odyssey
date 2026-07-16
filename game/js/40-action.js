@@ -389,17 +389,8 @@
     '###############'
   ];
   function _cmWall(tx, ty){ return tx < 0 || ty < 0 || tx >= CM.W || ty >= CM.H || CM.maze[ty][tx] === '#'; }
-  function _cmEnt(tx, ty, spd){ return { x: tx * CM.T + CM.T / 2, y: ty * CM.T + CM.T / 2, dir: [0,0], want: [0,0], spd: spd, sx: tx, sy: ty }; }
+  function _cmEnt(tx, ty, spd){ return { x: tx * CM.T + CM.T / 2, y: ty * CM.T + CM.T / 2, dir: [0,0], want: [0,0], spd: spd, sx: tx, sy: ty, tx: tx, ty: ty }; }
   function _cmTile(e){ return [Math.floor(e.x / CM.T), Math.floor(e.y / CM.T)]; }
-  function _cmAtCenter(e){
-    // Threshold must be < spd, or an entity that just stepped `spd` off centre reads as "still
-    // centred" (float: |spd| < spd is sometimes true), so it re-snaps every frame and never moves.
-    // 0.75·spd is above the worst-case approach (≤ spd/2) yet below a full step, so it detects the
-    // NEXT centre but not the one it just left.
-    var cx = Math.floor(e.x / CM.T) * CM.T + CM.T / 2, cy = Math.floor(e.y / CM.T) * CM.T + CM.T / 2;
-    var m = e.spd * 0.75;
-    return Math.abs(e.x - cx) < m && Math.abs(e.y - cy) < m;
-  }
 
   function openComet(){
     CM.maze = CM_MAZE.map(function(r){ return r.split(''); });
@@ -437,9 +428,22 @@
       (CM.fright > 0 ? '<span class="wond-chip wond-chip-hot">⚡ CHOMP TIME!</span>' : '');
   }
   function _cmStep(e, isPac){
-    if (_cmAtCenter(e)){
-      var t = _cmTile(e);
-      e.x = t[0] * CM.T + CM.T / 2; e.y = t[1] * CM.T + CM.T / 2;
+    // Re-evaluate direction whenever the entity crosses into a NEW tile (tx/ty changed since last
+    // frame), or every frame while stopped (dir=[0,0], e.g. blocked by a wall) so a freshly-pressed
+    // `want` is picked up immediately rather than waiting for a tile crossing that will never come.
+    // This is tile-INDEX based, not a distance-to-centre threshold, so it can't be thrown off by any
+    // speed/tile-size combination (the old threshold math worked for today's speeds, but a mismatched
+    // speed could make an entity's per-frame step overshoot the detection window and skip a turn).
+    // NOTE: a tile-index change is detected shortly AFTER the entity crosses the boundary into the
+    // new tile (floor(x/T) flips a fraction of a step past the edge, not at the tile's centre) — so
+    // this must NOT snap position to the tile centre here, or it would teleport the entity forward
+    // by up to half a tile every crossing. Position is left exactly where `+= dir*spd` put it; only
+    // the want/dir DECISION is re-evaluated, using the tile index as which cell to check walls from.
+    var curTx = Math.floor(e.x / CM.T), curTy = Math.floor(e.y / CM.T);
+    var stopped = (e.dir[0] === 0 && e.dir[1] === 0);
+    if (curTx !== e.tx || curTy !== e.ty || stopped){
+      e.tx = curTx; e.ty = curTy;
+      var t = [curTx, curTy];
       if (isPac){
         if (e.want && !_cmWall(t[0] + e.want[0], t[1] + e.want[1])) e.dir = e.want.slice();
         if (_cmWall(t[0] + e.dir[0], t[1] + e.dir[1])) e.dir = [0, 0];
@@ -495,7 +499,7 @@
         var gh = CM.ghosts[gi];
         if (Math.abs(gh.x - CM.pac.x) < 14 && Math.abs(gh.y - CM.pac.y) < 14){
           if (CM.fright > 0){
-            gh.x = gh.sx * CM.T + CM.T / 2; gh.y = gh.sy * CM.T + CM.T / 2; gh.dir = [0, 0];
+            gh.x = gh.sx * CM.T + CM.T / 2; gh.y = gh.sy * CM.T + CM.T / 2; gh.dir = [0, 0]; gh.tx = gh.sx; gh.ty = gh.sy;
             if (typeof playSfx === 'function') playSfx('battle-hit');
           } else {
             CM.lives--;
@@ -505,7 +509,7 @@
               CM.over = true;
               a2Later(function(){ a2Result('👾 Comet Muncher', '👾 Caught by the UFOs!', 'You munched <b>' + CM.eaten + ' / ' + CM.dots + '</b> stars.', CM.eaten / CM.dots * 0.8, 'openComet'); }, 500);
             } else {
-              CM.pac.x = 7 * CM.T + CM.T / 2; CM.pac.y = 7 * CM.T + CM.T / 2; CM.pac.dir = [0,0]; CM.pac.want = [0,0];
+              CM.pac.x = 7 * CM.T + CM.T / 2; CM.pac.y = 7 * CM.T + CM.T / 2; CM.pac.dir = [0,0]; CM.pac.want = [0,0]; CM.pac.tx = 7; CM.pac.ty = 7;
               CM.paused = 45;
             }
             break;

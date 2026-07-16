@@ -197,7 +197,9 @@
   ];
   // Ice-slide levels — a crate GLIDES until it hits a wall or another crate, so a target must
   // sit against a backstop. Every level below is BFS-verified solvable (easy → hard).
-  var GLACIER_LEVELS = [
+  // Safety net ONLY — used if the procedural generator below ever fails to find a solvable level
+  // within its attempt budget (shouldn't happen, but a player must never hit a broken puzzle).
+  var GLACIER_FALLBACK_LEVELS = [
     // 1 — slide the crate into the far wall so it stops on the ring.
     ['#######',
      '#.$..o#',
@@ -261,6 +263,266 @@
      '#o.@..o#',
      '########']
   ];
+
+  // ===========================================================================
+  // Glacier Push level GENERATOR — hand-authored levels get repetitive on replay,
+  // so every session builds a fresh set of 8 ice-slide puzzles: a non-rectangular
+  // playable region (randomly carved out of a rectangle, always kept connected),
+  // a few internal wall obstacles, then crates + targets on random floor cells.
+  // Every generated level is BFS-verified solvable (using the SAME ice-slide push
+  // rule as the real game) before the player ever sees it; a level that fails to
+  // generate within its attempt budget falls back to a hand-authored one instead
+  // of ever handing the player a broken puzzle.
+  // ===========================================================================
+  // Difficulty rises mainly through CRATE COUNT (the real driver of puzzle difficulty); carve
+  // count is kept modest (2-5) so the region stays irregular WITHOUT tanking the solver's hit
+  // rate — an aggressively-carved maze with 3-4 crates is often unsolvable by pure random
+  // placement, which meant those slots kept exhausting their attempt budget and silently
+  // falling back to the plain rectangular hand-authored level (defeating the point).
+  var GLACIER_DIFFS = [
+    { W: 7,  H: 6, carves: 2, crates: 1, scramble: 2 },
+    { W: 7,  H: 6, carves: 3, crates: 2, scramble: 3 },
+    { W: 8,  H: 7, carves: 3, crates: 2, scramble: 4 },
+    { W: 8,  H: 7, carves: 4, crates: 2, scramble: 5 },
+    { W: 9,  H: 7, carves: 4, crates: 3, scramble: 5 },
+    { W: 9,  H: 7, carves: 5, crates: 3, scramble: 6 },
+    { W: 9,  H: 8, carves: 5, crates: 3, scramble: 7 },
+    { W: 10, H: 8, carves: 5, crates: 4, scramble: 8 }
+  ];
+
+  function _glFloorCount(grid, W, H){ var n = 0; for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) if (grid[y][x]) n++; return n; }
+
+  // Flood-fill from the first floor cell; the region is connected iff every floor cell was reached.
+  function _glConnected(grid, W, H){
+    var start = null;
+    for (var y = 0; y < H && !start; y++) for (var x = 0; x < W; x++) if (grid[y][x]){ start = [x, y]; break; }
+    if (!start) return false;
+    var seen = {}, stack = [start], total = 0, dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    seen[start[0] + ',' + start[1]] = 1;
+    while (stack.length){
+      var c = stack.pop(); total++;
+      for (var i = 0; i < 4; i++){
+        var nx = c[0] + dirs[i][0], ny = c[1] + dirs[i][1], k = nx + ',' + ny;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[k] || !grid[ny][nx]) continue;
+        seen[k] = 1; stack.push([nx, ny]);
+      }
+    }
+    return total === _glFloorCount(grid, W, H);
+  }
+
+  // Starts as a full rectangle (border = wall) and randomly converts interior floor cells to wall
+  // — a "carve" — keeping the change ONLY if the region stays a single connected blob with enough
+  // floor left. Repeating this a random number of times produces an irregular, non-rectangular
+  // silhouette instead of an open box every time.
+  function _glCarveRegion(W, H, carves){
+    var grid = [];
+    for (var y = 0; y < H; y++){
+      var row = [];
+      for (var x = 0; x < W; x++) row.push(x > 0 && y > 0 && x < W - 1 && y < H - 1);
+      grid.push(row);
+    }
+    var minFloor = Math.max(9, Math.floor((W - 2) * (H - 2) * 0.55));
+    var made = 0, attempts = carves * 8;
+    while (made < carves && attempts-- > 0){
+      var x = rand(1, W - 2), y = rand(1, H - 2);
+      if (!grid[y][x]) continue;
+      grid[y][x] = false;
+      if (_glFloorCount(grid, W, H) < minFloor || !_glConnected(grid, W, H)) grid[y][x] = true;
+      else made++;
+    }
+    return grid;
+  }
+
+  // Picks N distinct random floor cells to be the TARGETS. Ice-slide crates only ever come to
+  // rest against a backstop (a wall, or another crate) — a target dropped in the open interior is
+  // usually impossible to slide onto, which is why naive fully-random placement barely ever
+  // produced a solvable level. Restricting targets to wall-adjacent cells at least gives every
+  // target ONE legal backstop direction to be pushed into.
+  function _glPickTargets(grid, W, H, numCrates){
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    var wallAdjacent = [];
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++){
+      if (!grid[y][x]) continue;
+      for (var d = 0; d < 4; d++){
+        var nx = x + dirs[d][0], ny = y + dirs[d][1];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || !grid[ny][nx]){ wallAdjacent.push([x, y]); break; }
+      }
+    }
+    if (wallAdjacent.length < numCrates) return null;
+    for (var i = wallAdjacent.length - 1; i > 0; i--){ var j = rand(0, i); var t = wallAdjacent[i]; wallAdjacent[i] = wallAdjacent[j]; wallAdjacent[j] = t; }
+    return wallAdjacent.slice(0, numCrates);
+  }
+
+  // REVERSE CONSTRUCTION: places crates ON their targets (the solved state), then plays K random
+  // valid ice-slide moves BACKWARDS to scramble them — so a forward solution is guaranteed to exist
+  // by construction (just replay the scramble in reverse), instead of hoping a random placement
+  // happens to be solvable. A "reverse slide": pick a crate + a direction `d` it will eventually be
+  // PUSHED in (forward); simulate it sliding from its current cell in the OPPOSITE direction as far
+  // as legal, then park it at a RANDOM cell along that path — from there, pushing forward in
+  // direction `d` glides it back through the now-clear path to exactly where it started. The player
+  // is tracked backwards too: to make that forward push, they must stand one cell behind the crate's
+  // new position (opposite `d`), which is the free-walk exit point for the PRIOR (earlier-in-time)
+  // reverse step.
+  function _glReversePlace(grid, W, H, targets, scrambleSteps){
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    var crates = targets.map(function(t){ return t.slice(); });
+    var player = null;
+    for (var step = 0; step < scrambleSteps; step++){
+      var ci = rand(0, crates.length - 1);
+      var cx = crates[ci][0], cy = crates[ci][1];
+      var d = dirs[rand(0, 3)];                        // the FORWARD push direction for this crate
+      // Slide backwards (opposite `d`) from the crate's current cell as far as legal.
+      var occ = {}; crates.forEach(function(c, i2){ if (i2 !== ci) occ[c[0] + ',' + c[1]] = 1; });
+      var path = [], gx = cx, gy = cy;
+      while (true){
+        var tx = gx - d[0], ty = gy - d[1], tk = tx + ',' + ty;
+        if (tx < 0 || ty < 0 || tx >= W || ty >= H || !grid[ty][tx] || occ[tk]) break;
+        gx = tx; gy = ty; path.push([gx, gy]);
+      }
+      if (!path.length) continue;                      // this crate can't move this way — skip the step
+      var pick = path[rand(0, path.length - 1)];
+      crates[ci] = pick;
+      var behind = [pick[0] - d[0], pick[1] - d[1]];    // where the player must stand to push it forward later
+      if (behind[0] >= 0 && behind[1] >= 0 && behind[0] < W && behind[1] < H && grid[behind[1]][behind[0]]) player = behind;
+    }
+    if (!player){
+      // No reverse step ever placed the player (e.g. scrambleSteps=0, or every attempt was skipped)
+      // — fall back to any free floor cell not under a crate.
+      var occAll = {}; crates.forEach(function(c){ occAll[c[0] + ',' + c[1]] = 1; });
+      for (var y = 0; y < H && !player; y++) for (var x = 0; x < W; x++){
+        if (grid[y][x] && !occAll[x + ',' + y]){ player = [x, y]; break; }
+      }
+    }
+    if (!player) return null;
+    return { player: player, crates: crates, targets: targets };
+  }
+
+  function _glToRows(grid, W, H, ent){
+    var rows = [];
+    for (var y = 0; y < H; y++){
+      var row = '';
+      for (var x = 0; x < W; x++){
+        if (!grid[y][x]){ row += '#'; continue; }
+        var isP = ent.player[0] === x && ent.player[1] === y;
+        var isC = ent.crates.some(function(c){ return c[0] === x && c[1] === y; });
+        var isT = ent.targets.some(function(t){ return t[0] === x && t[1] === y; });
+        // A crate can land on ANY target's cell during reverse-scrambling, not just its own — must
+        // use the combined '*'/'+' markers (which _skParse already understands) or the overlapping
+        // target silently vanishes from the level (shown as bare '$', so it's never registered as
+        // a target at all, corrupting the goal condition).
+        row += (isP && isT) ? '+' : (isC && isT) ? '*' : isP ? '@' : isC ? '$' : isT ? 'o' : '.';
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  // BFS-verify a generated level using the SAME ice-slide push rule as sokoMove(): a pushed crate
+  // glides from its own cell until it hits a wall or another crate; the player ends up standing
+  // where the crate STARTED (not where it slid to). States are normalized by (sorted crate set +
+  // the player's reachable-region's lexicographically-smallest cell) so pushes that only differ by
+  // idle player wandering collapse to the same state. Small grids/crate counts here keep this fast.
+  function _glSolvable(rows){
+    var W = rows[0].length, H = rows.length, walls = {}, targets = [], crates = [], px = 0, py = 0;
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++){
+      var c = rows[y].charAt(x), k = x + ',' + y;
+      if (c === '#') walls[k] = 1;
+      if (c === 'o' || c === '*' || c === '+') targets.push(k);
+      if (c === '$' || c === '*') crates.push(k);
+      if (c === '@' || c === '+'){ px = x; py = y; }
+    }
+    crates.sort();
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    function setOf(a){ var s = {}; for (var i = 0; i < a.length; i++) s[a[i]] = 1; return s; }
+    function reach(cs, sx, sy){
+      var seen = {}, stack = [[sx, sy]], min = sx + ',' + sy; seen[min] = 1;
+      while (stack.length){
+        var c2 = stack.pop(), cx = c2[0], cy = c2[1];
+        for (var i = 0; i < 4; i++){
+          var nx = cx + dirs[i][0], ny = cy + dirs[i][1], k2 = nx + ',' + ny;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[k2] || walls[k2] || cs[k2]) continue;
+          seen[k2] = 1; if (k2 < min) min = k2; stack.push([nx, ny]);
+        }
+      }
+      return { seen: seen, min: min };
+    }
+    function goal(a){ for (var i = 0; i < targets.length; i++) if (a.indexOf(targets[i]) === -1) return false; return true; }
+    var r0 = reach(setOf(crates), px, py);
+    var visited = {}; visited[crates.join('|') + '#' + r0.min] = 1;
+    var q = [{ crates: crates, norm: r0.min }], iter = 0, CAP = 120000;
+    while (q.length){
+      if (iter++ > CAP) return false;
+      var cur = q.shift();
+      if (goal(cur.crates)) return true;
+      var cs = setOf(cur.crates), np = cur.norm.split(','), rr = reach(cs, +np[0], +np[1]);
+      for (var ci = 0; ci < cur.crates.length; ci++){
+        var cc = cur.crates[ci].split(','), cx = +cc[0], cy = +cc[1];
+        for (var di = 0; di < 4; di++){
+          var d = dirs[di], gx = cx, gy = cy;
+          while (true){
+            var tx = gx + d[0], ty = gy + d[1], tk = tx + ',' + ty;
+            if (walls[tk] || cs[tk]) break;
+            gx = tx; gy = ty;
+          }
+          if (gx === cx && gy === cy) continue;
+          var pushFrom = (cx - d[0]) + ',' + (cy - d[1]);
+          if (!rr.seen[pushFrom]) continue;
+          var nc = cur.crates.slice(); nc[ci] = gx + ',' + gy; nc.sort();
+          var nr = reach(setOf(nc), cx, cy);
+          var key = nc.join('|') + '#' + nr.min;
+          if (visited[key]) continue;
+          visited[key] = 1;
+          q.push({ crates: nc, norm: nr.min });
+        }
+      }
+    }
+    return false;
+  }
+
+  // Cheap O(crates) reject: a crate boxed in on all 4 sides (wall or another crate) can NEVER be
+  // pushed, so the layout is trivially unsolvable — skip the expensive BFS for these.
+  function _glLooksSane(grid, W, H, ent){
+    var occ = {}; ent.crates.forEach(function(c){ occ[c[0] + ',' + c[1]] = 1; });
+    for (var i = 0; i < ent.crates.length; i++){
+      var cx = ent.crates[i][0], cy = ent.crates[i][1], free = false;
+      var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      for (var d = 0; d < 4; d++){
+        var nx = cx + dirs[d][0], ny = cy + dirs[d][1];
+        if (nx >= 0 && ny >= 0 && nx < W && ny < H && grid[ny][nx] && !occ[nx + ',' + ny]){ free = true; break; }
+      }
+      if (!free) return false;
+    }
+    return true;
+  }
+
+  // Generates ONE level for a difficulty tier via reverse-construction (guaranteed-by-design
+  // solvable — see _glReversePlace), with the BFS solve kept only as a cheap safety-net check
+  // (small scramble depths solve almost instantly). Retries with fresh randomization on the rare
+  // skipped-scramble/sanity-check miss; falls back to a hand-authored level if that still somehow
+  // never succeeds, so the player is never handed a broken puzzle.
+  function _glGenerateOne(diff, fallback){
+    for (var attempt = 0; attempt < 25; attempt++){
+      var grid = _glCarveRegion(diff.W, diff.H, diff.carves);
+      var targets = _glPickTargets(grid, diff.W, diff.H, diff.crates);
+      if (!targets) continue;
+      var ent = _glReversePlace(grid, diff.W, diff.H, targets, diff.scramble);
+      if (!ent || !_glLooksSane(grid, diff.W, diff.H, ent)) continue;
+      // Already-solved (every TARGET already has a crate on it — crates are interchangeable, so
+      // this must compare the two SETS of positions, not same-index pairs) isn't a real puzzle.
+      var crateSet = {}; ent.crates.forEach(function(c){ crateSet[c[0] + ',' + c[1]] = 1; });
+      var moved = targets.some(function(t){ return !crateSet[t[0] + ',' + t[1]]; });
+      if (!moved) continue;
+      var rows = _glToRows(grid, diff.W, diff.H, ent);
+      if (_glSolvable(rows)) return rows;
+    }
+    return fallback;
+  }
+
+  function _glGenerateLevels(){
+    return GLACIER_DIFFS.map(function(diff, i){
+      return _glGenerateOne(diff, GLACIER_FALLBACK_LEVELS[i] || GLACIER_FALLBACK_LEVELS[GLACIER_FALLBACK_LEVELS.length - 1]);
+    });
+  }
 
   var SOKO = { title: '', replay: '', slide: false, levels: [], idx: 0,
     walls: {}, targets: {}, crates: {}, px: 0, py: 0, W: 0, H: 0, moves: 0, done: false };
@@ -370,7 +632,8 @@
   }
 
   function openCargo(){ SOKO.title = '📦 Cargo Bay'; SOKO.replay = 'openCargo'; SOKO.slide = false; SOKO.levels = CARGO_LEVELS; SOKO.idx = 0; _skLevel(); }
-  function openGlacier(){ SOKO.title = '❄️ Glacier Push'; SOKO.replay = 'openGlacier'; SOKO.slide = true; SOKO.levels = GLACIER_LEVELS; SOKO.idx = 0; _skLevel(); }
+  // A freshly generated (BFS-verified) set of 8 levels every time — see _glGenerateLevels above.
+  function openGlacier(){ SOKO.title = '❄️ Glacier Push'; SOKO.replay = 'openGlacier'; SOKO.slide = true; SOKO.levels = _glGenerateLevels(); SOKO.idx = 0; _skLevel(); }
 
   // ===========================================================================
   // 🏯 Forbidden City (Shikinjou / 紫禁城) — a 1991 Sunsoft-style tile puzzle.

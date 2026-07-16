@@ -420,6 +420,9 @@ body:has(#wonderlandView.active) .a2-canvas{ max-width: min(760px, 92vw); max-he
 .pop-cell:not(:disabled):hover{ background:rgba(242,193,78,.15); transform:translateY(-2px); }
 .pop-cell:disabled{ cursor:default; }
 .pop-cell-win{ background:rgba(126,231,159,.28); border-color:#7ee79f; box-shadow:0 0 16px rgba(126,231,159,.55); animation:slPop .4s ease; }
+.pop-cell-fixed{ background:rgba(242,193,78,.22); border-color:var(--yellow,#f2c14e); box-shadow:0 0 12px rgba(242,193,78,.5); }
+.pop-cell-fixed::after{ content:'🔒'; position:absolute; font-size:14px; top:2px; right:4px; }
+.pop-grid .pop-cell{ position:relative; }
 
 /* 🎳 Star Lanes Bowling */
 .bowl-scorecard{ display:grid; grid-template-columns:repeat(10,1fr); gap:3px; width:min(620px,96vw); margin:6px auto 10px; }

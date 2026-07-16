@@ -686,8 +686,23 @@
     setTimeout(function(){ fx.remove(); }, 1450);
   }
 
+  // Fires ONCE, the moment ARENA_GOAL is reached: a dismissible modal (not the small inline
+  // feedback line) announcing the gate is open, so the player can't miss it. Clicking OK just
+  // closes the modal — it does NOT force the player into the boss-choice screen; the persistent
+  // yellow "⚔️ Boss Gate Open!" button (header, top of the page) is what opens that (showGateScreen).
+  function showBossGateNotice(){
+    var ov = document.getElementById('bossGateOverlay');
+    if (!ov) { showGateScreen(); return; }   // fallback if the overlay markup is ever missing
+    ov.hidden = false;
+    if (typeof playSfx === 'function') playSfx('machine');
+    if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'inline-block';   // reveal the top button now
+  }
+  function closeBossGateNotice(){
+    var ov = document.getElementById('bossGateOverlay');
+    if (ov) ov.hidden = true;
+  }
+
   function showGateScreen() {
-    showMsg('Planet Boss Gate is open! Challenge the boss, visit the shop, or keep training!', false);
     el.levelGateActions.style.display = 'flex';
     el.eqActions.style.display = 'none';
     el.moveLabel.style.display = 'none';
@@ -757,7 +772,8 @@
       // finale question; there is no "skip the boss" shortcut (removed).
       state.gatePending = true;
       state.bossGateUnlocked = true;
-      setTimeout(showGateScreen, reduceMotion ? 150 : 1300);
+      setTimeout(showBossGateNotice, reduceMotion ? 150 : 1300);
+      setTimeout(loadProblem, reduceMotion ? 150 : 1300);   // keep practising underneath the notice
     } else {
       setTimeout(loadProblem, reduceMotion ? 150 : 1300);
     }

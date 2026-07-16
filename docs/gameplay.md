@@ -138,8 +138,23 @@ choices** (the choices are `display:grid` but their parent is collapsed to 0×0)
 
 `handleSolved` (`05-render.js`): rating 3/2/1 by moves-vs-par → Cash + XP + score + streak; the
 reward-scene animation advances; `state.solveClock++` (the Farm's growth clock, see
-[world-and-hubs.md](world-and-hubs.md)). Boss Gate opens at 6 solves; 9 solves auto-advances the
-planet.
+[world-and-hubs.md](world-and-hubs.md)). The **Boss Gate opens at `ARENA_GOAL` = 10 correct solves**
+(`01-data.js`), setting `state.gatePending`/`state.bossGateUnlocked = true`.
+
+**2026-07-16 — Boss Gate: a real modal notice + a persistent header button.** Previously the moment
+the gate opened it auto-forced the WHOLE practice screen into a "Challenge Boss / Keep Training"
+choice screen (`showGateScreen`, via a bare `showMsg` feedback line easy to miss), interrupting
+practice. Now: `showBossGateNotice()` fires instead — a real, `position:fixed` (always on-screen
+regardless of scroll, unlike the board-relative `#gameOverOverlay`) modal (`#bossGateOverlay`)
+announcing the gate is open, dismissed only by clicking **OK** (`closeBossGateNotice()`); practice
+continues underneath uninterrupted (`loadProblem()` still runs). Dismissing reveals a persistent,
+pulsing **⚔️ Boss Gate Open!** button (`#gateEnterBtn`) — moved from a buried practice-screen action
+row into the **header** (`.header-actions`, top of every screen, first button, gold via `--yellow`)
+so it's visible from anywhere. Clicking it is what now calls `showGateScreen()` (the Challenge/Keep
+Training choice, unchanged). The button is hidden explicitly the instant the player enters the boss
+room (`openBattle()`) — it used to disappear "for free" by living inside the equation view that got
+deactivated there, which no longer applies now that it's a persistent header element. Leaving the
+boss undefeated (`returnToArenaFromBoss`) still closes the gate and hides the button, same as before.
 
 ## Lives, hints & game-over (this session)
 

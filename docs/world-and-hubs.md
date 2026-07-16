@@ -96,14 +96,38 @@ clear of a planet = **5 passes**; perfect replays (0 wrong) pay on a diminishing
 **2026-07-16 batch — Comet Muncher fix, Virus Lab hard-drop, Glacier levels, skill-stop reels/dice,
 sequential level systems on 3 more games, and 3 new games (Bowling, Cosmic Rhythm, Pop-a-Tic-Tac-Toe).**
 
-- **👾 Comet Muncher fix (`js/40-action.js`).** Arrow keys appeared dead: `_cmAtCenter` used
-  `|x-cx| < spd`, but an entity that had just stepped exactly `spd` off-centre reads as still-centred
-  (float rounding), so it re-snapped every frame and never left its tile. Threshold is now `0.75·spd`.
+- **👾 Comet Muncher fix, take 2 (`js/40-action.js`).** The first fix (a `0.75·spd` distance-to-centre
+  threshold) was mathematically sound for the current speeds but fragile — any future speed/tile-size
+  combo where a step ≥ the detection window would silently skip a turn. Replaced with a robust,
+  speed-agnostic design: `_cmStep` now tracks each entity's tile INDEX (`e.tx/e.ty`, `floor(x/T)`) and
+  re-evaluates `want`/`dir` whenever that index changes (a real tile crossing) or every frame while
+  stopped (`dir=[0,0]`, e.g. blocked by a wall) — so a freshly-pressed direction is picked up
+  immediately. Position is deliberately NOT snapped to the new tile's centre on crossing (that
+  happens near the tile's LEADING EDGE, not its centre — snapping there caused a ~13px teleport-
+  forward every crossing); it's left exactly where the per-frame `+= dir·spd` step put it. All
+  respawn/reset sites (`gh.x=…` on being eaten, `CM.pac.x=…` on a life lost) now also reset
+  `tx`/`ty`. Verified via real `keydown` dispatch over sustained holds + rapid direction-mashing with
+  no teleports (max single-sample jump = exactly 2 frames' worth of movement) and correct wall-
+  stopping/turning throughout.
 - **💊 Virus Lab: Space is now an immediate HARD DROP** (was a one-step soft drop); `ArrowDown` still
   soft-drops. Key legend updated.
-- **❄️ Glacier Push: `GLACIER_LEVELS` expanded to an 8-level, 1→4-crate ice-slide progression**, all
-  BFS-verified solvable by the ice-slide solver (crates glide until they hit something — `SOKO.slide`).
-  Stays sequential, no level-select.
+- **❄️ Glacier Push: PROCEDURALLY GENERATED every session (`js/39-puzzles.js`), not hand-authored.**
+  `openGlacier()` calls `_glGenerateLevels()` for a fresh set of 8 ice-slide puzzles each time — a
+  non-rectangular region (`_glCarveRegion`: starts as a rectangle, randomly converts interior floor
+  cells to wall, keeping only carves that leave the region connected via flood-fill), then crates +
+  targets placed via REVERSE CONSTRUCTION (`_glReversePlace`): start crates ON their targets (solved),
+  then play `diff.scramble` random valid ice-slide moves BACKWARDS, so a forward solution is
+  guaranteed to exist by design — pure random placement was tried first and largely failed (ice-slide
+  crates can only ever rest against a backstop; a target dropped in the open interior is almost never
+  reachable, confirmed empirically at ~0-22% hit rates depending on crate count). A full BFS solve
+  (`_glSolvable`, the same ice-slide push rule as `sokoMove`) is still run as a safety-net check; a
+  level that somehow fails falls back to one of the original 8 hand-authored levels (kept as
+  `GLACIER_FALLBACK_LEVELS`) so the player is never handed a broken puzzle — verified this path is
+  never actually hit in practice. Generation takes ~150-500ms for all 8 levels. Levels use the
+  standard Sokoban `*`/`+` combined crate-on-target/player-on-target markers (a crate can scramble
+  onto ANY target's cell, not just its own). Verified end-to-end: 120/120 generated levels solved
+  correctly through the real `sokoMove` engine (walking to each push position, then pushing). Stays
+  sequential, no level-select.
 - **🎰 Star Slots: skill-stop ONE REEL AT A TIME.** `SL.stopTimers` is now indexed per-column (was one
   flat array cleared all-at-once); `slStopOne(col)` cancels just that column's auto-stop timer and
   locks it in immediately, leaving the other 4 reels spinning. 5 new `.sl-reel-stop` buttons
@@ -130,12 +154,18 @@ sequential level systems on 3 more games, and 3 new games (Bowling, Cosmic Rhyth
   rising gremlin count/speed, angry gremlins from level 4) — `_bbSetup()`/`_buSetup()` build one level
   from `BB.level`/`BU.level`; clearing (`_bbWin`/`_buWin`) advances for free or, on the last level, ends
   the run via a custom result screen. Losing reports which level was reached.
-- **🎯 Pop-a-Tic-Tac-Toe (`js/36-arcade.js`, new).** Tic-tac-toe vs a CPU on the shared arcade shell
-  (`agTopBar`/`agShowView`, same pattern as Mini Sudoku). Difficulty picks the CPU: easy = random,
-  normal = take-the-win/block-the-loss, hard = full minimax (`_popMinimax`, a 3×3 search is instant) —
-  hard is unbeatable. `popStart(diff)` → tap a cell (`popTap`) → CPU replies after a short delay
-  (`_popCpuMove`) → `_popResolve` checks all 8 win-lines + draw. Cash-only reward via `wgRecordScore`/
-  `wgPayReward`, scaled by difficulty base × a speed bonus (fewer moves = more).
+- **🎯 Pop-a-Tic-Tac-Toe (`js/36-arcade.js`) — rebuilt 2026-07-16, was never actually tic-tac-toe.**
+  The first version was adversarial tic-tac-toe vs a CPU (even had a minimax AI) — wrong game
+  entirely. The real design, matching the redemption cabinet it's named after: bet, then **ROLL** —
+  4 balls tumble and settle into 4 of the 9 grid cells (`_popShuffleUnfixed`, an 80ms visual shuffle
+  via `a2Every` then a final settle). Tap any settled ball to **FIX** it (`popToggleFix`, gold
+  border + 🔒); rolling again only re-randomizes the UNFIXED balls, onto cells none of the OTHER
+  balls (fixed or not) occupy. 3 rolls per round, or bank early with **✅ Score Now**
+  (`popScoreNow`). The final 4-cell pattern is paid out (`popEvaluate`, pure, priority-ordered):
+  **Four Corners** (exact `{0,2,6,8}`) = jackpot ×50; a **2×2 block** (any of the 4) = ×20; a
+  **complete tic-tac-toe line** (3 of the 4 cells forming one of the 8 lines) = ×10; **holding the
+  centre** = ×2; otherwise nothing. Cash-betting like Star Slots (10/50/100 chips,
+  `_wondCard`/`wonderPlay` charges 1 pass to enter, replay is free once in).
 - **🎳 Star Lanes Bowling (`js/40-action.js`, new).** A real 10-frame game. Each throw is set by
   **stopping 3 moving markers yourself** — aim → power → spin, in sequence (`_bowlStop()` advances the
   phase; the RAF loop (`_bowlLoop`) continuously writes the live marker value into `BOWL.angle/power/spin`

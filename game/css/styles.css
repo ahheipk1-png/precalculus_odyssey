@@ -2214,6 +2214,27 @@
   .gameover-title{
     font-family:'Patrick Hand', cursive; font-size:36px; color:var(--coral); margin:8px 0 6px;
   }
+
+  /* ⚔️ Boss Gate notice — same modal shell as gameover-overlay, gold theme instead of coral.
+     Unlike gameover-overlay (position:absolute, centred within the tall scrollable .board — fine
+     there since a game-over always happens right where the player is looking), this MUST be
+     impossible to miss regardless of scroll position, so it's fixed to the viewport instead. */
+  .bossgate-overlay{ position:fixed; inset:0; z-index:200; }
+  .bossgate-card{
+    border-color:var(--yellow);
+    background:linear-gradient(165deg, rgba(242,193,78,0.16), rgba(244,241,232,0.04));
+  }
+  .bossgate-title{ color:var(--yellow); }
+  /* Persistent header button (top of every screen once the gate is earned) — was a small button
+     buried in the practice screen's action row; now unmissable and clearly gold, not orange. */
+  .gate-enter-btn-top{
+    background:linear-gradient(135deg, var(--yellow), #d9a02e) !important;
+    border-color:#a97a1a !important; color:#241a05 !important; font-weight:800 !important;
+    box-shadow:0 3px 10px rgba(242,193,78,0.45) !important;
+    animation:gateBtnPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes gateBtnPulse{ 0%,100%{ box-shadow:0 3px 10px rgba(242,193,78,0.45); } 50%{ box-shadow:0 3px 18px rgba(242,193,78,0.85); } }
+  @media (prefers-reduced-motion: reduce){ .gate-enter-btn-top{ animation:none; } }
   .gameover-text{ font-size:15px; line-height:1.55; color:var(--chalk-dim); margin:0 0 18px; }
 
   .warp-fx{
