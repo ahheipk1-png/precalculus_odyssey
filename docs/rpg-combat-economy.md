@@ -144,8 +144,23 @@ the gap to the next sword (verified at every step — Iron→Axiom upgrade 123 v
 744 vs 1600). Power: a maxed sword lands about at the **next tier's base** AP (maxed Axiom 97 ≈ Gravity
 95; maxed Gravity 167 > Tidal 150; maxed Tidal 264 > Solar 230) while the next tier keeps a far higher
 ceiling — so upgrading carries you into the next power band and buying up is the bigger, later leap.
-Only **weapons** changed; shield/armor/shoes still use their own `Math.round(BASE×mult)` formulas.
 (The two legendaries share 55 AP / 700 cash as an element sidegrade.)
+
+**The same widening was applied to the other three gear families** (`SHIELD_DEF`/`SHIELD_COST`,
+`ARMOR_DEF`/`ARMOR_HP`/`ARMOR_COST`, `SHOE_SPEED`/`SHOE_COST` — all in `gear.config.js`), so the whole
+Weapon Store follows one upgrade-first economy. Legendary→rift tiers:
+
+| Family | Primary stat (leg → rift) | Cost (leg → rift) |
+|---|---|---|
+| Shields (DEF) | 40 → 70 → 110 → 165 | 600 → 1400 → 2800 → 5200 |
+| Armor (DEF / HP) | 26/50 → 46/95 → 74/155 → 112/240 | 650 → 1500 → 3000 → 5600 |
+| Shoes (SPD) | 10 → 18 → 28 → 42 | 500 → 1200 → 2400 → 4400 |
+
+Each family's per-tier full-upgrade cost stays below the price gap to the next item, and a maxed item
+lands ≈ the next tier's base (shields/armor upgrade DEF +25%/level; shoes +2 SPD/level, so shoes reach
+a bit under the next base — SPD is a lighter stat). Common starters keep their hand-set values; only
+the config's own `_shield`/`_armor`/`_shoe` builders read the new tables (falling back to the old
+`Math.round(BASE×mult)` for any rarity not in a table).
 
 **Distinct monster art.** `getMonsterArtMarkup` used to clone one shared ice-creature SVG tinted by
 difficulty — every monster looked the same. It now takes the **monster object** and renders a distinct

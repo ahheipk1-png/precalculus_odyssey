@@ -37,6 +37,19 @@
   // lifts a sword to about the next tier's base while the next tier keeps a far higher ceiling.
   var WEAPON_POWER = { common: 42, legendary: 55, archive: 95, stellar: 150, rift: 230, odyssey: 320 };
 
+  // Defensive / utility gear widened the SAME way as swords — each family gets its own per-rarity
+  // primary-stat + cost tables so the gaps between items widen tier-to-tier (instead of the old
+  // shared BASE×rarity-mult, which clustered them). At every tier a full +3 upgrade stays cheaper
+  // than the price gap to the next item, and a maxed item lands ≈ the next tier's base while the
+  // next tier keeps a higher ceiling. Shields/armor upgrade DEF +25%/level; shoes +2 SPD/level.
+  var SHOE_SPEED  = { legendary: 10,  archive: 18,   stellar: 28,   rift: 42,   odyssey: 60 };
+  var SHOE_COST   = { legendary: 500, archive: 1200, stellar: 2400, rift: 4400, odyssey: 7000 };
+  var SHIELD_DEF  = { legendary: 40,  archive: 70,   stellar: 110,  rift: 165,  odyssey: 230 };
+  var SHIELD_COST = { legendary: 600, archive: 1400, stellar: 2800, rift: 5200, odyssey: 8000 };
+  var ARMOR_DEF   = { legendary: 26,  archive: 46,   stellar: 74,   rift: 112,  odyssey: 160 };
+  var ARMOR_HP    = { legendary: 50,  archive: 95,   stellar: 155,  rift: 240,  odyssey: 340 };
+  var ARMOR_COST  = { legendary: 650, archive: 1500, stellar: 3000, rift: 5600, odyssey: 8500 };
+
   // Compact weapon builder → full def (pure data assembly at load).
   function _wpn(id, name, cat, el, rar) {
     var c = WEAPON_CATS[cat], r = GEAR_RARITY[rar];
@@ -73,7 +86,7 @@
   function _shoe(id, name, el, rar) {
     var r = GEAR_RARITY[rar];
     return { id: id, name: name, category: 'shoes', element: el, rarity: rar,
-      speed: Math.round(6 * r.mult), cost: Math.round(400 * r.mult),
+      speed: SHOE_SPEED[rar] || Math.round(6 * r.mult), cost: SHOE_COST[rar] || Math.round(400 * r.mult),
       chipSlots: 2, owned: false, upgradeLvl: 0,
       desc: name + ' — ' + r.label + ' boots of ' + el + ' (+speed).' };
   }
@@ -90,7 +103,7 @@
   function _shield(id, name, el, rar) {
     var r = GEAR_RARITY[rar];
     return { id: id, name: name, category: 'shield', element: el, rarity: rar,
-      defense: Math.round(24 * r.mult), cost: Math.round(500 * r.mult),
+      defense: SHIELD_DEF[rar] || Math.round(24 * r.mult), cost: SHIELD_COST[rar] || Math.round(500 * r.mult),
       chipSlots: 2, owned: false, upgradeLvl: 0,
       desc: name + ' — ' + r.label + ' shield of ' + el + '.' };
   }
@@ -111,7 +124,7 @@
   function _armor(id, name, el, rar) {
     var r = GEAR_RARITY[rar];
     return { id: id, name: name, category: 'armor', element: el, rarity: rar,
-      defense: Math.round(16 * r.mult), hp: Math.round(30 * r.mult), cost: Math.round(450 * r.mult),
+      defense: ARMOR_DEF[rar] || Math.round(16 * r.mult), hp: ARMOR_HP[rar] || Math.round(30 * r.mult), cost: ARMOR_COST[rar] || Math.round(450 * r.mult),
       chipSlots: 2, owned: false, upgradeLvl: 0,
       desc: name + ' — ' + r.label + ' armor of ' + el + ' (+DEF & max HP).' };
   }
