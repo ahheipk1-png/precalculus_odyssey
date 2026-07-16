@@ -55,13 +55,22 @@
   // ===========================================================================
   // Gone Fishin' 🎣 — catch the fish whose number matches the rule.
   // ===========================================================================
-  var FISH_TIME = 40;
-  var FISH = { active: false, timer: 0, spawner: 0, score: 0, combo: 0, best: 0, timeLeft: 0, diff: 'easy', rule: null, ruleTimer: 0, catches: 0, wrong: 0, seq: 0 };
+  var FISH_MAX_LEVEL = 5;
+  var FISH = { active: false, timer: 0, spawner: 0, score: 0, combo: 0, best: 0, diff: 'easy', rule: null, catches: 0, wrong: 0, seq: 0, level: 1, target: 0 };
 
   function fishConf(diff){
     if (diff === 'hard')   return { min: 1, max: 30, dur: 3.4, spawn: 560 };
     if (diff === 'normal') return { min: 1, max: 20, dur: 4.6, spawn: 720 };
     return { min: 1, max: 12, dur: 6.2, spawn: 900 };
+  }
+  // Level-based: each level you must catch `target` matching fish. Higher levels spawn faster fish
+  // more often. Chosen difficulty sets the base speed/number-range.
+  function fishLevelConf(diff, level){
+    var base = fishConf(diff), lv = Math.max(1, level);
+    return { min: base.min, max: base.max,
+      dur: Math.max(2.2, base.dur - (lv - 1) * 0.5),
+      spawn: Math.max(320, base.spawn - (lv - 1) * 70),
+      target: 4 + lv * 2 };   // 6, 8, 10, 12, 14 catches to clear levels 1-5
   }
 
   // PURE: a catch rule + its label.
@@ -117,7 +126,7 @@
         '<div class="wond-head"><h2 class="wond-title"><span class="wond-wheel">🎣</span> Gone Fishin’</h2>' +
           '<p class="wond-sub">Catch only the fish whose number matches the rule!</p></div>' +
         '<div class="wond-passrow"><span class="wond-passes">🏆 High score: <b>' + (m.highScore || 0) + '</b></span>' +
-          '<span class="wond-hint">Free to play · tap fish · ' + FISH_TIME + 's</span></div>' +
+          '<span class="wond-hint">Free to play · tap fish · clear ' + FISH_MAX_LEVEL + ' levels</span></div>' +
         '<div class="wg-diff-row">' +
           '<button type="button" class="btn btn-primary" onclick="fishStart(\'easy\')" data-tooltip="Slow fish, simple rules.">🟢 Easy</button>' +
           '<button type="button" class="btn btn-primary" onclick="fishStart(\'normal\')" data-tooltip="Faster fish, more rules.">🟡 Normal</button>' +
@@ -132,43 +141,48 @@
     var view = document.getElementById('wonderlandView');
     if (!view) return;
     FISH.active = true; FISH.diff = diff; FISH.score = 0; FISH.combo = 0;
-    FISH.timeLeft = FISH_TIME; FISH.catches = 0; FISH.wrong = 0; FISH.seq = 0; FISH.ruleTimer = 0;
+    FISH.wrong = 0; FISH.seq = 0; FISH.level = 1;
     FISH.best = wgMini('fishin').highScore || 0;
-    FISH.rule = fishGenRule(diff);
     view.innerHTML =
       '<div class="wond-board wond-game">' +
         '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🎣 Gone Fishin’ — ' + diff.charAt(0).toUpperCase() + diff.slice(1) + '</h2>' +
-          '<button type="button" class="btn btn-ghost" onclick="openFishin()" data-tooltip="Quit this run (score is not saved).">✕ Quit</button></div>' +
+          '<button type="button" class="btn btn-ghost" onclick="openFishin()" data-tooltip="Quit this run (progress is not saved).">✕ Quit</button></div>' +
         '<div class="wond-hud" id="fishHud"></div>' +
         '<div class="fish-rule" id="fishRule"></div>' +
         '<div class="fish-pond" id="fishPond"></div>' +
-        '<p class="wond-tip">Tap a fish that matches the rule. Right fish = points · wrong fish = combo lost.</p>' +
+        '<p class="wond-tip">Catch the target number of matching fish to clear each level. Right fish = points · wrong fish = combo lost.</p>' +
       '</div>';
+    if (typeof playSfx === 'function') playSfx('ui-click');
+    fishStartLevel(1);
+  }
+
+  // Sets up (or advances to) one level: fresh rule + target, faster spawns, resets the catch counter.
+  function fishStartLevel(level){
+    FISH.level = level;
+    var lc = fishLevelConf(FISH.diff, level);
+    FISH.target = lc.target;
+    FISH.catches = 0;
+    FISH.rule = fishGenRule(FISH.diff);
     fishUpdateRule();
     fishUpdateHud();
-    if (typeof playSfx === 'function') playSfx('ui-click');
-    var conf = fishConf(diff);
-    FISH.spawner = setInterval(fishSpawn, conf.spawn);
-    FISH.timer = setInterval(fishTick, 1000);
+    if (FISH.spawner){ clearInterval(FISH.spawner); FISH.spawner = 0; }
+    FISH.spawner = setInterval(fishSpawn, lc.spawn);
     fishSpawn();
   }
 
-  function fishTick(){
-    if (!FISH.active) return;
-    var view = document.getElementById('wonderlandView');
-    if (!view || !view.classList.contains('active') || !document.getElementById('fishPond')){ fishStop(); return; }
-    FISH.timeLeft--;
-    FISH.ruleTimer++;
-    if (FISH.ruleTimer >= 8){ FISH.ruleTimer = 0; FISH.rule = fishGenRule(FISH.diff); fishUpdateRule(); }  // rotate the rule
-    fishUpdateHud();
-    if (FISH.timeLeft <= 0) fishEnd();
+  function fishLevelUp(){
+    if (FISH.level >= FISH_MAX_LEVEL){ fishEnd(true); return; }
+    if (typeof showToast === 'function') showToast('🎣 Level ' + FISH.level + ' cleared!');
+    if (typeof playSfx === 'function') playSfx('correct');
+    var pond = document.getElementById('fishPond'); if (pond) pond.innerHTML = '';   // clear leftover fish
+    fishStartLevel(FISH.level + 1);
   }
 
   function fishSpawn(){
     if (!FISH.active) return;
     var pond = document.getElementById('fishPond');
     if (!pond) return;
-    var conf = fishConf(FISH.diff);
+    var conf = fishLevelConf(FISH.diff, FISH.level);
     var n = fishNumber(FISH.rule, conf);
     var id = 'fish' + (FISH.seq++);
     var top = 8 + Math.floor(Math.random() * 72);              // % of pond height
@@ -194,13 +208,15 @@
       el.classList.add('fish-caught');
       if (typeof playSfx === 'function') playSfx('solve-correct');
       setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 240);
-    } else {
-      FISH.combo = 0;
-      FISH.wrong++;
-      FISH.score = Math.max(0, FISH.score - 5);
-      el.classList.add('fish-wrong');
-      if (typeof playSfx === 'function') playSfx('wrong');
+      fishUpdateHud();
+      if (FISH.catches >= FISH.target) fishLevelUp();   // level cleared → advance (or finish)
+      return;
     }
+    FISH.combo = 0;
+    FISH.wrong++;
+    FISH.score = Math.max(0, FISH.score - 5);
+    el.classList.add('fish-wrong');
+    if (typeof playSfx === 'function') playSfx('wrong');
     fishUpdateHud();
   }
 
@@ -212,10 +228,20 @@
     var hud = document.getElementById('fishHud');
     if (!hud) return;
     hud.innerHTML =
+      '<span class="wond-chip">🎚️ Level: <b>' + FISH.level + ' / ' + FISH_MAX_LEVEL + '</b></span>' +
+      '<span class="wond-chip">🐟 Caught: <b>' + FISH.catches + ' / ' + FISH.target + '</b></span>' +
       '<span class="wond-chip">⭐ Score: <b>' + FISH.score + '</b></span>' +
-      '<span class="wond-chip">🔥 Combo: <b>' + FISH.combo + '</b></span>' +
-      '<span class="wond-chip">⏱️ Time: <b>' + FISH.timeLeft + 's</b></span>' +
-      '<span class="wond-chip">🏆 Best: <b>' + FISH.best + '</b></span>';
+      '<span class="wond-chip">🔥 Combo: <b>' + FISH.combo + '</b></span>';
+  }
+
+  // Cash-only reward (mini-games aren't a gear farm), modelled on qbfReward. Replaces the deleted
+  // bullReward, which used to throw a ReferenceError here and break the whole end screen.
+  function fishReward(score, diff, newHigh){
+    var rate = diff === 'hard' ? 0.14 : (diff === 'normal' ? 0.10 : 0.07);
+    var r = { coins: Math.max(0, Math.round(score * rate)) };
+    if (newHigh){ r.coins += 25; r.newHigh = true; }
+    if (diff === 'hard' && newHigh && score >= 400){ r.chips = { cpu: 1 }; }
+    return r;
   }
 
   function fishStop(){
@@ -224,19 +250,20 @@
     if (FISH.spawner){ clearInterval(FISH.spawner); FISH.spawner = 0; }
   }
 
-  function fishEnd(){
-    var score = FISH.score, diff = FISH.diff, catches = FISH.catches, wrong = FISH.wrong;
+  function fishEnd(allCleared){
+    var diff = FISH.diff, wrong = FISH.wrong, level = FISH.level;
+    // Score gets a level bonus so clearing further pays more.
+    var score = FISH.score + (allCleared ? 200 : level * 30);
     fishStop();
     var newHigh = wgRecordScore('fishin', score, diff);
-    var r = bullReward(score, diff, newHigh);                  // same Cash-scaling model
+    var r = fishReward(score, diff, newHigh);
     wgPayReward(r);
-    var acc = (catches + wrong) > 0 ? Math.round(catches / (catches + wrong) * 100) : 0;
     var view = document.getElementById('wonderlandView');
     if (!view) return;
     view.innerHTML =
       '<div class="wond-board">' +
-        '<div class="wond-head"><h2 class="wond-title">' + (newHigh ? '🏆 NEW HIGH SCORE!' : '🎣 Time’s up!') + '</h2>' +
-          '<p class="wond-sub">Score <b>' + score + '</b> · ' + catches + ' catches · ' + acc + '% accuracy · ' + diff + '</p></div>' +
+        '<div class="wond-head"><h2 class="wond-title">' + (allCleared ? '🌟 ALL LEVELS CLEARED!' : '🎣 Nice fishing!') + (newHigh ? ' 🏆' : '') + '</h2>' +
+          '<p class="wond-sub">Cleared <b>' + (allCleared ? FISH_MAX_LEVEL : (level - 1)) + ' / ' + FISH_MAX_LEVEL + '</b> levels · score <b>' + score + '</b> · ' + diff + (newHigh ? ' · new best!' : '') + '</p></div>' +
         '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + (r.coins || 0) + '</span>' +
           (r.chips && r.chips.cpu ? '<span class="wond-chip wond-prize-chip">🖥️ CPU ×' + r.chips.cpu + '</span>' : '') + '</div></div>' +

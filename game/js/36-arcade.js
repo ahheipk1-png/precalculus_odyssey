@@ -42,6 +42,7 @@
   function agStopAll(){
     if (typeof memStop === 'function') memStop();
     if (typeof sudStop === 'function') sudStop();
+    if (typeof popStop === 'function') popStop();
   }
 
   // ===========================================================================
@@ -342,4 +343,176 @@
           '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';
+  }
+
+  // ===========================================================================
+  // 🎯 Pop-a-Tic-Tac-Toe — pop your ball (🔴) to make three-in-a-row before the
+  // CPU (🔵). Inspired by the redemption cabinet. Difficulty sets the CPU's smarts
+  // (easy = random, normal = win/block, hard = perfect minimax). You always go first.
+  // ===========================================================================
+  var POP = { active: false, diff: 'normal', board: [], turn: 'X', over: false, moves: 0 };
+  var POP_WINLINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  var POP_MARK = { X: '🔴', O: '🔵' };
+
+  function openPopTicTacToe(){
+    if (typeof wgStopAll === 'function') wgStopAll();
+    var view = agShowView(); if (!view) return;
+    var m = wgMini('poptictactoe');
+    view.innerHTML =
+      '<div class="wond-board wond-game">' +
+        agTopBar('🎯 Pop-a-Tic-Tac-Toe', 'openWonderland()') +
+        '<p class="wond-sub" style="text-align:center;margin-bottom:14px">Pop your 🔴 ball into three in a row before the 🔵 CPU does — you go first!</p>' +
+        '<div class="wg-diff-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
+          '<button type="button" class="btn btn-primary" onclick="popStart(\'easy\')" data-tooltip="CPU plays randomly.">🟢 Easy</button>' +
+          '<button type="button" class="btn btn-primary" onclick="popStart(\'normal\')" data-tooltip="CPU takes wins and blocks.">🟡 Normal</button>' +
+          '<button type="button" class="btn btn-primary" onclick="popStart(\'hard\')" data-tooltip="CPU plays perfectly. Best Cash.">🔴 Hard</button>' +
+        '</div>' +
+        '<p class="wond-sub" style="text-align:center;margin-top:18px">🏆 Best score: <b>' + (m.highScore || 0) + '</b></p>' +
+      '</div>';
+  }
+
+  function popStop(){ POP.active = false; }
+
+  function popStart(diff){
+    if (typeof wgStopAll === 'function') wgStopAll();
+    var view = document.getElementById('wonderlandView'); if (!view) return;
+    POP.active = true; POP.diff = diff; POP.board = ['', '', '', '', '', '', '', '', ''];
+    POP.turn = 'X'; POP.over = false; POP.moves = 0;
+    var name = { easy: 'Easy', normal: 'Normal', hard: 'Hard' }[diff] || 'Normal';
+    view.innerHTML =
+      '<div class="wond-board wond-game">' +
+        agTopBar('🎯 Pop-a-Tic-Tac-Toe · ' + name, 'openPopTicTacToe()') +
+        '<div class="wond-hud" id="popHud"></div>' +
+        '<div class="pop-grid" id="popGrid"></div>' +
+        '<p class="wond-tip">Tap an empty square to pop your 🔴 ball in. Line up three to win!</p>' +
+      '</div>';
+    if (typeof playSfx === 'function') playSfx('ui-click');
+    popRender();
+  }
+
+  function _popHud(){
+    var hud = document.getElementById('popHud'); if (!hud) return;
+    var msg = POP.over ? 'Game over' : (POP.turn === 'X' ? 'Your turn — pop a 🔴' : 'CPU is thinking…');
+    hud.innerHTML = '<span class="wond-chip">🔴 You</span><span class="wond-chip">🔵 CPU</span>' +
+      '<span class="wond-chip">' + msg + '</span>';
+  }
+
+  function popRender(){
+    var g = document.getElementById('popGrid'); if (!g) return;
+    g.innerHTML = POP.board.map(function(v, i){
+      return '<button type="button" class="pop-cell' + (v ? ' pop-cell-' + (v === 'X' ? 'x' : 'o') : '') + '" onclick="popTap(' + i + ')"' +
+        ((v || POP.over) ? ' disabled' : '') + '>' + (v ? POP_MARK[v] : '') + '</button>';
+    }).join('');
+    _popHud();
+  }
+
+  function _popWinner(b){
+    for (var i = 0; i < POP_WINLINES.length; i++){
+      var L = POP_WINLINES[i];
+      if (b[L[0]] && b[L[0]] === b[L[1]] && b[L[1]] === b[L[2]]) return { who: b[L[0]], line: L };
+    }
+    return null;
+  }
+  function _popEmpty(b){ var e = []; for (var i = 0; i < 9; i++) if (!b[i]) e.push(i); return e; }
+
+  function popTap(i){
+    if (!POP.active || POP.over || POP.turn !== 'X' || POP.board[i]) return;
+    POP.board[i] = 'X'; POP.moves++;
+    if (typeof playSfx === 'function') playSfx('click');
+    if (_popResolve()) return;                   // popEnd already rendered + highlighted
+    POP.turn = 'O';
+    popRender();
+    if (typeof a2Later === 'function') a2Later(_popCpuMove, 350); else _popCpuMove();
+  }
+
+  function _popCpuMove(){
+    if (!POP.active || POP.over || POP.turn !== 'O') return;
+    var i = _popCpuPick(POP.board, POP.diff);
+    if (i == null) return;
+    POP.board[i] = 'O'; POP.moves++;
+    if (typeof playSfx === 'function') playSfx('click');
+    if (_popResolve()) return;
+    POP.turn = 'X';
+    popRender();
+  }
+
+  // Ends the game if there's a winner or a draw; returns true if it did.
+  function _popResolve(){
+    var w = _popWinner(POP.board);
+    if (w){ popEnd(w.who === 'X' ? 'win' : 'lose', w.line); return true; }
+    if (_popEmpty(POP.board).length === 0){ popEnd('draw', null); return true; }
+    return false;
+  }
+
+  function _popCpuPick(b, diff){
+    var empty = _popEmpty(b); if (!empty.length) return null;
+    if (diff === 'easy') return empty[rand(0, empty.length - 1)];
+    var win = _popFindLine(b, 'O'); if (win != null) return win;      // take the win
+    var block = _popFindLine(b, 'X'); if (block != null) return block; // block the player
+    if (diff === 'hard') return _popMinimax(b, 'O').idx;              // perfect play
+    if (!b[4]) return 4;                                              // normal: prefer centre
+    var corners = [0, 2, 6, 8].filter(function(i){ return !b[i]; });
+    if (corners.length) return corners[rand(0, corners.length - 1)];
+    return empty[rand(0, empty.length - 1)];
+  }
+  // A cell that completes a line for `who` (2 of `who` + 1 empty), else null.
+  function _popFindLine(b, who){
+    for (var i = 0; i < POP_WINLINES.length; i++){
+      var L = POP_WINLINES[i], mine = 0, empty = -1, bad = false;
+      for (var j = 0; j < 3; j++){
+        var v = b[L[j]];
+        if (v === who) mine++; else if (!v) empty = L[j]; else bad = true;
+      }
+      if (!bad && mine === 2 && empty >= 0) return empty;
+    }
+    return null;
+  }
+  // Minimax (O maximizes) — 3×3 is tiny so a full search is instant.
+  function _popMinimax(b, player){
+    var w = _popWinner(b);
+    if (w) return { score: w.who === 'O' ? 10 : -10, idx: -1 };
+    var empty = _popEmpty(b);
+    if (!empty.length) return { score: 0, idx: -1 };
+    var best = { score: player === 'O' ? -999 : 999, idx: empty[0] };
+    for (var k = 0; k < empty.length; k++){
+      var i = empty[k];
+      b[i] = player;
+      var res = _popMinimax(b, player === 'O' ? 'X' : 'O');
+      b[i] = '';
+      if (player === 'O'){ if (res.score > best.score) best = { score: res.score, idx: i }; }
+      else { if (res.score < best.score) best = { score: res.score, idx: i }; }
+    }
+    return best;
+  }
+
+  function popEnd(result, line){
+    POP.over = true; POP.active = false;
+    var diff = POP.diff;
+    var base = { easy: 40, normal: 80, hard: 140 }[diff] || 40;
+    var score = result === 'win' ? base + Math.max(0, 9 - POP.moves) * 6 : (result === 'draw' ? Math.round(base / 3) : 0);
+    var newHigh = score > 0 ? wgRecordScore('poptictactoe', score, diff) : false;
+    var coins = score > 0 ? Math.round(score * 0.3) + (newHigh ? 20 : 0) : 0;
+    if (coins > 0) wgPayReward({ coins: coins, newHigh: newHigh });
+    if (typeof playSfx === 'function') playSfx(result === 'win' ? 'victory' : (result === 'draw' ? 'ui-click' : 'wrong'));
+    popRender();   // final board (cells disabled)
+    if (line){ var cells = document.querySelectorAll('#popGrid .pop-cell'); line.forEach(function(i){ if (cells[i]) cells[i].classList.add('pop-cell-win'); }); }
+    var showResult = function(){
+      var view = document.getElementById('wonderlandView'); if (!view) return;
+      view.innerHTML =
+        '<div class="wond-board wond-game">' +
+          agTopBar('🎯 Pop-a-Tic-Tac-Toe', 'openPopTicTacToe()') +
+          '<div class="wond-head"><h2 class="wond-title">' +
+            (result === 'win' ? (newHigh ? '🏆 YOU POPPED IT — NEW BEST!' : '🎉 Three in a row — you win!') : (result === 'draw' ? '🤝 It’s a draw!' : '🔵 The CPU got three first!')) +
+          '</h2>' +
+            '<p class="wond-sub">' + diff.charAt(0).toUpperCase() + diff.slice(1) + ' · ' + (result === 'win' ? 'score ' + score : (result === 'draw' ? 'a hard-fought tie' : 'try again!')) + '</p></div>' +
+          '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
+            '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + coins + '</span></div></div>' +
+          '<div class="wond-footer" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
+            '<button type="button" class="btn btn-primary" onclick="popStart(\'' + diff + '\')" data-tooltip="Play again, same difficulty.">↻ Rematch</button>' +
+            '<button type="button" class="btn btn-ghost" onclick="openPopTicTacToe()" data-tooltip="Change difficulty.">🎚️ Difficulty</button>' +
+            '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
+          '</div>' +
+        '</div>';
+    };
+    if (typeof a2Later === 'function') a2Later(showResult, line ? 1100 : 650); else showResult();
   }

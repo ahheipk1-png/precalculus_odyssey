@@ -23,13 +23,21 @@
   var _hhBets = {}, _hhDice = null, _hhResult = '';
   var _hhRolling = false, _hhRollTimer = null, _hhOutcome = '';   // outcome: 'win' | 'lose' | 'even'
   var _hhPhaseTimers = [];
+  // Per-die skill-stop state — each of the 3 dice can be stopped individually, like the slot reels.
+  var _hhDieStopped = [false, false, false];
+  var _hhDieTimers = [null, null, null];   // auto-stop fallback timer per die
+  var _hhFinal = null, _hhBetsSnapshot = null, _hhTotal = 0;   // decided up front; used once all 3 stop
   var HH_HIST_KEY = 'poHooHeyHistory';
   var _hhHistory = _hhLoadHistory();     // newest first; capped at 60
 
   function _hhSym(id){ return HH_SYMBOLS.filter(function(x){ return x.id === id; })[0]; }
   function _hhLoadHistory(){ try { return JSON.parse(localStorage.getItem(HH_HIST_KEY)) || []; } catch (e) { return []; } }
   function _hhSaveHistory(){ try { localStorage.setItem(HH_HIST_KEY, JSON.stringify(_hhHistory.slice(0, 60))); } catch (e) {} }
-  function _hhClearTimers(){ _hhPhaseTimers.forEach(function(t){ clearTimeout(t); }); _hhPhaseTimers = []; if (_hhRollTimer){ clearInterval(_hhRollTimer); _hhRollTimer = null; } }
+  function _hhClearTimers(){
+    _hhPhaseTimers.forEach(function(t){ clearTimeout(t); }); _hhPhaseTimers = [];
+    if (_hhRollTimer){ clearInterval(_hhRollTimer); _hhRollTimer = null; }
+    for (var i = 0; i < 3; i++){ if (_hhDieTimers[i]){ clearTimeout(_hhDieTimers[i]); _hhDieTimers[i] = null; } }
+  }
 
   function openHooHey(){
     document.querySelectorAll('.view-container').forEach(function(v){ v.classList.remove('active'); });
@@ -51,11 +59,17 @@
   // or the landed dice.
   function _hhDiceStageHtml(){
     if (_hhRolling){
-      // No bowl — the three dice tumble in the open, then land on their faces.
-      var rolling = '<div class="hh-dice hh-dice-tumbling">' +
-        '<span class="hh-die hh-die-rolling">🎲</span>' +
-        '<span class="hh-die hh-die-rolling">🎲</span>' +
-        '<span class="hh-die hh-die-rolling">🎲</span></div>';
+      // No bowl — the three dice tumble in the open. Each has its OWN skill-stop button so the
+      // player can lock in one die at a time instead of only a single stop-all.
+      var dice = '', stops = '';
+      for (var i = 0; i < 3; i++){
+        var stopped = _hhDieStopped[i];
+        dice += '<span class="hh-die hh-die-rolling' + (stopped ? ' hh-die-locked' : '') + '" id="hhDie' + i + '">' +
+          (stopped ? _hhSym(_hhFinal[i]).icon : '🎲') + '</span>';
+        stops += '<button type="button" class="btn btn-ghost hh-die-stop" id="hhDieStop' + i + '"' +
+          (stopped ? ' disabled' : '') + ' onclick="hhStopDie(' + i + ')" data-tooltip="Stop die ' + (i + 1) + ' now.">⏹' + (i + 1) + '</button>';
+      }
+      var rolling = '<div class="hh-dice hh-dice-tumbling">' + dice + '</div><div class="hh-die-stops">' + stops + '</div>';
       return '<div class="hh-dice-stage">' + rolling + '</div>';
     }
     if (_hhDice){
@@ -114,7 +128,7 @@
       '<div class="rpg-header"><h2 class="rpg-title">🎲 Hoo Hey How</h2>' +
       '<button class="btn btn-ghost" onclick="closeHooHey()" data-tooltip="Return to the Wonderland lobby.">← Wonderland</button></div>' +
       '<div class="currency-bar" id="hhCurBar"></div>' +
-      '<p class="hh-intro">Bet Cash 💵 on symbols. Three dice roll under the bowl — every die that matches your bet pays you back your stake <b>plus</b> the same again!</p>' +
+      '<p class="hh-intro">Bet Cash 💵 on symbols, then roll — tap ⏹1/⏹2/⏹3 to stop each die yourself (skill-stop), or ⏹ Stop All to hurry every die at once. Every die that matches your bet pays your stake back <b>plus</b> the same again!</p>' +
       '<div class="hh-layout">' +
         '<div class="hh-main">' +
           _hhDiceStageHtml() +
@@ -122,7 +136,9 @@
           '<div class="hh-grid">' + tiles + '</div>' +
           '<div class="hh-roll-row"><span class="hh-totalbet">Total bet: 💵' + _hhTotalBet() + '</span>' +
           '<button class="btn btn-primary hh-roll-btn"' + (_hhRolling ? ' disabled' : '') + ' onclick="hhRoll()" data-tooltip="Roll the three dice. Every die matching a bet pays your stake back plus the same again.">' +
-          (_hhRolling ? '🎲 Rolling…' : '🎲 Roll the dice!') + '</button></div>' +
+          (_hhRolling ? '🎲 Rolling…' : '🎲 Roll the dice!') + '</button>' +
+          (_hhRolling ? '<button class="btn btn-ghost hh-stop-btn" onclick="hhStop()" data-tooltip="Stop every die at once and reveal the result now.">⏹ Stop All</button>' : '') +
+          '</div>' +
         '</div>' +
         _hhHistoryHtml() +
       '</div>';
@@ -155,52 +171,84 @@
     if (state.coins < total){ showToast('Not enough Cash for that bet.'); return; }
     state.coins -= total;
 
-    // Decide the final dice now; reveal them only after the bowl lifts.
-    var final = [HH_SYMBOLS[rand(0, 5)].id, HH_SYMBOLS[rand(0, 5)].id, HH_SYMBOLS[rand(0, 5)].id];
-    var betsSnapshot = {}; for (var k in _hhBets) betsSnapshot[k] = _hhBets[k];
+    // Decide the final dice now; each die reveals only once IT stops (auto or manual).
+    _hhFinal = [HH_SYMBOLS[rand(0, 5)].id, HH_SYMBOLS[rand(0, 5)].id, HH_SYMBOLS[rand(0, 5)].id];
+    _hhBetsSnapshot = {}; for (var k in _hhBets) _hhBetsSnapshot[k] = _hhBets[k];
+    _hhTotal = total;
     _hhRolling = true; _hhResult = ''; _hhDice = null; _hhOutcome = '';
+    _hhDieStopped = [false, false, false];
     if (typeof updateStats === 'function') updateStats();  // reflect the deducted stake
     renderHooHey();
 
     var reduce = (typeof reduceMotion !== 'undefined' && reduceMotion);
     _hhClearTimers();
 
-    // Tumble the open dice — each face flips through random symbols until it lands.
-    var faces = document.querySelectorAll('#hooHeyView .hh-die-rolling');
+    // Tumble the open dice — each face flips through random symbols until IT individually stops.
     _hhRollTimer = setInterval(function(){
-      for (var i = 0; i < faces.length; i++){ faces[i].textContent = HH_SYMBOLS[rand(0, 5)].icon; }
+      for (var i = 0; i < 3; i++){
+        if (_hhDieStopped[i]) continue;
+        var f = document.getElementById('hhDie' + i);
+        if (f) f.textContent = HH_SYMBOLS[rand(0, 5)].icon;
+      }
     }, 90);
 
-    var doReveal = function(){
-      _hhClearTimers();
-      _hhRolling = false;
-      _hhDice = final;
-      var winnings = 0;
-      for (var id in betsSnapshot){
-        var matches = _hhDice.filter(function(d){ return d === id; }).length;
-        if (matches > 0) winnings += betsSnapshot[id] * (1 + matches); // stake back + 1× per match
-      }
-      state.coins += winnings;
-      var net = winnings - total;
-      _hhOutcome = net > 0 ? 'win' : (net === 0 ? 'even' : 'lose');
-      _hhResult = net > 0 ? ('🎉 You won 💵' + winnings + ' (net +' + net + ')!') : (net === 0 ? '➖ Broke even.' : '💸 You lost 💵' + Math.abs(net) + '. Try again!');
-      if (typeof playSfx === 'function') playSfx(net > 0 ? 'victory' : 'wrong');
-      if (typeof updateStats === 'function') updateStats();
-      // Record history (newest first) and persist.
-      var nextN = (_hhHistory[0] ? _hhHistory[0].n : 0) + 1;
-      _hhHistory.unshift({ n: nextN, dice: final.slice(), bets: betsSnapshot, totalBet: total, winnings: winnings, net: net });
-      if (_hhHistory.length > 60) _hhHistory.length = 60;
-      _hhSaveHistory();
-      _hhBets = {};
-      renderHooHey();
-    };
-
-    // Tumble in the open for a beat (a couple of shake ticks for feel), then land the dice.
+    // Auto-stop fallback per die (staggered), so a player who never taps ⏹ still gets a normal roll.
     var rollDur = reduce ? 250 : (HH_COVER + HH_SHAKE + HH_PAUSE + HH_LIFT);
+    var stagger = reduce ? [rollDur * 0.5, rollDur * 0.75, rollDur] : [rollDur * 0.72, rollDur * 0.86, rollDur];
+    for (var i2 = 0; i2 < 3; i2++){
+      _hhDieTimers[i2] = setTimeout(function(idx){ return function(){ _hhStopDie(idx); }; }(i2), stagger[i2]);
+    }
     if (!reduce && typeof playSfx === 'function'){
       playSfx('click');
       _hhPhaseTimers.push(setTimeout(function(){ playSfx('click'); }, Math.round(rollDur * 0.4)));
-      _hhPhaseTimers.push(setTimeout(function(){ playSfx('click'); }, Math.round(rollDur * 0.75)));
     }
-    _hhPhaseTimers.push(setTimeout(doReveal, rollDur));
+  }
+
+  // Locks ONE die to its decided face now (auto-timer or manual tap both funnel through here).
+  // Once all 3 are stopped, pauses briefly then runs the payout.
+  function _hhStopDie(i){
+    if (!_hhRolling || _hhDieStopped[i]) return;
+    _hhDieStopped[i] = true;
+    if (_hhDieTimers[i]){ clearTimeout(_hhDieTimers[i]); _hhDieTimers[i] = null; }
+    var f = document.getElementById('hhDie' + i);
+    if (f){ f.textContent = _hhSym(_hhFinal[i]).icon; f.classList.add('hh-die-locked'); }
+    var btn = document.getElementById('hhDieStop' + i);
+    if (btn) btn.disabled = true;
+    if (typeof playSfx === 'function') playSfx('click');
+    if (_hhDieStopped[0] && _hhDieStopped[1] && _hhDieStopped[2]){
+      if (_hhRollTimer){ clearInterval(_hhRollTimer); _hhRollTimer = null; }
+      _hhPhaseTimers.push(setTimeout(_hhFinishRoll, 300));
+    }
+  }
+
+  // Public: skill-stop a single die (called by its ⏹ button).
+  function hhStopDie(i){ _hhStopDie(i); }
+
+  // Public: stop ALL dice still spinning at once (convenience, same as before).
+  function hhStop(){
+    if (!_hhRolling) return;
+    for (var i = 0; i < 3; i++){ if (!_hhDieStopped[i]) _hhStopDie(i); }
+  }
+
+  function _hhFinishRoll(){
+    _hhRolling = false;
+    _hhDice = _hhFinal;
+    var winnings = 0;
+    for (var id in _hhBetsSnapshot){
+      var matches = _hhDice.filter(function(d){ return d === id; }).length;
+      if (matches > 0) winnings += _hhBetsSnapshot[id] * (1 + matches); // stake back + 1× per match
+    }
+    state.coins += winnings;
+    var net = winnings - _hhTotal;
+    _hhOutcome = net > 0 ? 'win' : (net === 0 ? 'even' : 'lose');
+    _hhResult = net > 0 ? ('🎉 You won 💵' + winnings + ' (net +' + net + ')!') : (net === 0 ? '➖ Broke even.' : '💸 You lost 💵' + Math.abs(net) + '. Try again!');
+    if (typeof playSfx === 'function') playSfx(net > 0 ? 'victory' : 'wrong');
+    if (typeof updateStats === 'function') updateStats();
+    // Record history (newest first) and persist.
+    var nextN = (_hhHistory[0] ? _hhHistory[0].n : 0) + 1;
+    _hhHistory.unshift({ n: nextN, dice: _hhFinal.slice(), bets: _hhBetsSnapshot, totalBet: _hhTotal, winnings: winnings, net: net });
+    if (_hhHistory.length > 60) _hhHistory.length = 60;
+    _hhSaveHistory();
+    _hhBets = {};
+    renderHooHey();
   }

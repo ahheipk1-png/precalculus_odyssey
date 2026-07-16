@@ -290,8 +290,8 @@
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🗼</div>' +
             '<div class="wond-card-name">Sky Stacker</div>' +
-            '<div class="wond-card-desc">Drop the swinging block dead-center and stack to the stars! 5 levels.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openStacker()" data-tooltip="Choose a Sky Stacker level. Each play costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+            '<div class="wond-card-desc">Stack the swinging blocks! Clear all 5 levels one by one — each tower taller than the last.</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openStacker()" data-tooltip="One run through all 5 levels. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🟦</div>' +
@@ -304,6 +304,9 @@
           _wondCard('👾', 'Comet Muncher', 'Munch every star in the maze — dodge the UFOs!', 'openComet') +
           _wondCard('💣', 'Blast Bot', 'Bomb the crates and zap the drones — mind the blast!', 'openBlastBot') +
           _wondCard('🫧', 'Bubble Blast', 'Trap gremlins in bubbles, then pop them platform-style!', 'openBubble') +
+          _wondCard('🎯', 'Pop-a-Tic-Tac-Toe', 'Pop your ball into three-in-a-row before the CPU does!', 'openPopTicTacToe') +
+          _wondCard('🎳', 'Star Lanes Bowling', 'A full 10-frame game — stop the marker to set your aim, power & spin. Strikes pay +100 Gold!', 'openBowling') +
+          _wondCard('🎵', 'Cosmic Rhythm', 'Hit the falling notes on the beat — 3 difficulties, replay free once you\'re in!', 'openRhythm') +
           locked +
         '</div>' +
         '<div class="wond-footer">' +

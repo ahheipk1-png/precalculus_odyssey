@@ -657,44 +657,32 @@
   // Levels vary the STARTING BLOCK WIDTH (narrower = harder to line up) and the
   // swing SPEED (faster = less time to react) — always unlocked, pick any level.
   // ===========================================================================
+  // target = floors you must stack to clear the level and advance to the next (harder) one.
   var STK_LEVELS = [
-    { name: 'Foundation',      startW: 170, speed: 0.85 },
-    { name: 'Midrise',         startW: 140, speed: 1.05 },
-    { name: 'Highrise',        startW: 110, speed: 1.30 },
-    { name: 'Skyscraper',      startW: 85,  speed: 1.60 },
-    { name: 'Space Elevator',  startW: 62,  speed: 2.00 }
+    { name: 'Foundation',      startW: 170, speed: 0.85, target: 6  },
+    { name: 'Midrise',         startW: 140, speed: 1.05, target: 8  },
+    { name: 'Highrise',        startW: 110, speed: 1.30, target: 10 },
+    { name: 'Skyscraper',      startW: 85,  speed: 1.60, target: 12 },
+    { name: 'Space Elevator',  startW: 62,  speed: 2.00, target: 14 }
   ];
-  var STK = { W: 420, H: 580, blocks: [], cur: null, t: 0, speed: 1, floors: 0, over: false, flash: 0, levelIdx: 0, maxW: 170 };
+  var STK = { W: 420, H: 580, blocks: [], cur: null, t: 0, speed: 1, floors: 0, over: false, flash: 0, levelIdx: 0, maxW: 170, runFloors: 0 };
 
+  // One pass buys a whole RUN — start at level 1 and climb through all 5 in sequence (no level-select).
   function openStacker(){
-    a2StopAll();
-    var view = a2View(); if (!view) return;
-    var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
-    var cards = STK_LEVELS.map(function(lv, i){
-      return '<div class="wond-lvl-card">' +
-        '<div class="wond-lvl-num">Level ' + (i + 1) + '</div>' +
-        '<div class="wond-lvl-name">' + lv.name + '</div>' +
-        '<div class="wond-lvl-meta">Block width ' + lv.startW + 'px · swing ×' + lv.speed.toFixed(2) + '</div>' +
-        '<button type="button" class="btn btn-primary wond-lvl-play" onclick="stkStart(' + i + ')" data-tooltip="Costs 1 Wonderland Pass.">Play (1 🎟️)</button>' +
-      '</div>';
-    }).join('');
-    view.innerHTML = '<div class="wond-board">' +
-      (typeof agTopBar === 'function' ? agTopBar('🗼 Sky Stacker — Choose a Level', 'openWonderland()') : '') +
-      '<p class="wond-sub" style="text-align:center;margin:0 0 4px">Narrower blocks + faster swings at higher levels. Line up the drop — the overhang gets sliced off!</p>' +
-      '<p class="wond-sub" style="text-align:center;margin:0 0 12px">🎟️ Passes: <b>' + passes + '</b></p>' +
-      '<div class="wond-lvl-grid">' + cards + '</div>' +
-      '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button></div>' +
-    '</div>';
+    if (typeof wonderSpendPass === 'function' && !wonderSpendPass()) return;
+    STK.runFloors = 0;
+    stkStart(0);
   }
 
+  // Sets up ONE level. Called by openStacker (level 0, already charged) and by the level-clear
+  // handoff (free). It must NOT charge a pass itself.
   function stkStart(levelIdx){
-    if (typeof wonderSpendPass === 'function' && !wonderSpendPass()) return;
     var lv = STK_LEVELS[levelIdx] || STK_LEVELS[0];
     STK.levelIdx = levelIdx; STK.maxW = lv.startW;
     STK.blocks = [{ x: (STK.W - lv.startW) / 2, w: lv.startW }];
     STK.cur = { x: 20, w: lv.startW };
     STK.t = 0; STK.speed = lv.speed; STK.floors = 0; STK.over = false; STK.flash = 0;
-    a2Shell('🗼 Sky Stacker — ' + lv.name, 'openStacker()',
+    a2Shell('🗼 Sky Stacker — L' + (levelIdx + 1) + ' ' + lv.name, 'openWonderland()',
       '<div class="wond-hud" id="stkHud"></div>' + a2KeyLegend('Space or ⬆️ to drop') +
       '<div class="wond-canvas-wrap"><canvas id="stkCanvas" class="a2-canvas" width="' + STK.W + '" height="' + STK.H + '"></canvas></div>',
       'Click, tap, or press Space to drop the block. Line it up — the overhang gets sliced off!');
@@ -707,9 +695,10 @@
 
   function _stkHud(){
     var hud = document.getElementById('stkHud');
-    if (hud) hud.innerHTML = '<span class="wond-chip">🏗️ Floors: <b>' + STK.floors + '</b></span>' +
-      '<span class="wond-chip">🎚️ Level ' + (STK.levelIdx + 1) + '</span>' +
-      '<span class="wond-chip">🎁 Prize grows with height!</span>';
+    var lv = STK_LEVELS[STK.levelIdx] || STK_LEVELS[0];
+    if (hud) hud.innerHTML = '<span class="wond-chip">🎚️ Level <b>' + (STK.levelIdx + 1) + ' / ' + STK_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">🏗️ Floors: <b>' + STK.floors + ' / ' + lv.target + '</b></span>' +
+      '<span class="wond-chip">🗼 Run total: <b>' + (STK.runFloors || 0) + '</b></span>';
   }
 
   function stkDrop(){
@@ -734,26 +723,42 @@
     STK.cur = { x: 20, w: newW };
     STK.t = 0;
     if (typeof playSfx === 'function') playSfx(perfect ? 'correct' : 'click');
+    STK.runFloors = (STK.runFloors || 0) + 1;
     _stkHud();
+    // Sequential levels: reaching this level's target height clears it and hands off to the next
+    // (harder) level for FREE — or ends the run after the last level.
+    var lv = STK_LEVELS[STK.levelIdx];
+    if (lv && STK.floors >= lv.target){
+      STK.over = true;
+      if (typeof playSfx === 'function') playSfx('correct');
+      if (STK.levelIdx + 1 < STK_LEVELS.length){
+        if (typeof showToast === 'function') showToast('✅ Level ' + (STK.levelIdx + 1) + ' cleared!');
+        var nxt = STK.levelIdx + 1;
+        a2Later(function(){ stkStart(nxt); }, 750);
+      } else {
+        a2Later(_stkGameOver, 750);
+      }
+    }
   }
 
-  // Custom result screen (not the generic a2Result) — retry needs to pass the level index, and
-  // stkStart() already charges its own pass, so the replay button must NOT also go through
-  // wonderPlay() (that would double-charge).
+  // Result screen for the whole RUN (reached on a miss, or after clearing the last level).
+  // "Play again" re-charges one pass via openStacker (which restarts at level 1).
   function _stkGameOver(){
     a2StopAll();
-    var lv = STK_LEVELS[STK.levelIdx] || STK_LEVELS[0];
-    var frac = Math.min(1, STK.floors / 14);
-    var headline = STK.floors >= 12 ? '🌟 SKY-SCRAPER! 🌟' : '🏗️ Tower toppled!';
+    var lastIdx = STK_LEVELS.length - 1;
+    var clearedAll = STK.levelIdx >= lastIdx && STK.floors >= (STK_LEVELS[lastIdx].target || 14);
+    var totalTargets = STK_LEVELS.reduce(function(s, l){ return s + l.target; }, 0);
+    var runFloors = STK.runFloors || STK.floors;
+    var frac = clearedAll ? 1 : Math.min(1, runFloors / totalTargets);
+    var headline = clearedAll ? '🌟 ALL LEVELS CLEARED! 🌟' : '🏗️ Tower toppled!';
     var view = a2View(); if (!view) return;
     view.innerHTML = '<div class="wond-board">' +
       '<div class="wond-head"><h2 class="wond-title">' + headline + '</h2>' +
-        '<p class="wond-sub">Level ' + (STK.levelIdx + 1) + ' · ' + lv.name + ' — stacked <b>' + STK.floors + '</b> floors' +
-        (STK.floors >= 12 ? ' — amazing!' : '. 12+ floors = grand prize!') + '</p></div>' +
+        '<p class="wond-sub">Reached Level <b>' + (STK.levelIdx + 1) + ' / ' + STK_LEVELS.length + '</b> · stacked <b>' + runFloors + '</b> floors this run' +
+        (clearedAll ? ' — you topped out the sky!' : '. Clear all 5 levels for the grand prize!') + '</p></div>' +
       '<div class="wond-result-card"><div class="wond-result-label">Your prizes</div><div class="wond-prizes" id="stkPrizes"></div></div>' +
       '<div class="wond-footer">' +
-        '<button type="button" class="btn btn-primary" onclick="stkStart(' + STK.levelIdx + ')" data-tooltip="Costs 1 Wonderland Pass.">↻ Retry this level (1 🎟️)</button>' +
-        '<button type="button" class="btn btn-ghost" onclick="openStacker()">🎚️ Level Select</button>' +
+        '<button type="button" class="btn btn-primary" onclick="openStacker()" data-tooltip="Costs 1 Wonderland Pass.">↻ Play again (1 🎟️)</button>' +
         '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button>' +
       '</div></div>';
     var r = a2Reward(frac);

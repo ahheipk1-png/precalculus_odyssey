@@ -630,7 +630,11 @@
   .hh-hist-win{ color:#7bd88f; } .hh-hist-lose{ color:var(--coral); } .hh-hist-even{ color:var(--chalk-dim); }
 
   /* ---- Phase 5: the bowl that covers, shakes and lifts ---- */
-  .hh-dice-stage{ position:relative; min-height:120px; display:flex; align-items:center; justify-content:center; }
+  .hh-dice-stage{ position:relative; min-height:120px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; }
+  /* ---- Per-die skill-stop buttons (stop 1 die at a time, like the slot reels) ---- */
+  .hh-die-stops{ display:flex; gap:10px; justify-content:center; }
+  .hh-die-stop{ min-width:44px; padding:6px 10px; font-size:13px; font-weight:800; }
+  .hh-die.hh-die-locked{ animation:none; box-shadow:0 0 12px rgba(242,193,78,.55); border-color:var(--yellow); }
   .hh-bowl{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
     transform:translateY(-150px); opacity:0; transition:transform .2s ease, opacity .2s ease; z-index:3; pointer-events:none; }
   .hh-bowl-body{ font-size:92px; line-height:1; filter:drop-shadow(0 8px 14px rgba(0,0,0,.5)); }

@@ -545,7 +545,16 @@
   // 💣 Blast Bot — bomb the crates, zap the drones. Don't singe your circuits!
   // ===========================================================================
   var BB = { W: 13, H: 11, T: 36, hard: {}, soft: {}, px: 1, py: 1, cool: 0,
-             bombs: [], flames: [], foes: [], kills: 0, over: false, keys: {} };
+             bombs: [], flames: [], foes: [], kills: 0, over: false, keys: {},
+             level: 0, radius: 2, foeMs: 420, foeStart: 3 };
+  // Sequential levels (no selection): more drones, denser crates, faster drones, bigger blasts.
+  var BB_LEVELS = [
+    { foes: 2, density: 0.28, foeMs: 540, radius: 2 },
+    { foes: 3, density: 0.38, foeMs: 460, radius: 2 },
+    { foes: 4, density: 0.46, foeMs: 380, radius: 3 },
+    { foes: 5, density: 0.52, foeMs: 320, radius: 3 }
+  ];
+  var BB_FOE_SPOTS = [ [11,9], [11,1], [1,9], [11,5], [7,9], [5,1] ];   // drawn in order per level
   function _bbKey(x, y){ return x + ',' + y; }
   function _bbBlocked(x, y){
     if (x < 0 || y < 0 || x >= BB.W || y >= BB.H) return true;
@@ -553,9 +562,12 @@
     for (var i = 0; i < BB.bombs.length; i++){ if (BB.bombs[i].x === x && BB.bombs[i].y === y) return true; }
     return false;
   }
-  function openBlastBot(){
+  // Builds the board for the CURRENT BB.level (no shell — that's openBlastBot's job).
+  function _bbSetup(){
+    var cfg = BB_LEVELS[BB.level] || BB_LEVELS[BB_LEVELS.length - 1];
     BB.hard = {}; BB.soft = {}; BB.bombs = []; BB.flames = []; BB.foes = [];
     BB.px = 1; BB.py = 1; BB.kills = 0; BB.over = false; BB.cool = 0; BB.keys = {};
+    BB.radius = cfg.radius; BB.foeMs = cfg.foeMs;
     for (var y = 0; y < BB.H; y++) for (var x = 0; x < BB.W; x++){
       if (x === 0 || y === 0 || x === BB.W - 1 || y === BB.H - 1 || (x % 2 === 0 && y % 2 === 0)) BB.hard[_bbKey(x, y)] = 1;
     }
@@ -563,10 +575,16 @@
       if (BB.hard[_bbKey(sx, sy)]) continue;
       if (sx + sy <= 3) continue;                                   // player corner stays open
       if ((sx >= BB.W - 3 && sy >= BB.H - 3)) continue;             // foe corner stays open
-      if (Math.random() < 0.38) BB.soft[_bbKey(sx, sy)] = 1;
+      if (Math.random() < cfg.density) BB.soft[_bbKey(sx, sy)] = 1;
     }
-    BB.foes = [ { x: BB.W - 2, y: BB.H - 2, t: 0 }, { x: BB.W - 2, y: 1, t: 200 }, { x: 1, y: BB.H - 2, t: 400 } ];
+    BB.foes = BB_FOE_SPOTS.slice(0, cfg.foes).map(function(s){ return { x: s[0], y: s[1] }; });
+    BB.foeStart = BB.foes.length;
     BB.foes.forEach(function(f){ delete BB.soft[_bbKey(f.x, f.y)]; });
+    _bbHud();
+  }
+  function openBlastBot(){
+    BB.level = 0;
+    _bbSetup();
     a2Shell('💣 Blast Bot', 'openWonderland()',
       '<div class="wond-hud" id="bbHud"></div>' + a2KeyLegend('Arrow keys move · Space bomb') +
       '<div class="wond-canvas-wrap"><canvas id="bbCanvas" class="a2-canvas" width="' + (BB.W * BB.T) + '" height="' + (BB.H * BB.T) + '"></canvas></div>' +
@@ -588,7 +606,8 @@
   }
   function _bbHud(){
     var hud = document.getElementById('bbHud');
-    if (hud) hud.innerHTML = '<span class="wond-chip">🛸 Drones left: <b>' + BB.foes.length + '</b></span>' +
+    if (hud) hud.innerHTML = '<span class="wond-chip">🎚️ Level <b>' + (BB.level + 1) + ' / ' + BB_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">🛸 Drones left: <b>' + BB.foes.length + '</b></span>' +
       '<span class="wond-chip">💣 Bombs: <b>' + Math.max(0, 2 - BB.bombs.length) + '</b></span>';
   }
   function _bbMove(dx, dy){
@@ -610,7 +629,7 @@
     var cells = [[b.x, b.y]];
     var dirs = [[0,-1],[0,1],[-1,0],[1,0]];
     for (var d = 0; d < 4; d++){
-      for (var r = 1; r <= 2; r++){
+      for (var r = 1; r <= BB.radius; r++){
         var x = b.x + dirs[d][0] * r, y = b.y + dirs[d][1] * r, k = _bbKey(x, y);
         if (BB.hard[k]) break;
         cells.push([x, y]);
@@ -626,6 +645,18 @@
       for (var ci = 0; ci < cells.length; ci++){
         if (ob.x === cells[ci][0] && ob.y === cells[ci][1]) ob.t = Math.min(ob.t, Date.now() + 80);
       }
+    }
+  }
+  function _bbWin(){
+    if (BB.over) return;
+    BB.over = true;
+    if (typeof playSfx === 'function') playSfx('victory');
+    if (BB.level + 1 < BB_LEVELS.length){
+      if (typeof showToast === 'function') showToast('🌟 ALL DRONES DOWN! Level ' + (BB.level + 1) + ' clear!');
+      BB.level++;
+      a2Later(function(){ _bbSetup(); }, 800);   // next, harder level — the loop keeps running
+    } else {
+      a2Later(function(){ a2Result('💣 Blast Bot', '🌟 ALL DRONES DOWN! 🌟', 'A flawless demolition run — all ' + BB_LEVELS.length + ' levels cleared!', 1, 'openBlastBot'); }, 600);
     }
   }
   function _bbLoop(){
@@ -644,7 +675,7 @@
         if (!f.next || f.next <= now){
           var dirs = [[0,-1],[0,1],[-1,0],[1,0]].filter(function(d){ return !_bbBlocked(f.x + d[0], f.y + d[1]); });
           if (dirs.length){ var d2 = dirs[rand(0, dirs.length - 1)]; f.x += d2[0]; f.y += d2[1]; }
-          f.next = now + 420;
+          f.next = now + BB.foeMs;
         }
       }
       // flame kills
@@ -655,20 +686,17 @@
         }
         if (F.x === BB.px && F.y === BB.py && !BB.over){
           BB.over = true;
-          a2Later(function(){ a2Result('💣 Blast Bot', '💥 Singed circuits!', 'You zapped <b>' + BB.kills + ' / 3</b> drones. Watch that blast radius!', BB.kills / 3 * 0.7, 'openBlastBot'); }, 500);
+          a2Later(function(){ a2Result('💣 Blast Bot', '💥 Singed circuits!', 'Reached Level <b>' + (BB.level + 1) + '</b> · zapped <b>' + BB.kills + ' / ' + BB.foeStart + '</b> drones this level. Watch that blast radius!', (BB.level + BB.kills / BB.foeStart) / BB_LEVELS.length * 0.85, 'openBlastBot'); }, 500);
         }
       }
       // foe touch
       for (var ft = 0; ft < BB.foes.length; ft++){
         if (BB.foes[ft].x === BB.px && BB.foes[ft].y === BB.py && !BB.over){
           BB.over = true;
-          a2Later(function(){ a2Result('💣 Blast Bot', '🛸 Zapped by a drone!', 'You got <b>' + BB.kills + ' / 3</b> of them first.', BB.kills / 3 * 0.7, 'openBlastBot'); }, 500);
+          a2Later(function(){ a2Result('💣 Blast Bot', '🛸 Zapped by a drone!', 'Reached Level <b>' + (BB.level + 1) + '</b> · got <b>' + BB.kills + ' / ' + BB.foeStart + '</b> first.', (BB.level + BB.kills / BB.foeStart) / BB_LEVELS.length * 0.85, 'openBlastBot'); }, 500);
         }
       }
-      if (!BB.foes.length && !BB.over){
-        BB.over = true;
-        a2Later(function(){ a2Result('💣 Blast Bot', '🌟 ALL DRONES DOWN! 🌟', 'A flawless demolition run!', 1, 'openBlastBot'); }, 500);
-      }
+      if (!BB.foes.length && !BB.over) _bbWin();
     }
     // draw
     var cv = document.getElementById('bbCanvas'); if (!cv) return;
@@ -691,8 +719,16 @@
   // 🫧 Bubble Blast — trap the gremlins in bubbles, then pop them!
   // ===========================================================================
   var BU = { W: 480, H: 352, plats: [], player: null, foes: [], bubbles: [],
-             lives: 3, popped: 0, total: 4, over: false, keys: {}, inv: 0, shootCool: 0 };
-  function openBubble(){
+             lives: 3, popped: 0, total: 4, over: false, keys: {}, inv: 0, shootCool: 0, level: 0 };
+  // Sequential levels (no selection): more gremlins, faster, and eventually starting angry.
+  var BU_LEVELS = [
+    { spd: 1.0,  angry: false, spots: [[300,300,1],[100,220,-1]] },
+    { spd: 1.15, angry: false, spots: [[300,300,1],[100,220,-1],[220,140,1]] },
+    { spd: 1.3,  angry: false, spots: [[300,300,1],[100,220,-1],[220,140,1],[380,60,-1]] },
+    { spd: 1.5,  angry: true,  spots: [[300,300,1],[100,220,-1],[220,140,1],[380,60,-1],[60,140,1]] }
+  ];
+  function _buSetup(){
+    var cfg = BU_LEVELS[BU.level] || BU_LEVELS[BU_LEVELS.length - 1];
     BU.plats = [
       { x: 0, y: 332, w: 480, h: 20 },
       { x: 40, y: 250, w: 150, h: 12 }, { x: 290, y: 250, w: 150, h: 12 },
@@ -700,14 +736,26 @@
       { x: 20, y: 92, w: 130, h: 12 }, { x: 330, y: 92, w: 130, h: 12 }
     ];
     BU.player = { x: 40, y: 300, vx: 0, vy: 0, dir: 1, ground: false };
-    BU.foes = [
-      { x: 300, y: 300, vx: 1.1, vy: 0, angry: false },
-      { x: 100, y: 220, vx: -1.1, vy: 0, angry: false },
-      { x: 220, y: 140, vx: 1.1, vy: 0, angry: false },
-      { x: 380, y: 60, vx: -1.1, vy: 0, angry: false }
-    ];
-    BU.bubbles = []; BU.lives = 3; BU.popped = 0; BU.total = BU.foes.length;
+    BU.foes = cfg.spots.map(function(s){ return { x: s[0], y: s[1], vx: s[2] * cfg.spd, vy: 0, angry: cfg.angry }; });
+    BU.bubbles = []; BU.popped = 0; BU.total = BU.foes.length;
     BU.over = false; BU.keys = {}; BU.inv = 0; BU.shootCool = 0;
+    _buHud();
+  }
+  function _buWin(){
+    if (BU.over) return;
+    BU.over = true;
+    if (typeof playSfx === 'function') playSfx('victory');
+    if (BU.level + 1 < BU_LEVELS.length){
+      if (typeof showToast === 'function') showToast('🌟 ALL GREMLINS POPPED! Level ' + (BU.level + 1) + ' clear!');
+      BU.level++;
+      a2Later(function(){ _buSetup(); }, 800);   // next, harder level — the loop keeps running
+    } else {
+      a2Later(function(){ a2Result('🫧 Bubble Blast', '🌟 ALL GREMLINS POPPED! 🌟', 'A perfect bubble hunt — all ' + BU_LEVELS.length + ' levels cleared with ' + BU.lives + ' ❤️ left!', 1, 'openBubble'); }, 600);
+    }
+  }
+  function openBubble(){
+    BU.level = 0; BU.lives = 3;
+    _buSetup();
     a2Shell('🫧 Bubble Blast', 'openWonderland()',
       '<div class="wond-hud" id="buHud"></div>' + a2KeyLegend('← → move · ↑ jump · Space bubble') +
       '<div class="wond-canvas-wrap"><canvas id="buCanvas" class="a2-canvas" width="' + BU.W + '" height="' + BU.H + '"></canvas></div>' +
@@ -732,7 +780,8 @@
   }
   function _buHud(){
     var hud = document.getElementById('buHud');
-    if (hud) hud.innerHTML = '<span class="wond-chip">👹 Left: <b>' + (BU.total - BU.popped) + '</b></span>' +
+    if (hud) hud.innerHTML = '<span class="wond-chip">🎚️ Level <b>' + (BU.level + 1) + ' / ' + BU_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">👹 Left: <b>' + (BU.total - BU.popped) + '</b></span>' +
       '<span class="wond-chip">' + '❤️'.repeat(Math.max(0, BU.lives)) + '</span>';
   }
   function _buOnGround(e, w, h){
@@ -783,7 +832,7 @@
           if (typeof playSfx === 'function') playSfx('wrong');
           if (BU.lives <= 0){
             BU.over = true;
-            a2Later(function(){ a2Result('🫧 Bubble Blast', '👹 The gremlins got you!', 'You popped <b>' + BU.popped + ' / ' + BU.total + '</b>.', BU.popped / BU.total * 0.7, 'openBubble'); }, 500);
+            a2Later(function(){ a2Result('🫧 Bubble Blast', '👹 The gremlins got you!', 'Reached Level <b>' + (BU.level + 1) + '</b> · popped <b>' + BU.popped + ' / ' + BU.total + '</b>.', (BU.level + BU.popped / BU.total) / BU_LEVELS.length * 0.85, 'openBubble'); }, 500);
           } else { P.x = 40; P.y = 60; P.vy = 0; }
         }
       }
@@ -815,11 +864,8 @@
             if (idx >= 0) BU.foes.splice(idx, 1);
             BU.bubbles.splice(b, 1);
             BU.popped++; _buHud();
-            if (typeof playSfx === 'function') playSfx('victory');
-            if (BU.popped >= BU.total){
-              BU.over = true;
-              a2Later(function(){ a2Result('🫧 Bubble Blast', '🌟 ALL GREMLINS POPPED! 🌟', 'A perfect bubble hunt with ' + BU.lives + ' ❤️ left!', 1, 'openBubble'); }, 500);
-            }
+            if (typeof playSfx === 'function') playSfx('correct');
+            if (BU.popped >= BU.total) _buWin();
           }
         }
       }
@@ -845,9 +891,460 @@
     if (!BU.over && (BU.inv <= 0 || Math.floor(BU.inv / 6) % 2 === 0)) c.fillText('🧑‍🚀', P.x, P.y + 14);
   }
 
-  // ---- Register wave-2 cleanup into the master stop chain ----
-  var _a2PrevWgStopAll = window.wgStopAll;
-  window.wgStopAll = function(){
-    if (typeof _a2PrevWgStopAll === 'function') _a2PrevWgStopAll();
-    a2StopAll();
+  // ===========================================================================
+  // 🎳 Star Lanes Bowling — a real 10-frame game. Each throw is set by STOPPING
+  // three moving markers yourself: ANGLE (aim), POWER (throw strength), SPIN
+  // (curve). A strike pays an immediate +100 🪙 Gold bonus on top of the normal
+  // end-of-game reward. One pass buys the whole 10-frame game.
+  // ===========================================================================
+  var BOWL_PIN_X = [0, -0.18, 0.18, -0.36, 0, 0.36, -0.54, -0.18, 0.18, 0.54];   // pins 1-10 (index 0-9)
+  var BOWL_LANE_W = 320, BOWL_LANE_H = 460;
+  var BOWL = {
+    frame: 1, ballInFrame: 0, pins: [], rolls: [], frameScores: [],
+    phase: 'aim',                          // aim -> power -> spin -> rolling -> result -> (next)
+    angleT: 0, powerT: 0, spinT: 0,        // 0..1 oscillation trackers (triangle wave)
+    angle: 0, power: 0, spin: 0,           // LOCKED values once each phase is stopped
+    animT: 0, lastRollPins: 0, strikeGold: 0, over: false, lastTs: 0
   };
+
+  // Triangle wave 0->1->0->1... driven by elapsed ms; `speed` = full cycles per second.
+  function _bowlWave(tMs, speedHz){
+    var p = (tMs * speedHz / 1000) % 1;
+    return p < 0.5 ? p * 2 : 2 - p * 2;
+  }
+  function _bowlResetPins(){ BOWL.pins = [true,true,true,true,true,true,true,true,true,true]; }
+  function _bowlStanding(){ var n = 0; for (var i = 0; i < 10; i++) if (BOWL.pins[i]) n++; return n; }
+
+  // PURE: classic flat-rolls bowling scoring. rolls = per-ball pinfall (a strike is ONE entry
+  // of value 10, not two). Returns an array of 10 entries — a running cumulative score once a
+  // frame's bonus balls are known, or null while a frame's score isn't resolved yet.
+  function bowlScoreFrames(rolls){
+    var out = [], idx = 0, running = 0;
+    for (var f = 0; f < 10; f++){
+      if (idx >= rolls.length){ out.push(null); continue; }
+      if (rolls[idx] === 10){                                   // strike
+        if (idx + 2 < rolls.length){ running += 10 + rolls[idx + 1] + rolls[idx + 2]; out.push(running); }
+        else { out.push(null); }
+        idx += 1;
+      } else if (idx + 1 < rolls.length && rolls[idx] + rolls[idx + 1] === 10){   // spare
+        if (idx + 2 < rolls.length){ running += 10 + rolls[idx + 2]; out.push(running); }
+        else { out.push(null); }
+        idx += 2;
+      } else if (idx + 1 < rolls.length){                       // open frame
+        running += rolls[idx] + rolls[idx + 1]; out.push(running); idx += 2;
+      } else { out.push(null); idx += 1; }                      // only 1 ball played, unresolved
+    }
+    return out;
+  }
+
+  // PURE: given where the ball crosses the pin deck (impactX, roughly -0.75..0.75) and how hard it
+  // was thrown (power 0..1), decide which of the currently-STANDING pins (per `standing`, an array
+  // of 10 booleans) get knocked down. Direct hits are pins within a power-scaled radius of impactX;
+  // a single domino pass then gives immediate neighbours of a direct hit a power-scaled chance to
+  // fall too (so a pocket hit at high power can clear the rack, but isn't guaranteed — same as real
+  // bowling, where the 7/10 corner pins are the hardest to carry). `rand01` is injectable for tests.
+  function bowlComputeKnockdown(impactX, power, standing, rand01){
+    rand01 = rand01 || Math.random;
+    if (Math.abs(impactX) > 0.72) return [];                    // gutter ball
+    var radius = 0.10 + power * 0.20;
+    var fallen = {};
+    for (var i = 0; i < 10; i++){
+      if (!standing[i]) continue;
+      if (Math.abs(BOWL_PIN_X[i] - impactX) <= radius) fallen[i] = 1;
+    }
+    var directIdx = Object.keys(fallen).map(Number);
+    var chainChance = 0.3 + power * 0.55;
+    for (var d = 0; d < directIdx.length; d++){
+      for (var j = 0; j < 10; j++){
+        if (!standing[j] || fallen[j]) continue;
+        if (Math.abs(BOWL_PIN_X[j] - BOWL_PIN_X[directIdx[d]]) <= 0.19 && rand01() < chainChance) fallen[j] = 1;
+      }
+    }
+    return Object.keys(fallen).map(Number);
+  }
+
+  function _bowlHud(){
+    var hud = document.getElementById('bowlHud'); if (!hud) return;
+    var total = bowlScoreFrames(BOWL.rolls);
+    var running = 0; for (var i = 0; i < 10; i++) if (total[i] != null) running = total[i];
+    hud.innerHTML = '<span class="wond-chip">🎳 Frame <b>' + Math.min(BOWL.frame, 10) + ' / 10</b></span>' +
+      '<span class="wond-chip">📊 Score: <b>' + running + '</b></span>' +
+      '<span class="wond-chip">📌 Standing: <b>' + _bowlStanding() + '</b></span>' +
+      (BOWL.strikeGold > 0 ? '<span class="wond-chip sl-jp-chip">🪙 Strike bonus: <b>' + BOWL.strikeGold + '</b></span>' : '');
+  }
+
+  function _bowlScorecardHtml(){
+    var scores = bowlScoreFrames(BOWL.rolls);
+    var cells = '';
+    for (var f = 0; f < 10; f++){
+      cells += '<div class="bowl-frame' + (f + 1 === BOWL.frame ? ' bowl-frame-cur' : '') + '">' +
+        '<div class="bowl-frame-n">' + (f + 1) + '</div>' +
+        '<div class="bowl-frame-score">' + (scores[f] != null ? scores[f] : '') + '</div></div>';
+    }
+    return '<div class="bowl-scorecard">' + cells + '</div>';
+  }
+
+  // Entered via wonderPlay('openBowling') from the lobby card, which already charges 1 pass — this
+  // buys the WHOLE 10-frame game (unlike Sky Stacker/Astro Drop, there's no level-select here, so
+  // this does NOT self-charge; the replay button below routes back through wonderPlay too).
+  function openBowling(){
+    BOWL.frame = 1; BOWL.ballInFrame = 0; BOWL.rolls = []; BOWL.strikeGold = 0; BOWL.over = false; BOWL._f10 = 0;
+    _bowlResetPins();
+    a2Shell('🎳 Star Lanes Bowling', 'openWonderland()',
+      '<div class="wond-hud" id="bowlHud"></div>' +
+      '<div id="bowlScorecardWrap"></div>' +
+      a2KeyLegend('Space (or tap) to stop the marker — aim, then power, then spin') +
+      '<div class="wond-canvas-wrap"><canvas id="bowlCanvas" class="a2-canvas" width="' + BOWL_LANE_W + '" height="' + BOWL_LANE_H + '"></canvas></div>' +
+      '<div class="a2-pad"><button type="button" class="btn btn-primary" id="bowlStopBtn" onclick="_bowlStop()">⏹ STOP</button></div>',
+      'Hit ⏹ (or press Space) once to lock your AIM, again to lock your POWER, again to lock your SPIN — then watch the ball roll! A strike pays an instant +100 🪙 Gold.');
+    _bowlHud();
+    document.getElementById('bowlScorecardWrap').innerHTML = _bowlScorecardHtml();
+    _bowlStartAim();
+    a2Keys(function(e){ if (e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); _bowlStop(); } });
+    BOWL.lastTs = 0;
+    A2.raf = requestAnimationFrame(_bowlLoop);
+  }
+
+  function _bowlStartAim(){ BOWL.phase = 'aim'; BOWL.angleT = 0; }
+
+  // Advances the current phase: aim -> power -> spin -> (kicks off the roll animation).
+  // The marker's CURRENT value is already live in BOWL.angle/power/spin — _bowlLoop updates it
+  // every frame while that phase is active — so stopping just locks it in by moving to the next
+  // phase (and freezes it, since _bowlLoop only writes that field while its phase is current).
+  function _bowlStop(){
+    if (!a2Active() || BOWL.over) return;
+    if (BOWL.phase === 'aim'){ BOWL.phase = 'power'; BOWL.powerT = 0; }
+    else if (BOWL.phase === 'power'){ BOWL.phase = 'spin'; BOWL.spinT = 0; }
+    else if (BOWL.phase === 'spin'){ BOWL.phase = 'rolling'; BOWL.animT = 0; }
+    else { return; }
+    if (typeof playSfx === 'function') playSfx('click');
+  }
+
+  function _bowlLoop(ts){
+    if (!a2Active()){ a2StopAll(); return; }
+    A2.raf = requestAnimationFrame(_bowlLoop);
+    if (!BOWL.lastTs) BOWL.lastTs = ts;
+    var dt = ts - BOWL.lastTs; BOWL.lastTs = ts;
+
+    if (BOWL.phase === 'aim'){ BOWL.angleT += dt; BOWL.angle = _bowlWave(BOWL.angleT, 0.55) * 2 - 1; }
+    else if (BOWL.phase === 'power'){ BOWL.powerT += dt; BOWL.power = _bowlWave(BOWL.powerT, 0.7); }
+    else if (BOWL.phase === 'spin'){ BOWL.spinT += dt; BOWL.spin = _bowlWave(BOWL.spinT, 0.65) * 2 - 1; }
+    else if (BOWL.phase === 'rolling'){
+      BOWL.animT += dt / 900;
+      if (BOWL.animT >= 1){ BOWL.animT = 1; _bowlResolveRoll(); }
+    }
+    _bowlDraw();
+  }
+
+  function _bowlResolveRoll(){
+    var impactX = Math.max(-0.9, Math.min(0.9, BOWL.angle * 0.55 + BOWL.spin * 0.35));
+    var knocked = bowlComputeKnockdown(impactX, BOWL.power, BOWL.pins.slice());
+    knocked.forEach(function(i){ BOWL.pins[i] = false; });
+    var pinCount = knocked.length;
+    BOWL.lastRollPins = pinCount;
+    if (pinCount === 10 && typeof playSfx === 'function') playSfx('victory');
+    else if (typeof playSfx === 'function') playSfx(pinCount > 0 ? 'click' : 'wrong');
+    if (pinCount === 10){
+      state.coins = (state.coins || 0) + 100;
+      BOWL.strikeGold += 100;
+      if (typeof showToast === 'function') showToast('🎳 STRIKE! +100 🪙 Gold bonus!');
+      if (typeof updateStats === 'function') updateStats();
+    }
+    BOWL.rolls.push(pinCount);
+    BOWL.phase = 'result';
+    _bowlHud();
+    document.getElementById('bowlScorecardWrap').innerHTML = _bowlScorecardHtml();
+    a2Later(_bowlAdvance, 900);
+  }
+
+  // Standard 10th-frame rules: frames 1-9 get a 2nd ball unless ball 1 is a strike; frame 10 gets a
+  // bonus ball on a strike or spare (with pins reset before any bonus ball after a strike).
+  function _bowlAdvance(){
+    if (BOWL.over || !a2Active()) return;
+    var f = BOWL.frame, last = BOWL.rolls[BOWL.rolls.length - 1];
+    if (f < 10){
+      if (BOWL.ballInFrame === 0 && last === 10){ BOWL.frame++; BOWL.ballInFrame = 0; _bowlResetPins(); }
+      else if (BOWL.ballInFrame === 0){ BOWL.ballInFrame = 1; }
+      else { BOWL.frame++; BOWL.ballInFrame = 0; _bowlResetPins(); }
+    } else {
+      // Frame 10: track how many balls have been thrown THIS frame via a local counter on BOWL.
+      BOWL._f10 = (BOWL._f10 || 0) + 1;
+      var tail = BOWL.rolls.slice(-BOWL._f10);
+      var ball1 = tail[0], ball2 = tail[1], ball3 = tail[2];
+      var done = false;
+      if (BOWL._f10 === 1){
+        if (ball1 === 10) _bowlResetPins();          // strike on ball 1 → fresh rack for ball 2
+      } else if (BOWL._f10 === 2){
+        if (ball1 === 10 || ball1 + ball2 === 10) _bowlResetPins();   // strike or spare → bonus ball 3
+        else done = true;                              // open 10th frame — game over after 2 balls
+      } else if (BOWL._f10 === 3){
+        done = true;
+      }
+      if (done){ BOWL.over = true; a2Later(_bowlGameOver, 400); return; }
+    }
+    if (BOWL.over) return;
+    _bowlStartAim();
+  }
+
+  function _bowlGameOver(){
+    a2StopAll();
+    var scores = bowlScoreFrames(BOWL.rolls);
+    var final = 0; for (var i = 0; i < 10; i++) if (scores[i] != null) final = scores[i];
+    var frac = Math.max(0, Math.min(1, final / 200));   // 200+ ≈ a strong game; 300 = perfect
+    var headline = final === 300 ? '🌟 PERFECT GAME! 🌟' : (final >= 200 ? '🎳 Great bowling!' : (final >= 100 ? '🎳 Nice game!' : '🎳 Game over!'));
+    var view = a2View(); if (!view) return;
+    view.innerHTML = '<div class="wond-board">' +
+      '<div class="wond-head"><h2 class="wond-title">' + headline + '</h2>' +
+      '<p class="wond-sub">Final score <b>' + final + '</b> / 300' + (BOWL.strikeGold > 0 ? ' · +' + BOWL.strikeGold + ' 🪙 Gold from strikes' : '') + '</p></div>' +
+      _bowlScorecardHtml() +
+      '<div class="wond-result-card"><div class="wond-result-label">Your prizes</div><div class="wond-prizes" id="bowlPrizes"></div></div>' +
+      '<div class="wond-footer">' +
+        '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openBowling\')" data-tooltip="Costs 1 Wonderland Pass.">↻ Play again (1 🎟️)</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button>' +
+      '</div></div>';
+    var r = a2Reward(frac);
+    var prizes = document.getElementById('bowlPrizes');
+    if (prizes && r){
+      var chips = '<span class="wond-chip wond-prize-chip">💵 Cash ×' + (r.cash || 0) + '</span>';
+      if (r.loot){
+        if (r.loot.gold) chips += '<span class="wond-chip wond-prize-chip">🥇 Gold ×' + r.loot.gold + '</span>';
+        if (r.loot.silver) chips += '<span class="wond-chip wond-prize-chip">🥈 Silver ×' + r.loot.silver + '</span>';
+      }
+      prizes.innerHTML = chips;
+    }
+  }
+
+  function _bowlDraw(){
+    var cv = document.getElementById('bowlCanvas'); if (!cv) return;
+    var c = cv.getContext('2d'), W = BOWL_LANE_W, H = BOWL_LANE_H;
+    c.fillStyle = '#2a1c10'; c.fillRect(0, 0, W, H);
+    // lane
+    var laneX0 = W * 0.18, laneX1 = W * 0.82;
+    c.fillStyle = '#c9924f'; c.fillRect(laneX0, 20, laneX1 - laneX0, H - 90);
+    c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1;
+    for (var g = 1; g < 8; g++){ var gx = laneX0 + (laneX1 - laneX0) * g / 8; c.beginPath(); c.moveTo(gx, 20); c.lineTo(gx, H - 70); c.stroke(); }
+    // pins
+    var pinCx = W / 2, pinCy = 70;
+    for (var i = 0; i < 10; i++){
+      var px = pinCx + BOWL_PIN_X[i] * (laneX1 - laneX0) * 0.62;
+      var py = pinCy + Math.floor(i >= 6 ? 3 : (i >= 3 ? 2 : (i >= 1 ? 1 : 0))) * 26;
+      if (!BOWL.pins[i]) continue;
+      c.fillStyle = '#f4f1e8'; c.beginPath(); c.ellipse(px, py, 8, 13, 0, 0, 7); c.fill();
+      c.strokeStyle = '#c0392b'; c.lineWidth = 2; c.beginPath(); c.moveTo(px - 6, py - 2); c.lineTo(px + 6, py - 2); c.stroke();
+    }
+    // ball + meters, drawn low on the lane (player's end)
+    var meterY = H - 46;
+    if (BOWL.phase === 'aim' || BOWL.phase === 'power' || BOWL.phase === 'spin'){
+      c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(laneX0, meterY, laneX1 - laneX0, 14);
+      if (BOWL.phase === 'aim'){
+        var ax = laneX0 + (laneX1 - laneX0) * ((BOWL.angle + 1) / 2);
+        c.fillStyle = '#5aa9ff'; c.fillRect(ax - 3, meterY - 4, 6, 22);
+      } else if (BOWL.phase === 'power'){
+        c.fillStyle = '#f0705e'; c.fillRect(laneX0, meterY, (laneX1 - laneX0) * BOWL.power, 14);
+      } else {
+        var sx = laneX0 + (laneX1 - laneX0) * ((BOWL.spin + 1) / 2);
+        c.fillStyle = '#7bd88f'; c.fillRect(sx - 3, meterY - 4, 6, 22);
+      }
+    }
+    // ball position: fixed x during aim/power/spin (center), animates up the lane during 'rolling'
+    var ballX = pinCx, ballY = H - 30;
+    if (BOWL.phase === 'rolling'){
+      var impactX = Math.max(-0.9, Math.min(0.9, BOWL.angle * 0.55 + BOWL.spin * 0.35));
+      var travelX = pinCx + impactX * (laneX1 - laneX0) * 0.62 * BOWL.animT;
+      var startX = pinCx;
+      ballX = startX + (travelX - startX);
+      ballY = (H - 30) - (H - 100) * BOWL.animT;
+    }
+    c.fillStyle = '#1a2740'; c.beginPath(); c.arc(ballX, ballY, 9, 0, 7); c.fill();
+    c.font = '13px sans-serif'; c.fillStyle = '#e8e8ea'; c.textAlign = 'center';
+    var label = BOWL.phase === 'aim' ? 'AIM — stop the marker!' : BOWL.phase === 'power' ? 'POWER — stop the bar!' : BOWL.phase === 'spin' ? 'SPIN — stop the marker!' : BOWL.phase === 'result' ? (BOWL.lastRollPins + ' pin' + (BOWL.lastRollPins === 1 ? '' : 's') + '!') : '';
+    if (label) c.fillText(label, W / 2, H - 8);
+  }
+
+  // ===========================================================================
+  // 🎵 Cosmic Rhythm — a 4-lane falling-note rhythm game. Press ← ↓ ↑ → (or tap
+  // the lane buttons) exactly when a note crosses the hit line. Entered via
+  // wonderPlay('openRhythm') (1 Wonderland Pass); difficulty picks the song
+  // length + note density; replay/difficulty-change inside the game is free
+  // (routes through rhythmStart/openRhythm directly, not wonderPlay again).
+  // Cash-only reward via wgPayReward, like the other carnival games.
+  // ===========================================================================
+  var RHY_LANES = 4;
+  var RHY_KEYS = ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight'];
+  var RHY_KEY_LABEL = ['←', '↓', '↑', '→'];
+  var RHY_LANE_COL = ['#f0705e', '#f2c14e', '#7bd88f', '#5aa9ff'];
+  var RHY_BEAT_MS = 500;          // 120 BPM
+  var RHY_LEAD_MS = 2000;         // ms a note takes to fall from spawn to the hit line
+  var RHY_PERFECT_MS = 90, RHY_GOOD_MS = 180;
+  var RHY_DIFFS = {
+    easy:   { beats: 48, density: 0.5,  doubleChance: 0.04 },
+    normal: { beats: 64, density: 0.72, doubleChance: 0.14 },
+    hard:   { beats: 80, density: 0.92, doubleChance: 0.28 }
+  };
+  var RHY = { active: false, diff: 'normal', chart: [], t: 0, lastTs: 0, ended: false,
+              score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, laneFlash: [0, 0, 0, 0] };
+
+  // PURE: builds a beatmap for a difficulty. Every note is { t (ms), lane (0-3), judged }.
+  // A "double" occasionally adds a 2nd note on the SAME beat in a different lane (a chord).
+  function rhyGenChart(diff){
+    var cfg = RHY_DIFFS[diff] || RHY_DIFFS.normal;
+    var chart = [];
+    for (var b = 0; b < cfg.beats; b++){
+      if (Math.random() >= cfg.density) continue;
+      var t = b * RHY_BEAT_MS, lane = rand(0, RHY_LANES - 1);
+      chart.push({ t: t, lane: lane, judged: false });
+      if (Math.random() < cfg.doubleChance){
+        var lane2 = rand(0, RHY_LANES - 1);
+        if (lane2 !== lane) chart.push({ t: t, lane: lane2, judged: false });
+      }
+    }
+    chart.sort(function(a, b2){ return a.t - b2.t; });
+    return chart;
+  }
+
+  function openRhythm(){
+    if (typeof wgStopAll === 'function') wgStopAll();
+    var v = (typeof agShowView === 'function') ? agShowView() : document.getElementById('wonderlandView');
+    if (!v) return;
+    var best = (typeof wgMini === 'function') ? wgMini('rhythm').highScore || 0 : 0;
+    v.innerHTML = '<div class="wond-board wond-game">' +
+      (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm', 'openWonderland()') : '') +
+      '<p class="wond-sub" style="text-align:center;margin-bottom:10px">Hit ← ↓ ↑ → exactly when each note crosses the line. Pick a difficulty — replay is free until you leave!</p>' +
+      '<div class="wg-diff-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
+        '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'easy\')" data-tooltip="Slower, sparser notes.">🟢 Easy</button>' +
+        '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'normal\')" data-tooltip="A steady beat.">🟡 Normal</button>' +
+        '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'hard\')" data-tooltip="Dense chords, best Cash.">🔴 Hard</button>' +
+      '</div>' +
+      '<p class="wond-sub" style="text-align:center;margin-top:16px">🏆 Best score: <b>' + best + '</b></p>' +
+    '</div>';
+  }
+
+  function rhythmStart(diff){
+    if (typeof wgStopAll === 'function') wgStopAll();
+    var v = document.getElementById('wonderlandView'); if (!v) return;
+    RHY.active = true; RHY.diff = diff; RHY.chart = rhyGenChart(diff);
+    RHY.t = 0; RHY.lastTs = 0; RHY.ended = false;
+    RHY.score = 0; RHY.combo = 0; RHY.maxCombo = 0; RHY.perfect = 0; RHY.good = 0; RHY.miss = 0;
+    RHY.laneFlash = [0, 0, 0, 0];
+    var W = 320, H = 460;
+    v.innerHTML = '<div class="wond-board wond-game">' +
+      (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm — ' + diff.charAt(0).toUpperCase() + diff.slice(1), 'openRhythm()') : '') +
+      '<div class="wond-hud" id="rhyHud"></div>' +
+      a2KeyLegend('← ↓ ↑ → to hit each lane') +
+      '<div class="wond-canvas-wrap"><canvas id="rhyCanvas" class="a2-canvas" width="' + W + '" height="' + H + '"></canvas></div>' +
+      '<div class="a2-pad">' + RHY_KEY_LABEL.map(function(lb, i){
+        return '<button type="button" class="btn btn-secondary" onclick="rhyHitLane(' + i + ')">' + lb + '</button>';
+      }).join('') + '</div>' +
+    '</div>';
+    if (typeof playSfx === 'function') playSfx('ui-click');
+    _rhyHud();
+    a2Keys(function(e){
+      var idx = RHY_KEYS.indexOf(e.key);
+      if (idx !== -1){ e.preventDefault(); rhyHitLane(idx); }
+    });
+    A2.raf = requestAnimationFrame(_rhyLoop);
+  }
+
+  function _rhyHud(){
+    var hud = document.getElementById('rhyHud'); if (!hud) return;
+    hud.innerHTML = '<span class="wond-chip">⭐ Score: <b>' + RHY.score + '</b></span>' +
+      '<span class="wond-chip">🔥 Combo: <b>' + RHY.combo + '</b></span>' +
+      '<span class="wond-chip">🎯 Perfect: <b>' + RHY.perfect + '</b></span>' +
+      '<span class="wond-chip">👍 Good: <b>' + RHY.good + '</b></span>' +
+      '<span class="wond-chip">💢 Miss: <b>' + RHY.miss + '</b></span>';
+  }
+
+  // Judge whichever unjudged note in `lane` is closest to "now" — PERFECT/GOOD/(too far = ignored,
+  // no penalty for an early stray tap since there's nothing in range to judge against).
+  function rhyHitLane(lane){
+    if (!RHY.active) return;
+    RHY.laneFlash[lane] = 160;
+    var best = null, bestDiff = Infinity;
+    for (var i = 0; i < RHY.chart.length; i++){
+      var n = RHY.chart[i];
+      if (n.lane !== lane || n.judged) continue;
+      var d = Math.abs(RHY.t - n.t);
+      if (d < bestDiff){ bestDiff = d; best = n; }
+    }
+    if (best && bestDiff <= RHY_GOOD_MS){
+      best.judged = true;
+      _rhyJudge(bestDiff <= RHY_PERFECT_MS ? 'perfect' : 'good');
+    }
+  }
+
+  function _rhyJudge(kind){
+    if (kind === 'perfect'){ RHY.perfect++; RHY.combo++; RHY.score += 100 + Math.min(RHY.combo, 20) * 5; if (typeof playSfx === 'function') playSfx('solve-correct'); }
+    else if (kind === 'good'){ RHY.good++; RHY.combo++; RHY.score += 50 + Math.min(RHY.combo, 20) * 2; if (typeof playSfx === 'function') playSfx('ui-click'); }
+    else { RHY.miss++; RHY.combo = 0; if (typeof playSfx === 'function') playSfx('wrong'); }
+    if (RHY.combo > RHY.maxCombo) RHY.maxCombo = RHY.combo;
+    _rhyHud();
+  }
+
+  function _rhyLoop(ts){
+    if (!a2Active()){ a2StopAll(); return; }
+    A2.raf = requestAnimationFrame(_rhyLoop);
+    if (!RHY.lastTs) RHY.lastTs = ts;
+    RHY.t += ts - RHY.lastTs; RHY.lastTs = ts;
+    for (var i = 0; i < RHY.chart.length; i++){
+      var n = RHY.chart[i];
+      if (!n.judged && RHY.t > n.t + RHY_GOOD_MS){ n.judged = true; _rhyJudge('miss'); }
+    }
+    for (var L = 0; L < RHY_LANES; L++){ if (RHY.laneFlash[L] > 0) RHY.laneFlash[L] -= (ts - RHY.lastTs) || 16; }
+    var lastT = RHY.chart.length ? RHY.chart[RHY.chart.length - 1].t : 0;
+    if (!RHY.ended && RHY.t > lastT + RHY_GOOD_MS + 500){
+      RHY.ended = true; RHY.active = false;
+      a2Later(_rhyEnd, 200);
+    }
+    _rhyDraw();
+  }
+
+  function _rhyDraw(){
+    var cv = document.getElementById('rhyCanvas'); if (!cv) return;
+    var c = cv.getContext('2d'), W = cv.width, H = cv.height;
+    var hitY = H - 60, laneW = W / RHY_LANES;
+    c.fillStyle = '#0b1626'; c.fillRect(0, 0, W, H);
+    for (var L = 0; L < RHY_LANES; L++){
+      c.fillStyle = RHY.laneFlash[L] > 0 ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.02)';
+      c.fillRect(L * laneW, 0, laneW, H);
+      c.strokeStyle = 'rgba(255,255,255,.08)'; c.beginPath(); c.moveTo(L * laneW, 0); c.lineTo(L * laneW, H); c.stroke();
+    }
+    c.strokeStyle = '#f2c14e'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, hitY); c.lineTo(W, hitY); c.stroke();
+    c.font = 'bold 20px sans-serif'; c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,.5)';
+    for (var K = 0; K < RHY_LANES; K++) c.fillText(RHY_KEY_LABEL[K], K * laneW + laneW / 2, hitY + 26);
+    for (var i = 0; i < RHY.chart.length; i++){
+      var n = RHY.chart[i];
+      if (n.judged) continue;
+      var y = hitY - ((n.t - RHY.t) / RHY_LEAD_MS) * hitY;
+      if (y < -20 || y > H + 20) continue;
+      var cx = n.lane * laneW + laneW / 2;
+      c.fillStyle = RHY_LANE_COL[n.lane];
+      c.beginPath(); c.arc(cx, y, 15, 0, 7); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; c.stroke();
+    }
+  }
+
+  function _rhyEnd(){
+    a2StopAll();
+    var total = RHY.perfect + RHY.good + RHY.miss;
+    var acc = total > 0 ? Math.round(((RHY.perfect + RHY.good * 0.5) / total) * 100) : 0;
+    var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('rhythm', RHY.score, RHY.diff) : false;
+    var rate = RHY.diff === 'hard' ? 0.12 : (RHY.diff === 'normal' ? 0.08 : 0.05);
+    var coins = Math.max(0, Math.round(RHY.score * rate)) + (newHigh ? 20 : 0);
+    if (coins > 0 && typeof wgPayReward === 'function') wgPayReward({ coins: coins, newHigh: newHigh });
+    if (typeof playSfx === 'function') playSfx(acc >= 80 ? 'victory' : (acc >= 50 ? 'ui-click' : 'wrong'));
+    var view = document.getElementById('wonderlandView'); if (!view) return;
+    var headline = acc >= 95 ? '🌟 FLAWLESS SET!' : (acc >= 80 ? '🎵 Great rhythm!' : (acc >= 50 ? '🎶 Nice try!' : '🎵 Off-beat!'));
+    view.innerHTML = '<div class="wond-board wond-game">' +
+      (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm', 'openRhythm()') : '') +
+      '<div class="wond-head"><h2 class="wond-title">' + headline + (newHigh ? ' 🏆' : '') + '</h2>' +
+      '<p class="wond-sub">Score <b>' + RHY.score + '</b> · ' + acc + '% accuracy · max combo <b>' + RHY.maxCombo + '</b> · ' + RHY.diff + '</p>' +
+      '<p class="wond-sub">🎯 ' + RHY.perfect + ' Perfect · 👍 ' + RHY.good + ' Good · 💢 ' + RHY.miss + ' Miss</p></div>' +
+      '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
+        '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + coins + '</span></div></div>' +
+      '<div class="wond-footer" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
+        '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'' + RHY.diff + '\')" data-tooltip="Play again, same difficulty.">↻ Replay</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="openRhythm()" data-tooltip="Change difficulty.">🎚️ Difficulty</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
+      '</div>' +
+    '</div>';
+  }
