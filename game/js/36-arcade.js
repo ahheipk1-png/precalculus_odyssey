@@ -260,18 +260,19 @@
     g.innerHTML = SUD.cells.map(function(v, i){
       var r = Math.floor(i / 4), c = i % 4;
       var cls = 'sud-cell' + (SUD.given[i] ? ' sud-given' : '') + (bad[i] ? ' sud-bad' : '') + (c === 1 ? ' sud-redge' : '') + (r === 1 ? ' sud-bedge' : '');
-      var dnd = SUD.given[i] ? '' : ' ondragover="event.preventDefault()" ondrop="sudDrop(event,' + i + ')"';
-      return '<button type="button" class="' + cls + '" onclick="sudTap(' + i + ')"' + (SUD.given[i] ? ' disabled' : '') + dnd + '>' + (v || '') + '</button>';
+      var dz = SUD.given[i] ? '' : ' data-dropzone="1" data-cell="' + i + '"';
+      return '<button type="button" class="' + cls + '" onclick="sudTap(' + i + ')"' + (SUD.given[i] ? ' disabled' : '') + dz + '>' + (v || '') + '</button>';
     }).join('');
-    // Draggable 1-4 tiles + eraser. Click selects (stamp mode); drag drops straight in.
+    // Draggable 1-4 tiles + eraser (POINTER-based — works on touch too). Click selects
+    // (stamp mode); drag drops straight into a cell.
     var tray = document.getElementById('sudTray');
     if (tray){
       var tiles = [1, 2, 3, 4].map(function(n){
-        return '<button type="button" class="sud-tile' + (SUD.sel === n ? ' sud-sel' : '') + '" draggable="true"' +
-          ' ondragstart="sudDragStart(event,' + n + ')" onclick="sudPick(' + n + ')">' + n + '</button>';
+        return '<button type="button" class="sud-tile' + (SUD.sel === n ? ' sud-sel' : '') + '"' +
+          ' onpointerdown="sudPointerDown(event,' + n + ')" onclick="sudPick(' + n + ')">' + n + '</button>';
       }).join('');
-      tiles += '<button type="button" class="sud-tile sud-eraser' + (SUD.sel === -1 ? ' sud-sel' : '') + '" draggable="true"' +
-        ' ondragstart="sudDragStart(event,-1)" onclick="sudPick(-1)" title="Eraser">🧽</button>';
+      tiles += '<button type="button" class="sud-tile sud-eraser' + (SUD.sel === -1 ? ' sud-sel' : '') + '"' +
+        ' onpointerdown="sudPointerDown(event,-1)" onclick="sudPick(-1)" title="Eraser">🧽</button>';
       tray.innerHTML = tiles;
     }
     sudHud();
@@ -282,21 +283,17 @@
     if (typeof playSfx === 'function') playSfx('ui-click');
     sudRender();
   }
-  function sudDragStart(ev, n){
-    try { ev.dataTransfer.setData('text/plain', String(n)); ev.dataTransfer.effectAllowed = 'copy'; } catch (e) {}
-    SUD.drag = n;
-  }
-  function sudDrop(ev, i){
-    ev.preventDefault();
-    if (!SUD.active || SUD.given[i]) return;
-    var n = SUD.drag;
-    try { var d = parseInt(ev.dataTransfer.getData('text/plain'), 10); if (!isNaN(d)) n = d; } catch (e) {}
-    if (!n) return;
-    SUD.cells[i] = (n === -1) ? 0 : n;
-    SUD.drag = 0;
-    if (typeof playSfx === 'function') playSfx('ui-click');
-    sudRender();
-    sudCheckWin();
+  function sudPointerDown(ev, n){
+    if (!SUD.active) return;
+    var ghost = '<div class="sud-drag-ghost-inner">' + (n === -1 ? '🧽' : n) + '</div>';
+    a2DragStart(ev, n, ghost, function(dz, val){
+      var i = parseInt(dz.getAttribute('data-cell'), 10);
+      if (isNaN(i) || SUD.given[i]) return;
+      SUD.cells[i] = (val === -1) ? 0 : val;
+      if (typeof playSfx === 'function') playSfx('ui-click');
+      sudRender();
+      sudCheckWin();
+    });
   }
   function sudCheckWin(){
     if (SUD.active && SUD.cells.every(function(v){ return v > 0; }) && Object.keys(sudConflicts(SUD.cells)).length === 0) sudWin();
@@ -320,7 +317,7 @@
     sudCheckWin();
   }
 
-  function sudStop(){ SUD.active = false; }
+  function sudStop(){ SUD.active = false; if (typeof a2DragCancel === 'function') a2DragCancel(); }
 
   function sudWin(){
     var diff = SUD.diff; SUD.active = false;

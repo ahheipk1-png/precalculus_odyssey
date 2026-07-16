@@ -17,6 +17,7 @@
     A2.timers = [];
     if (A2.kd){ document.removeEventListener('keydown', A2.kd); A2.kd = null; }
     if (A2.ku){ document.removeEventListener('keyup', A2.ku); A2.ku = null; }
+    if (typeof a2DragCancel === 'function') a2DragCancel();
   }
   function a2Later(fn, ms){ var id = setTimeout(fn, ms); A2.timers.push(id); return id; }
   function a2Every(fn, ms){ var id = setInterval(fn, ms); A2.timers.push(id); return id; }
@@ -29,6 +30,58 @@
   }
   function a2View(){ return document.getElementById('wonderlandView'); }
   function a2Active(){ var v = a2View(); return !!(v && v.classList.contains('active')); }
+
+  // Small "⌨️ Controls: …" badge so keyboard shortcuts are always visible near the HUD.
+  function a2KeyLegend(text){ return '<div class="a2-keylegend">⌨️ ' + text + '</div>'; }
+
+  // ---- Shared POINTER-based drag-and-drop --------------------------------------------------
+  // Native HTML5 draggable/ondragstart/ondrop does NOT fire on touch devices — that's why
+  // pieces felt "not draggable" before. Pointer events unify mouse, touch and pen, so this
+  // works everywhere. One drag at a time; onDrop(el, payload) receives the element under the
+  // pointer at release (matched via [data-dropzone]) and whatever payload a2DragStart was given.
+  var A2_DRAG = { ghost: null, payload: null, onDrop: null };
+  function a2DragStart(e, payload, ghostHtml, onDrop){
+    if (e.cancelable) e.preventDefault();
+    a2DragCancel();
+    var g = document.createElement('div');
+    g.className = 'a2-drag-ghost';
+    g.innerHTML = ghostHtml;
+    document.body.appendChild(g);
+    A2_DRAG.ghost = g; A2_DRAG.payload = payload; A2_DRAG.onDrop = onDrop;
+    _a2DragMove(e);
+    document.addEventListener('pointermove', _a2DragMove);
+    document.addEventListener('pointerup', _a2DragEnd);
+    document.addEventListener('pointercancel', _a2DragEnd);
+  }
+  function _a2DragMove(e){
+    if (!A2_DRAG.ghost) return;
+    A2_DRAG.ghost.style.left = e.clientX + 'px';
+    A2_DRAG.ghost.style.top = e.clientY + 'px';
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var dz = el && el.closest ? el.closest('[data-dropzone]') : null;
+    var prev = document.querySelector('.a2-drop-hover');
+    if (prev && prev !== dz) prev.classList.remove('a2-drop-hover');
+    if (dz) dz.classList.add('a2-drop-hover');
+  }
+  function _a2DragEnd(e){
+    document.removeEventListener('pointermove', _a2DragMove);
+    document.removeEventListener('pointerup', _a2DragEnd);
+    document.removeEventListener('pointercancel', _a2DragEnd);
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var dz = el && el.closest ? el.closest('[data-dropzone]') : null;
+    var payload = A2_DRAG.payload, onDrop = A2_DRAG.onDrop;
+    a2DragCancel();
+    if (dz && onDrop) onDrop(dz, payload);
+  }
+  function a2DragCancel(){
+    if (A2_DRAG.ghost && A2_DRAG.ghost.parentNode) A2_DRAG.ghost.parentNode.removeChild(A2_DRAG.ghost);
+    A2_DRAG.ghost = null;
+    var prev = document.querySelector('.a2-drop-hover'); if (prev) prev.classList.remove('a2-drop-hover');
+    A2_DRAG.payload = null; A2_DRAG.onDrop = null;
+    document.removeEventListener('pointermove', _a2DragMove);
+    document.removeEventListener('pointerup', _a2DragEnd);
+    document.removeEventListener('pointercancel', _a2DragEnd);
+  }
 
   // Standard game screen: topbar + body (+ tip line).
   function a2Shell(title, quitFn, bodyHtml, tip){
@@ -138,7 +191,7 @@
   }
 
   function _skGridHtml(){
-    var h = '<div class="a2-grid" style="grid-template-columns:repeat(' + SOKO.W + ',44px)">';
+    var h = '<div class="a2-grid" style="grid-template-columns:repeat(' + SOKO.W + ',56px)">';
     for (var y = 0; y < SOKO.H; y++){
       for (var x = 0; x < SOKO.W; x++){
         var k = x + ',' + y, cls = 'a2-cell', body = '';
@@ -206,7 +259,7 @@
   function _skLevel(){
     _skParse(SOKO.levels[SOKO.idx]);
     var v = a2Shell(SOKO.title, 'openWonderland()',
-      '<div class="wond-hud" id="skHud"></div>' +
+      '<div class="wond-hud" id="skHud"></div>' + a2KeyLegend('Arrow keys or WASD move · R restart') +
       '<div class="a2-center" id="skWrap"></div>' +
       '<div class="a2-pad">' +
         '<button type="button" class="btn btn-secondary" onclick="sokoMove(0,-1)">▲</button>' +
@@ -285,7 +338,7 @@
 
   function _circTileSvg(mask, isSrc, isBulb, lit){
     var col = lit ? '#ffd75e' : '#5a6c84';
-    var s = '<svg viewBox="0 0 64 64" width="56" height="56">';
+    var s = '<svg viewBox="0 0 64 64" width="68" height="68">';
     if (mask & 1) s += '<line x1="32" y1="32" x2="32" y2="0" stroke="' + col + '" stroke-width="9" stroke-linecap="round"/>';
     if (mask & 2) s += '<line x1="32" y1="32" x2="64" y2="32" stroke="' + col + '" stroke-width="9" stroke-linecap="round"/>';
     if (mask & 4) s += '<line x1="32" y1="32" x2="32" y2="64" stroke="' + col + '" stroke-width="9" stroke-linecap="round"/>';
@@ -299,7 +352,7 @@
   function _circRender(){
     var g = document.getElementById('circWrap'); if (!g) return;
     var N = CIRC.N, lit = _circLitSet();
-    var h = '<div class="a2-grid" style="grid-template-columns:repeat(' + N + ',60px)">';
+    var h = '<div class="a2-grid" style="grid-template-columns:repeat(' + N + ',72px)">';
     for (var i = 0; i < N * N; i++){
       var deg = 0; for (var d = 0; d < 4; d++){ if (CIRC.dirs[i] & _CIRC_D[d][2]) deg++; }
       h += '<button type="button" class="a2-cell a2-circ' + (lit[i] ? ' a2-lit' : '') + '" onclick="circRotate(' + i + ')">' +
@@ -339,20 +392,53 @@
 
   // ===========================================================================
   // 🗼 Sky Stacker — a block swings; drop it on the tower. Overhang is sliced off!
+  // Levels vary the STARTING BLOCK WIDTH (narrower = harder to line up) and the
+  // swing SPEED (faster = less time to react) — always unlocked, pick any level.
   // ===========================================================================
-  var STK = { W: 360, H: 520, blocks: [], cur: null, t: 0, speed: 1, floors: 0, over: false, flash: 0 };
+  var STK_LEVELS = [
+    { name: 'Foundation',      startW: 170, speed: 0.85 },
+    { name: 'Midrise',         startW: 140, speed: 1.05 },
+    { name: 'Highrise',        startW: 110, speed: 1.30 },
+    { name: 'Skyscraper',      startW: 85,  speed: 1.60 },
+    { name: 'Space Elevator',  startW: 62,  speed: 2.00 }
+  ];
+  var STK = { W: 420, H: 580, blocks: [], cur: null, t: 0, speed: 1, floors: 0, over: false, flash: 0, levelIdx: 0, maxW: 170 };
 
   function openStacker(){
-    STK.blocks = [{ x: 110, w: 140 }];
-    STK.cur = { x: 20, w: 140 };
-    STK.t = 0; STK.speed = 1; STK.floors = 0; STK.over = false; STK.flash = 0;
-    a2Shell('🗼 Sky Stacker', 'openWonderland()',
-      '<div class="wond-hud" id="stkHud"></div>' +
+    a2StopAll();
+    var view = a2View(); if (!view) return;
+    var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
+    var cards = STK_LEVELS.map(function(lv, i){
+      return '<div class="wond-lvl-card">' +
+        '<div class="wond-lvl-num">Level ' + (i + 1) + '</div>' +
+        '<div class="wond-lvl-name">' + lv.name + '</div>' +
+        '<div class="wond-lvl-meta">Block width ' + lv.startW + 'px · swing ×' + lv.speed.toFixed(2) + '</div>' +
+        '<button type="button" class="btn btn-primary wond-lvl-play" onclick="stkStart(' + i + ')" data-tooltip="Costs 1 Wonderland Pass.">Play (1 🎟️)</button>' +
+      '</div>';
+    }).join('');
+    view.innerHTML = '<div class="wond-board">' +
+      (typeof agTopBar === 'function' ? agTopBar('🗼 Sky Stacker — Choose a Level', 'openWonderland()') : '') +
+      '<p class="wond-sub" style="text-align:center;margin:0 0 4px">Narrower blocks + faster swings at higher levels. Line up the drop — the overhang gets sliced off!</p>' +
+      '<p class="wond-sub" style="text-align:center;margin:0 0 12px">🎟️ Passes: <b>' + passes + '</b></p>' +
+      '<div class="wond-lvl-grid">' + cards + '</div>' +
+      '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button></div>' +
+    '</div>';
+  }
+
+  function stkStart(levelIdx){
+    if (typeof wonderSpendPass === 'function' && !wonderSpendPass()) return;
+    var lv = STK_LEVELS[levelIdx] || STK_LEVELS[0];
+    STK.levelIdx = levelIdx; STK.maxW = lv.startW;
+    STK.blocks = [{ x: (STK.W - lv.startW) / 2, w: lv.startW }];
+    STK.cur = { x: 20, w: lv.startW };
+    STK.t = 0; STK.speed = lv.speed; STK.floors = 0; STK.over = false; STK.flash = 0;
+    a2Shell('🗼 Sky Stacker — ' + lv.name, 'openStacker()',
+      '<div class="wond-hud" id="stkHud"></div>' + a2KeyLegend('Space or ⬆️ to drop') +
       '<div class="wond-canvas-wrap"><canvas id="stkCanvas" class="a2-canvas" width="' + STK.W + '" height="' + STK.H + '"></canvas></div>',
       'Click, tap, or press Space to drop the block. Line it up — the overhang gets sliced off!');
     var cv = document.getElementById('stkCanvas');
     if (cv) cv.addEventListener('pointerdown', function(e){ e.preventDefault(); stkDrop(); });
-    a2Keys(function(e){ if (e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); stkDrop(); } });
+    a2Keys(function(e){ if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'ArrowUp'){ e.preventDefault(); stkDrop(); } });
     _stkHud();
     A2.raf = requestAnimationFrame(_stkLoop);
   }
@@ -360,6 +446,7 @@
   function _stkHud(){
     var hud = document.getElementById('stkHud');
     if (hud) hud.innerHTML = '<span class="wond-chip">🏗️ Floors: <b>' + STK.floors + '</b></span>' +
+      '<span class="wond-chip">🎚️ Level ' + (STK.levelIdx + 1) + '</span>' +
       '<span class="wond-chip">🎁 Prize grows with height!</span>';
   }
 
@@ -372,24 +459,48 @@
     if (overlap <= 6){
       STK.over = true;
       if (typeof playSfx === 'function') playSfx('wrong');
-      a2Later(function(){
-        a2Result('🗼 Sky Stacker', STK.floors >= 12 ? '🌟 SKY-SCRAPER! 🌟' : '🏗️ Tower toppled!',
-          'You stacked <b>' + STK.floors + '</b> floors' + (STK.floors >= 12 ? ' — amazing!' : '. 12+ floors = grand prize!'),
-          Math.min(1, STK.floors / 14), 'openStacker');
-      }, 600);
+      a2Later(_stkGameOver, 600);
       return;
     }
     var perfect = Math.abs(STK.cur.x - below.x) < 5;
-    var newW = perfect ? Math.min(140, below.w + 6) : overlap;
+    var newW = perfect ? Math.min(STK.maxW, below.w + 6) : overlap;
     var newX = perfect ? below.x : left;
     STK.blocks.push({ x: newX, w: newW });
     STK.floors++;
-    STK.speed *= 1.05;
+    STK.speed *= 1.045;                 // faster and faster the taller the tower gets
     STK.flash = perfect ? 12 : 0;
     STK.cur = { x: 20, w: newW };
     STK.t = 0;
     if (typeof playSfx === 'function') playSfx(perfect ? 'correct' : 'click');
     _stkHud();
+  }
+
+  // Custom result screen (not the generic a2Result) — retry needs to pass the level index, and
+  // stkStart() already charges its own pass, so the replay button must NOT also go through
+  // wonderPlay() (that would double-charge).
+  function _stkGameOver(){
+    a2StopAll();
+    var lv = STK_LEVELS[STK.levelIdx] || STK_LEVELS[0];
+    var frac = Math.min(1, STK.floors / 14);
+    var headline = STK.floors >= 12 ? '🌟 SKY-SCRAPER! 🌟' : '🏗️ Tower toppled!';
+    var view = a2View(); if (!view) return;
+    view.innerHTML = '<div class="wond-board">' +
+      '<div class="wond-head"><h2 class="wond-title">' + headline + '</h2>' +
+        '<p class="wond-sub">Level ' + (STK.levelIdx + 1) + ' · ' + lv.name + ' — stacked <b>' + STK.floors + '</b> floors' +
+        (STK.floors >= 12 ? ' — amazing!' : '. 12+ floors = grand prize!') + '</p></div>' +
+      '<div class="wond-result-card"><div class="wond-result-label">Your prizes</div><div class="wond-prizes" id="stkPrizes"></div></div>' +
+      '<div class="wond-footer">' +
+        '<button type="button" class="btn btn-primary" onclick="stkStart(' + STK.levelIdx + ')" data-tooltip="Costs 1 Wonderland Pass.">↻ Retry this level (1 🎟️)</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="openStacker()">🎚️ Level Select</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button>' +
+      '</div></div>';
+    var r = a2Reward(frac);
+    var prizesEl = document.getElementById('stkPrizes');
+    if (prizesEl && typeof chipsSummary === 'function'){
+      prizesEl.innerHTML = '<span class="wond-chip wond-prize-chip">💵 Cash ×' + r.cash + '</span>' +
+        '<span class="wond-chip wond-prize-chip">' + chipsSummary(r.loot.chips || {}) +
+        (r.loot.gold ? ' 🥇' + r.loot.gold : '') + (r.loot.silver ? ' 🥈' + r.loot.silver : '') + '</span>';
+    }
   }
 
   function _stkLoop(ts){

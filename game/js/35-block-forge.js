@@ -119,7 +119,7 @@
   function qbfRefillTray(){ QBF.tray = [qbfRandShape(), qbfRandShape(), qbfRandShape()]; QBF.sel = -1; }
 
   // Turn-based, so nothing to cancel — just mark inactive (called by wgStopAll on navigation).
-  function qbfStop(){ QBF.active = false; }
+  function qbfStop(){ QBF.active = false; if (typeof a2DragCancel === 'function') a2DragCancel(); }
 
   function qbfRender(){
     var grid = document.getElementById('qbfGrid');
@@ -130,7 +130,7 @@
         var v = QBF.board[r][c];
         html += '<button type="button" class="qbf-cell' + (v ? ' qbf-fill' : '') + '" ' +
           (v ? 'style="background:' + v + '"' : '') + ' onclick="qbfCellClick(' + r + ',' + c + ')"' +
-          ' ondragover="event.preventDefault()" ondrop="qbfDrop(event,' + r + ',' + c + ')" aria-label="cell ' + r + ',' + c + '"></button>';
+          ' data-dropzone="1" data-r="' + r + '" data-c="' + c + '" aria-label="cell ' + r + ',' + c + '"></button>';
       }
       grid.innerHTML = html;
     }
@@ -146,7 +146,7 @@
           mini += '<span class="qbf-mini' + (on ? ' on' : '') + '"' + (on ? ' style="background:' + p.color + '"' : '') + '></span>';
         }
         return '<button type="button" class="qbf-piece' + (QBF.sel === i ? ' qbf-sel' : '') + '" onclick="qbfSelectPiece(' + i + ')" ' +
-          'draggable="true" ondragstart="qbfDragStart(event,' + i + ')" ' +
+          'onpointerdown="qbfPointerDown(event,' + i + ')" ' +
           'style="grid-template-columns:repeat(' + (maxC + 1) + ',14px)" data-tooltip="Drag this block onto the grid (or click it, then click the grid).">' + mini + '</button>';
       }).join('');
     }
@@ -166,18 +166,27 @@
 
   function qbfSelectPiece(i){ if (!QBF.active || !QBF.tray[i]) return; QBF.sel = i; qbfRender(); }
 
-  // Drag-and-drop placement: drag a tray piece, drop it on the grid (anchor = the piece's
-  // top-left cell). Falls back to the classic click-select + click-place flow.
-  function qbfDragStart(ev, i){
+  // Drag-and-drop placement (POINTER-based — works on mouse AND touch; native HTML5 drag does
+  // not fire on touch devices, which is why this felt broken before). Drag a tray piece onto
+  // the grid (anchor = the piece's top-left cell); still falls back to click-select + click-place.
+  function qbfPointerDown(ev, i){
     if (!QBF.active || !QBF.tray[i]) return;
-    QBF.sel = i;
-    try { ev.dataTransfer.setData('text/plain', String(i)); ev.dataTransfer.effectAllowed = 'move'; } catch (e) {}
-  }
-  function qbfDrop(ev, r, c){
-    ev.preventDefault();
-    if (!QBF.active) return;
-    try { var i = parseInt(ev.dataTransfer.getData('text/plain'), 10); if (!isNaN(i) && QBF.tray[i]) QBF.sel = i; } catch (e) {}
-    qbfCellClick(r, c);
+    QBF.sel = i; qbfRender();
+    var p = QBF.tray[i];
+    var maxR = 0, maxC = 0;
+    p.cells.forEach(function(o){ if (o[0] > maxR) maxR = o[0]; if (o[1] > maxC) maxC = o[1]; });
+    var mini = '';
+    for (var rr = 0; rr <= maxR; rr++) for (var cc = 0; cc <= maxC; cc++){
+      var on = p.cells.some(function(o){ return o[0] === rr && o[1] === cc; });
+      mini += '<span class="qbf-mini' + (on ? ' on' : '') + '"' + (on ? ' style="background:' + p.color + '"' : '') + '></span>';
+    }
+    var ghost = '<div class="qbf-piece qbf-drag-ghost-inner" style="grid-template-columns:repeat(' + (maxC + 1) + ',18px)">' + mini + '</div>';
+    a2DragStart(ev, i, ghost, function(dz, idx){
+      var r = parseInt(dz.getAttribute('data-r'), 10), c = parseInt(dz.getAttribute('data-c'), 10);
+      if (isNaN(r) || isNaN(c) || !QBF.tray[idx]) return;
+      QBF.sel = idx;
+      qbfCellClick(r, c);
+    });
   }
 
   function qbfCellClick(r, c){

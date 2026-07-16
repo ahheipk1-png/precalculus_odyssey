@@ -286,8 +286,18 @@
           _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — three 7️⃣ pays 50× your bet!', 'openSlots') +
           _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring — classic warehouse puzzling!', 'openCargo') +
           _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes!', 'openGlacier') +
-          _wondCard('🗼', 'Sky Stacker', 'Drop the swinging block dead-center and stack to the stars!', 'openStacker') +
-          _wondCard('🟦', 'Astro Drop', 'Falling blocks! Fill whole lines to clear them — speed rises!', 'openAstroDrop') +
+          '<div class="wond-card">' +
+            '<div class="wond-card-icon">🗼</div>' +
+            '<div class="wond-card-name">Sky Stacker</div>' +
+            '<div class="wond-card-desc">Drop the swinging block dead-center and stack to the stars! 5 levels.</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openStacker()" data-tooltip="Choose a Sky Stacker level. Each play costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+          '</div>' +
+          '<div class="wond-card">' +
+            '<div class="wond-card-icon">🟦</div>' +
+            '<div class="wond-card-name">Astro Drop</div>' +
+            '<div class="wond-card-desc">Falling blocks! Fill whole lines to clear them — 5 starting speeds.</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="Choose an Astro Drop level. Each play costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+          '</div>' +
           _wondCard('💊', 'Virus Lab', 'Drop 2-color capsules; match 4 in a line to zap every virus!', 'openVirusLab') +
           _wondCard('🔗', 'Circuit Loop', 'Rotate the wires so the power core lights every bulb!', 'openCircuit') +
           _wondCard('👾', 'Comet Muncher', 'Munch every star in the maze — dodge the UFOs!', 'openComet') +
@@ -447,7 +457,9 @@
     WOND.over = false;
     WOND.lastTs = 0;
     WOND.balls = lv.balls;
+    WOND.maxBalls = lv.balls + 2;         // extra-ball tiles can't stack past a sane cap
     WOND.hits = 0;
+    WOND.elapsed = 0;                     // continuous time-based ramp (on top of the per-8-hit bump)
     WOND.speed = lv.speed;
     WOND.launched = false;
     WOND.keys.left = WOND.keys.right = false;
@@ -531,6 +543,9 @@
     }
     WOND.tilesTotal = WOND.tiles.length;
     WOND.tilesLeft = WOND.tiles.length;
+    // One random non-armoured tile is a ⚾ power tile — breaking it grants an extra ball.
+    var candidates = WOND.tiles.filter(function(t){ return t.hp === 1; });
+    if (candidates.length) candidates[Math.floor(Math.random() * candidates.length)].power = true;
   }
 
   // A fixed constellation of faint chalk dots (deterministic — no flicker on replay).
@@ -636,6 +651,10 @@
       b.y = p.y - b.r - 1;
       return;
     }
+    // Continuous "faster and faster" ramp while the ball is in play (on top of the per-8-hit
+    // bump from wondCountHit) — every ~2.5s of active play nudges the speed up a touch.
+    WOND.elapsed = (WOND.elapsed || 0) + step;
+    if (WOND.elapsed >= 150){ WOND.elapsed = 0; wondSetSpeed(WOND.speed * 1.03); }
     // Substep so a fast ball can't tunnel through a tile between frames.
     var speedNow = Math.sqrt(b.vx * b.vx + b.vy * b.vy) || WOND.speed;
     var sub = Math.max(1, Math.ceil((speedNow * step) / 6));
@@ -672,7 +691,14 @@
       if (!t.alive) continue;
       if (b.x + b.r > t.x && b.x - b.r < t.x + t.w && b.y + b.r > t.y && b.y - b.r < t.y + t.h){
         t.hp--;
-        if (t.hp <= 0){ t.alive = false; WOND.tilesLeft--; }
+        if (t.hp <= 0){
+          t.alive = false; WOND.tilesLeft--;
+          if (t.power && WOND.balls < WOND.maxBalls){
+            WOND.balls++;
+            if (typeof showToast === 'function') showToast('⚾ Extra ball!');
+            if (typeof playSfx === 'function') playSfx('correct');
+          }
+        }
         else { t.color = t.baseColor; }                        // armoured tile cracks to its base colour
         // Reflect on the axis we came from (previous position was outside that band)
         var py = b.y - b.vy * s;
@@ -735,7 +761,18 @@
     // Tiles
     for (var j = 0; j < WOND.tiles.length; j++){
       var t = WOND.tiles[j];
-      if (t.alive) wondRoundRect(c, t.x, t.y, t.w, t.h, 4, t.color);
+      if (!t.alive) continue;
+      wondRoundRect(c, t.x, t.y, t.w, t.h, 4, t.color);
+      if (t.power){                                          // ⚾ extra-ball tile — glowing ring + icon
+        c.save();
+        c.strokeStyle = '#fff'; c.lineWidth = 2; c.globalAlpha = 0.85;
+        c.strokeRect(t.x + 1, t.y + 1, t.w - 2, t.h - 2);
+        c.globalAlpha = 1;
+        c.font = (Math.min(t.w, t.h) - 4) + 'px serif';
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('⚾', t.x + t.w / 2, t.y + t.h / 2 + 1);
+        c.restore();
+      }
     }
     // Paddle + ball
     wondRoundRect(c, p.x, p.y, p.w, p.h, 6, cols.chalk);

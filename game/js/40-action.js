@@ -8,8 +8,8 @@
   // ===========================================================================
   // 🟦 Astro Drop — falling tetrominoes; clear lines, speed rises every 10 lines.
   // ===========================================================================
-  var AD = { COLS: 10, ROWS: 18, CELL: 24, grid: [], cur: null, acc: 0, last: 0,
-             score: 0, lines: 0, level: 1, over: false };
+  var AD = { COLS: 10, ROWS: 18, CELL: 28, grid: [], cur: null, acc: 0, last: 0,
+             score: 0, lines: 0, level: 1, startLevel: 1, levelIdx: 0, over: false };
   var AD_SHAPES = [
     [[1,1,1,1]],            // I
     [[1,1],[1,1]],          // O
@@ -20,6 +20,13 @@
     [[0,0,1],[1,1,1]]       // L
   ];
   var AD_COLS = ['', '#66e0ff', '#f2c14e', '#c39bff', '#7bd88f', '#f0705e', '#6ea8ff', '#ffb45e'];
+  var AD_LEVELS = [
+    { name: 'Cruise',    startLevel: 1 },
+    { name: 'Ascent',    startLevel: 3 },
+    { name: 'Booster',   startLevel: 5 },
+    { name: 'Orbital',   startLevel: 8 },
+    { name: 'Escape Velocity', startLevel: 12 }
+  ];
 
   function _adRot(m){ var r = []; for (var x = 0; x < m[0].length; x++){ var row = []; for (var y = m.length - 1; y >= 0; y--) row.push(m[y][x]); r.push(row); } return r; }
   function _adHit(shape, px, py){
@@ -36,11 +43,31 @@
     AD.cur = { shape: AD_SHAPES[i].map(function(r){ return r.slice(); }), col: i + 1, x: 3, y: -1 };
     if (_adHit(AD.cur.shape, AD.cur.x, AD.cur.y)){
       AD.over = true;
-      a2Later(function(){
-        a2Result('🟦 Astro Drop', AD.lines >= 15 ? '🌟 STELLAR RUN! 🌟' : '💥 Stack overflow!',
-          'Score <b>' + AD.score + '</b> · <b>' + AD.lines + '</b> lines · level ' + AD.level,
-          Math.min(1, AD.lines / 18), 'openAstroDrop');
-      }, 500);
+      a2Later(_adGameOver, 500);
+    }
+  }
+  // Custom result screen — retry needs the SAME level index and its own pass charge, so it
+  // can't reuse the generic a2Result (which fires wonderPlay on a no-arg name).
+  function _adGameOver(){
+    a2StopAll();
+    var lv = AD_LEVELS[AD.levelIdx] || AD_LEVELS[0];
+    var frac = Math.min(1, AD.lines / 18);
+    var view = a2View(); if (!view) return;
+    view.innerHTML = '<div class="wond-board">' +
+      '<div class="wond-head"><h2 class="wond-title">' + (AD.lines >= 15 ? '🌟 STELLAR RUN! 🌟' : '💥 Stack overflow!') + '</h2>' +
+        '<p class="wond-sub">Level ' + (AD.levelIdx + 1) + ' · ' + lv.name + ' — Score <b>' + AD.score + '</b> · <b>' + AD.lines + '</b> lines · speed tier ' + AD.level + '</p></div>' +
+      '<div class="wond-result-card"><div class="wond-result-label">Your prizes</div><div class="wond-prizes" id="adPrizes"></div></div>' +
+      '<div class="wond-footer">' +
+        '<button type="button" class="btn btn-primary" onclick="adStart(' + AD.levelIdx + ')" data-tooltip="Costs 1 Wonderland Pass.">↻ Retry this level (1 🎟️)</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="openAstroDrop()">🎚️ Level Select</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button>' +
+      '</div></div>';
+    var r = a2Reward(frac);
+    var prizesEl = document.getElementById('adPrizes');
+    if (prizesEl && typeof chipsSummary === 'function'){
+      prizesEl.innerHTML = '<span class="wond-chip wond-prize-chip">💵 Cash ×' + r.cash + '</span>' +
+        '<span class="wond-chip wond-prize-chip">' + chipsSummary(r.loot.chips || {}) +
+        (r.loot.gold ? ' 🥇' + r.loot.gold : '') + (r.loot.silver ? ' 🥈' + r.loot.silver : '') + '</span>';
     }
   }
   function _adLock(){
@@ -59,7 +86,7 @@
     if (cleared){
       AD.score += [0, 100, 300, 500, 800][cleared] * AD.level;
       AD.lines += cleared;
-      AD.level = 1 + Math.floor(AD.lines / 10);
+      AD.level = AD.startLevel + Math.floor(AD.lines / 10);
       if (typeof playSfx === 'function') playSfx('correct');
     } else if (typeof playSfx === 'function') playSfx('click');
     _adHud();
@@ -83,10 +110,34 @@
   function _adHardDrop(){ while (!_adHit(AD.cur.shape, AD.cur.x, AD.cur.y + 1)) AD.cur.y++; _adLock(); }
 
   function openAstroDrop(){
+    a2StopAll();
+    var view = a2View(); if (!view) return;
+    var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
+    var cards = AD_LEVELS.map(function(lv, i){
+      return '<div class="wond-lvl-card">' +
+        '<div class="wond-lvl-num">Level ' + (i + 1) + '</div>' +
+        '<div class="wond-lvl-name">' + lv.name + '</div>' +
+        '<div class="wond-lvl-meta">Starts at speed tier ' + lv.startLevel + '</div>' +
+        '<button type="button" class="btn btn-primary wond-lvl-play" onclick="adStart(' + i + ')" data-tooltip="Costs 1 Wonderland Pass.">Play (1 🎟️)</button>' +
+      '</div>';
+    }).join('');
+    view.innerHTML = '<div class="wond-board">' +
+      (typeof agTopBar === 'function' ? agTopBar('🟦 Astro Drop — Choose a Level', 'openWonderland()') : '') +
+      '<p class="wond-sub" style="text-align:center;margin:0 0 4px">Higher levels start faster — lines still speed things up further as you go!</p>' +
+      '<p class="wond-sub" style="text-align:center;margin:0 0 12px">🎟️ Passes: <b>' + passes + '</b></p>' +
+      '<div class="wond-lvl-grid">' + cards + '</div>' +
+      '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button></div>' +
+    '</div>';
+  }
+
+  function adStart(levelIdx){
+    if (typeof wonderSpendPass === 'function' && !wonderSpendPass()) return;
+    var lv = AD_LEVELS[levelIdx] || AD_LEVELS[0];
+    AD.levelIdx = levelIdx;
     AD.grid = []; for (var r = 0; r < AD.ROWS; r++) AD.grid.push(new Array(AD.COLS).fill(0));
-    AD.score = 0; AD.lines = 0; AD.level = 1; AD.over = false; AD.acc = 0; AD.last = 0;
-    a2Shell('🟦 Astro Drop', 'openWonderland()',
-      '<div class="wond-hud" id="adHud"></div>' +
+    AD.score = 0; AD.lines = 0; AD.level = lv.startLevel; AD.startLevel = lv.startLevel; AD.over = false; AD.acc = 0; AD.last = 0;
+    a2Shell('🟦 Astro Drop — ' + lv.name, 'openAstroDrop()',
+      '<div class="wond-hud" id="adHud"></div>' + a2KeyLegend('← → move · ↑ rotate · ↓ soft drop · Space hard drop') +
       '<div class="wond-canvas-wrap"><canvas id="adCanvas" class="a2-canvas" width="' + (AD.COLS * AD.CELL) + '" height="' + (AD.ROWS * AD.CELL) + '"></canvas></div>' +
       '<div class="a2-pad"><div>' +
         '<button type="button" class="btn btn-secondary" onclick="_adMove(-1)">◀</button>' +
@@ -136,7 +187,7 @@
   // ===========================================================================
   // 💊 Virus Lab — drop 2-color capsules; 4-in-a-row clears; zap every virus!
   // ===========================================================================
-  var VL = { COLS: 8, ROWS: 14, CELL: 28, grid: [], cur: null, acc: 0, last: 0,
+  var VL = { COLS: 8, ROWS: 14, CELL: 32, grid: [], cur: null, acc: 0, last: 0,
              virusTotal: 8, over: false, won: false };
   var VL_COLS = ['', '#f0705e', '#f2c14e', '#66e0ff'];
 
@@ -248,7 +299,7 @@
       if (!VL.grid[vy][vx]){ VL.grid[vy][vx] = { col: rand(1, 3), virus: true }; placed++; }
     }
     a2Shell('💊 Virus Lab', 'openWonderland()',
-      '<div class="wond-hud" id="vlHud"></div>' +
+      '<div class="wond-hud" id="vlHud"></div>' + a2KeyLegend('← → move · ↑ rotate · ↓ / Space drop') +
       '<div class="wond-canvas-wrap"><canvas id="vlCanvas" class="a2-canvas" width="' + (VL.COLS * VL.CELL) + '" height="' + (VL.ROWS * VL.CELL) + '"></canvas></div>' +
       '<div class="a2-pad"><div>' +
         '<button type="button" class="btn btn-secondary" onclick="_vlTry(-1,0,0)">◀</button>' +
@@ -302,7 +353,7 @@
   // ===========================================================================
   // 👾 Comet Muncher — eat every star-dot; dodge the UFOs; ⭐ pellets turn the tables!
   // ===========================================================================
-  var CM = { T: 24, maze: [], W: 15, H: 13, dots: 0, eaten: 0, pac: null, ghosts: [],
+  var CM = { T: 28, maze: [], W: 15, H: 13, dots: 0, eaten: 0, pac: null, ghosts: [],
              fright: 0, lives: 3, over: false, paused: 0 };
   var CM_MAZE = [
     '###############',
@@ -340,7 +391,7 @@
     CM.ghosts = [ _cmEnt(7, 5, 1.8), _cmEnt(6, 5, 1.7), _cmEnt(8, 5, 1.6) ];
     CM.ghosts[0].hue = '#f0705e'; CM.ghosts[1].hue = '#c39bff'; CM.ghosts[2].hue = '#7bd88f';
     a2Shell('👾 Comet Muncher', 'openWonderland()',
-      '<div class="wond-hud" id="cmHud"></div>' +
+      '<div class="wond-hud" id="cmHud"></div>' + a2KeyLegend('Arrow keys to move') +
       '<div class="wond-canvas-wrap"><canvas id="cmCanvas" class="a2-canvas" width="' + (CM.W * CM.T) + '" height="' + (CM.H * CM.T) + '"></canvas></div>' +
       '<div class="a2-pad"><div>' +
         '<button type="button" class="btn btn-secondary" onclick="CM.pac.want=[-1,0]">◀</button>' +
@@ -444,8 +495,8 @@
     for (var y = 0; y < CM.H; y++) for (var x = 0; x < CM.W; x++){
       var m = CM.maze[y][x];
       if (m === '#'){ c.fillStyle = '#24406b'; c.fillRect(x * CM.T + 1, y * CM.T + 1, CM.T - 2, CM.T - 2); }
-      else if (m === '.'){ c.fillStyle = '#f2c14e'; c.fillRect(x * CM.T + CM.T / 2 - 2, y * CM.T + CM.T / 2 - 2, 4, 4); }
-      else if (m === 'P'){ c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(x * CM.T + CM.T / 2, y * CM.T + CM.T / 2, 7, 0, 7); c.fill(); }
+      else if (m === '.'){ c.fillStyle = '#f2c14e'; c.fillRect(x * CM.T + CM.T / 2 - 2.5, y * CM.T + CM.T / 2 - 2.5, 5, 5); }
+      else if (m === 'P'){ c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(x * CM.T + CM.T / 2, y * CM.T + CM.T / 2, 8, 0, 7); c.fill(); }
     }
     // pac
     c.fillStyle = '#ffe14d';
@@ -453,24 +504,24 @@
     var ang = Math.atan2(CM.pac.dir[1], CM.pac.dir[0]) || 0;
     var mouth = 0.25 + 0.15 * Math.sin(Date.now() / 90);
     c.moveTo(CM.pac.x, CM.pac.y);
-    c.arc(CM.pac.x, CM.pac.y, 10, ang + mouth, ang - mouth + Math.PI * 2);
+    c.arc(CM.pac.x, CM.pac.y, 12, ang + mouth, ang - mouth + Math.PI * 2);
     c.fill();
     // ghosts
     for (var gg = 0; gg < CM.ghosts.length; gg++){
       var G = CM.ghosts[gg];
       c.fillStyle = CM.fright > 0 ? (CM.fright < 90 && Math.floor(CM.fright / 8) % 2 ? '#ffffff' : '#3b62d9') : G.hue;
       c.beginPath();
-      c.arc(G.x, G.y - 2, 9, Math.PI, 0);
-      c.lineTo(G.x + 9, G.y + 8); c.lineTo(G.x - 9, G.y + 8);
+      c.arc(G.x, G.y - 2, 11, Math.PI, 0);
+      c.lineTo(G.x + 11, G.y + 9); c.lineTo(G.x - 11, G.y + 9);
       c.closePath(); c.fill();
-      c.fillStyle = '#fff'; c.fillRect(G.x - 5, G.y - 5, 3, 4); c.fillRect(G.x + 2, G.y - 5, 3, 4);
+      c.fillStyle = '#fff'; c.fillRect(G.x - 6, G.y - 6, 4, 5); c.fillRect(G.x + 2, G.y - 6, 4, 5);
     }
   }
 
   // ===========================================================================
   // 💣 Blast Bot — bomb the crates, zap the drones. Don't singe your circuits!
   // ===========================================================================
-  var BB = { W: 13, H: 11, T: 32, hard: {}, soft: {}, px: 1, py: 1, cool: 0,
+  var BB = { W: 13, H: 11, T: 36, hard: {}, soft: {}, px: 1, py: 1, cool: 0,
              bombs: [], flames: [], foes: [], kills: 0, over: false, keys: {} };
   function _bbKey(x, y){ return x + ',' + y; }
   function _bbBlocked(x, y){
@@ -494,7 +545,7 @@
     BB.foes = [ { x: BB.W - 2, y: BB.H - 2, t: 0 }, { x: BB.W - 2, y: 1, t: 200 }, { x: 1, y: BB.H - 2, t: 400 } ];
     BB.foes.forEach(function(f){ delete BB.soft[_bbKey(f.x, f.y)]; });
     a2Shell('💣 Blast Bot', 'openWonderland()',
-      '<div class="wond-hud" id="bbHud"></div>' +
+      '<div class="wond-hud" id="bbHud"></div>' + a2KeyLegend('Arrow keys move · Space bomb') +
       '<div class="wond-canvas-wrap"><canvas id="bbCanvas" class="a2-canvas" width="' + (BB.W * BB.T) + '" height="' + (BB.H * BB.T) + '"></canvas></div>' +
       '<div class="a2-pad"><div>' +
         '<button type="button" class="btn btn-secondary" onclick="_bbMove(-1,0)">◀</button>' +
@@ -600,7 +651,7 @@
     var cv = document.getElementById('bbCanvas'); if (!cv) return;
     var c = cv.getContext('2d'), T = BB.T;
     c.fillStyle = '#12243c'; c.fillRect(0, 0, cv.width, cv.height);
-    c.font = '22px serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '26px serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
     for (var y = 0; y < BB.H; y++) for (var x = 0; x < BB.W; x++){
       var kk = _bbKey(x, y);
       if (BB.hard[kk]){ c.fillStyle = '#2c4a76'; c.fillRect(x * T + 1, y * T + 1, T - 2, T - 2); }
@@ -635,7 +686,7 @@
     BU.bubbles = []; BU.lives = 3; BU.popped = 0; BU.total = BU.foes.length;
     BU.over = false; BU.keys = {}; BU.inv = 0; BU.shootCool = 0;
     a2Shell('🫧 Bubble Blast', 'openWonderland()',
-      '<div class="wond-hud" id="buHud"></div>' +
+      '<div class="wond-hud" id="buHud"></div>' + a2KeyLegend('← → move · ↑ jump · Space bubble') +
       '<div class="wond-canvas-wrap"><canvas id="buCanvas" class="a2-canvas" width="' + BU.W + '" height="' + BU.H + '"></canvas></div>' +
       '<div class="a2-pad"><div>' +
         '<button type="button" class="btn btn-secondary" onpointerdown="BU.keys.left=1" onpointerup="BU.keys.left=0">◀</button>' +
