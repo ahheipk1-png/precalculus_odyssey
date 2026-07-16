@@ -158,3 +158,18 @@ planet.
 `renderSceneForLevel` (`05-render.js`) draws a per-planet hand-animated SVG that fills as the
 planet's streak grows; captions per stage come from `sceneCaptions` (config). A slim **astronomy
 card** at the top of the equation view shows the planet's real Sol body (see [story-astronomy.md](story-astronomy.md)).
+
+## Arena Infinity — endless mixed-recall practice (`js/38-infinity.js`)
+
+Free-to-enter reward source: a round of `INF.target` (10) self-contained (mcOnly / directInput)
+questions drawn from cleared arenas, paying XP + Wonderland Passes + Cash + a materials chest scaled by
+accuracy. `_infPick` draws a random arena `n` in `[minN, maxN]`, generates its problem, and re-rolls
+(≤60 tries) until it lands a self-contained question (equation-battle arenas are skipped).
+
+**2026-07-15 difficulty fix.** Previously `_infPick` drew from a **fixed floor of 1**, so a level-30
+player still got trivial Arena-1 questions ("5 × 1"). Now `_infMinArena(maxN)` computes a **rising
+floor**: `floor(maxN·0.45)` (trivial arenas drop out as you clear more) + a within-round ramp keyed on
+`INF.asked` + a small `INF.streak` bonus, capped at `floor(maxN·0.7)` and `maxN-1` so the draw band
+stays wide enough (the picker skips some arenas). The fallback (when 60 draws fail) now scans **down
+from the middle of the band** instead of hard-returning Arena 1. Net: a level-30 player draws arenas
+~13-30, never Arena 1. `maxN` is still capped at the player's cleared level (`_infMaxArena`).

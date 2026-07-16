@@ -87,8 +87,8 @@
     } catch (e) { /* audio unavailable — ignore */ }
   }
 
-  // Choose the equip sample by gear kind: futuristic AI gear -> sci-fi lock; shields/armor/heavy
-  // weapons/boots -> heavy metal; everything else (common sword/bow/spear/staff) -> light metal.
+  // Choose the equip sample by gear kind: futuristic AI gear -> sci-fi lock; shields/armor/boots
+  // -> heavy metal; everything else (a common sword) -> light metal.
   function playEquipSfx(item){
     var name = 'equip-light';
     if (item) {
@@ -96,7 +96,7 @@
       if (item.rarity && scifi[item.rarity]) {
         name = 'equip-scifi';
       } else if (item.category === 'shield' || item.category === 'armor' ||
-                 item.category === 'heavy'  || item.category === 'shoes') {
+                 item.category === 'shoes') {
         name = 'equip-heavy';
       }
     }
@@ -119,6 +119,10 @@
   };
   function playSfx(name){
     if (AUDIO.muted || AUDIO.sfxVol <= 0) return;
+    // Back-compat aliases: many minigames call the short names, which weren't defined
+    // in either map (so they were silent). Map them to the real keys.
+    if (name === 'correct') name = 'solve-correct';
+    else if (name === 'click') name = 'ui-click';
     if (SFX_FILES[name]) { playSfxFile(SFX_FILES[name]); return; }   // real sample if we have one
     var spec = SFX[name];
     if (!spec) return;

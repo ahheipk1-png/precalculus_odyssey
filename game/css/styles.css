@@ -1464,6 +1464,15 @@
   .character-svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 16px 12px rgba(0,0,0,.35))}
   .hero-character,.ice-character{width:100%;height:100%;display:flex;align-items:center;justify-content:center;transform-origin:50% 86%}
   .hero-aura,.monster-aura{position:absolute;width:130px;height:34px;border-radius:50%;bottom:5px;filter:blur(8px);opacity:.55;z-index:-1}.hero-aura{background:#8f67ff}.monster-aura{background:#55e6ff}
+  /* ---- Wu Xing: distinct emoji monster art (element-tinted) + element badges ---- */
+  .monster-emoji-art{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+  .monster-emoji-aura{position:absolute;width:66%;height:66%;border-radius:50%;background:radial-gradient(circle,var(--elcol,#6cf) 0%,rgba(0,0,0,0) 70%);opacity:.5;filter:blur(6px);z-index:-1;animation:monWuPulse 2.6s ease-in-out infinite}
+  .monster-emoji-face{line-height:1;filter:drop-shadow(0 8px 10px rgba(0,0,0,.4)) drop-shadow(0 0 12px var(--elcol,#6cf))}
+  @keyframes monWuPulse{0%,100%{transform:scale(1);opacity:.42}50%{transform:scale(1.14);opacity:.62}}
+  .monster-card-art .monster-emoji-face{font-size:60px!important}
+  .combat-el-badge{margin:-2px 0 4px;min-height:20px;display:flex;justify-content:center}
+  .el-badge{display:inline-flex;align-items:center;gap:3px;font-family:'Quicksand',sans-serif;font-size:12px;font-weight:700;line-height:1;padding:3px 8px;border:1.5px solid currentColor;border-radius:999px;background:rgba(0,0,0,.28);white-space:nowrap}
+  .monster-select-el{margin:1px 0 5px;min-height:18px}
   @keyframes heroIdle{0%,100%{transform:translateY(0) rotate(-.5deg)}50%{transform:translateY(-8px) rotate(.7deg)}}
   @keyframes monsterIdle{0%,100%{transform:translateY(0) scaleX(1)}50%{transform:translateY(-6px) scaleX(1.02)}}
   .sprite-weapon,.sprite-shield{font-size:17px;bottom:4px;background:rgba(13,20,43,.86);border:1px solid rgba(255,255,255,.18);width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 5px 13px rgba(0,0,0,.27);z-index:8}.sprite-weapon{right:0}.sprite-shield{left:0}
@@ -1476,7 +1485,7 @@
   @keyframes iceCharge{0%{transform:translate(0,0)}24%{transform:translate(18px,3px) rotate(3deg)}58%{transform:translate(-118px,-5px) rotate(-4deg) scale(1.08)}76%{transform:translate(-86px,0)}100%{transform:translate(0,0)}}
   .player-sprite.hit-shake,.monster-sprite.hit-shake{animation:fantasyHit .46s ease both!important}
   @keyframes fantasyHit{0%{transform:translateX(0);filter:brightness(1)}18%{transform:translateX(-13px) rotate(-4deg);filter:brightness(2) saturate(.2)}36%{transform:translateX(10px) rotate(3deg)}55%{transform:translateX(-7px)}76%{transform:translateX(4px)}100%{transform:none;filter:brightness(1)}}
-  .player-sprite.casting .staff-orb{animation:orbCharge .55s ease}.monster-sprite.casting .ice-core{animation:orbCharge .55s ease}
+  .player-sprite.casting .staff-orb{animation:orbCharge .55s ease}.monster-sprite.casting .ice-core,.monster-sprite.casting .monster-emoji-face{animation:orbCharge .55s ease}
   @keyframes orbCharge{50%{transform:scale(1.55);filter:drop-shadow(0 0 16px #fff) drop-shadow(0 0 24px currentColor)}}
   .player-sprite.victory{animation:heroVictory 1s ease infinite alternate!important}.monster-sprite.defeated{animation:monsterDefeat .85s ease forwards!important}.player-sprite.defeated{animation:heroDefeat .85s ease forwards!important}.monster-sprite.victory{animation:monsterVictory .85s ease infinite alternate!important}
   @keyframes heroVictory{to{transform:translateY(-14px) rotate(3deg) scale(1.04);filter:drop-shadow(0 0 18px rgba(255,223,110,.65))}}

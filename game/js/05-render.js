@@ -8,7 +8,7 @@
   // item.cost + a small flat step per level, floor 8). Fully maxing an item (+3) lands its
   // stat close to the next tier's base for well under the price of buying that tier outright.
   function getUpgradeGain(item, type) {
-    var base = type === 'weapon' ? item.power : item.defense;
+    var base = Number(type === 'weapon' ? item.power : item.defense) || 0;   // never NaN for statless gear
     return Math.max(1, Math.round(base * 0.25));
   }
 

@@ -284,6 +284,161 @@
   function openGlacier(){ SOKO.title = '❄️ Glacier Push'; SOKO.replay = 'openGlacier'; SOKO.slide = true; SOKO.levels = GLACIER_LEVELS; SOKO.idx = 0; _skLevel(); }
 
   // ===========================================================================
+  // 🏯 Forbidden City (Shikinjou / 紫禁城) — a 1991 Sunsoft-style tile puzzle.
+  // Walk the palace and PUSH spirit tiles. Shove two IDENTICAL tiles together and
+  // they cancel & vanish, opening a route to the 🚪 exit. You can push, never pull
+  // — a tile jammed into a wall or corner is stuck forever (that's the challenge).
+  //   #=wall  @=you  E=exit  1-6=matching tile types  .=floor
+  // ===========================================================================
+  var SHIK_TILE = { '1': '🟥', '2': '🟩', '3': '🟦', '4': '🟨', '5': '🟪', '6': '🟧' };
+  var SHIK_LEVELS = [
+    ['#######',
+     '#@1.1E#',
+     '#######'],
+    ['#######',
+     '#@....#',
+     '###1###',
+     '#..1.E#',
+     '#######'],
+    ['########',
+     '#@.1.1.#',
+     '######.#',
+     '#E.2.2.#',
+     '########'],
+    ['#########',
+     '#@.3.3..#',
+     '#######.#',
+     '#..4.4..#',
+     '#.#######',
+     '#E......#',
+     '#########'],
+    ['#######',
+     '#@....#',
+     '###1###',
+     '#..1..#',
+     '###5###',
+     '#..5.E#',
+     '#######']
+  ];
+  var SHIK = { walls: {}, tiles: {}, exit: '', px: 0, py: 0, W: 0, H: 0, moves: 0, idx: 0, done: false, hist: [] };
+
+  function _shikParse(rows){
+    SHIK.walls = {}; SHIK.tiles = {}; SHIK.exit = '';
+    SHIK.H = rows.length; SHIK.W = rows[0].length; SHIK.moves = 0; SHIK.done = false; SHIK.hist = [];
+    for (var y = 0; y < rows.length; y++){
+      for (var x = 0; x < rows[y].length; x++){
+        var c = rows[y].charAt(x), k = x + ',' + y;
+        if (c === '#') SHIK.walls[k] = 1;
+        else if (c === '@'){ SHIK.px = x; SHIK.py = y; }
+        else if (c === 'E') SHIK.exit = k;
+        else if (SHIK_TILE[c]) SHIK.tiles[k] = c;
+      }
+    }
+  }
+
+  function _shikTileCount(){ var n = 0; for (var k in SHIK.tiles) n++; return n; }
+
+  function _shikGridHtml(){
+    var h = '<div class="a2-grid" style="grid-template-columns:repeat(' + SHIK.W + ',56px)">';
+    for (var y = 0; y < SHIK.H; y++){
+      for (var x = 0; x < SHIK.W; x++){
+        var k = x + ',' + y, cls = 'a2-cell', body = '';
+        if (SHIK.walls[k]) cls += ' a2-wall';
+        else if (SHIK.exit === k) cls += ' a2-target';
+        if (SHIK.tiles[k]) body = '<span class="a2-emoji">' + SHIK_TILE[SHIK.tiles[k]] + '</span>';
+        else if (SHIK.exit === k && !(x === SHIK.px && y === SHIK.py)) body = '<span class="a2-emoji">🚪</span>';
+        if (x === SHIK.px && y === SHIK.py) body = '<span class="a2-emoji">🐼</span>';
+        h += '<div class="' + cls + '">' + body + '</div>';
+      }
+    }
+    return h + '</div>';
+  }
+
+  function _shikRender(){
+    var g = document.getElementById('shikWrap'); if (!g) return;
+    g.innerHTML = _shikGridHtml();
+    var hud = document.getElementById('shikHud');
+    if (hud) hud.innerHTML = '<span class="wond-chip">🏯 Chamber <b>' + (SHIK.idx + 1) + ' / ' + SHIK_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">👣 Moves: <b>' + SHIK.moves + '</b></span>' +
+      '<span class="wond-chip">🎴 Tiles: <b>' + _shikTileCount() + '</b></span>';
+  }
+
+  function shikMove(dx, dy){
+    if (SHIK.done || !a2Active()) return;
+    var nx = SHIK.px + dx, ny = SHIK.py + dy, nk = nx + ',' + ny;
+    if (SHIK.walls[nk]) return;                          // walk into a wall — no move
+    var snap = { tiles: JSON.stringify(SHIK.tiles), px: SHIK.px, py: SHIK.py, moves: SHIK.moves };
+    if (SHIK.tiles[nk]){
+      var bk = (nx + dx) + ',' + (ny + dy);              // the cell BEHIND the tile
+      if (SHIK.walls[bk]) return;                        // can't push a tile into a wall
+      var behind = SHIK.tiles[bk];
+      if (behind){
+        if (behind === SHIK.tiles[nk]){                  // two identical tiles → both cancel!
+          delete SHIK.tiles[nk]; delete SHIK.tiles[bk];
+          if (typeof playSfx === 'function') playSfx('correct');
+        } else {
+          return;                                        // a different tile behind → can't push two
+        }
+      } else {                                           // empty behind → slide the tile one cell
+        SHIK.tiles[bk] = SHIK.tiles[nk]; delete SHIK.tiles[nk];
+        if (typeof playSfx === 'function') playSfx('click');
+      }
+    } else if (typeof playSfx === 'function') playSfx('click');
+    SHIK.hist.push(snap); if (SHIK.hist.length > 200) SHIK.hist.shift();
+    SHIK.px = nx; SHIK.py = ny; SHIK.moves++;
+    _shikRender();
+    if (nk === SHIK.exit){
+      SHIK.done = true;
+      if (typeof playSfx === 'function') playSfx('victory');
+      if (SHIK.idx + 1 < SHIK_LEVELS.length){
+        if (typeof showToast === 'function') showToast('✅ Chamber ' + (SHIK.idx + 1) + ' cleared!');
+        a2Later(function(){ SHIK.idx++; _shikLevel(); }, 800);
+      } else {
+        a2Later(function(){
+          a2Result('🏯 Forbidden City', '🌟 EVERY CHAMBER CLEARED! 🌟',
+            'You matched the spirit tiles and escaped the palace in ' + SHIK.moves + ' moves. Masterful!',
+            1, 'openShikinjou');
+        }, 800);
+      }
+    }
+  }
+
+  function shikUndo(){
+    if (SHIK.done || !a2Active() || !SHIK.hist.length) return;
+    var s = SHIK.hist.pop();
+    SHIK.tiles = JSON.parse(s.tiles); SHIK.px = s.px; SHIK.py = s.py; SHIK.moves = s.moves;
+    _shikRender();
+  }
+  function shikRestart(){ _shikParse(SHIK_LEVELS[SHIK.idx]); _shikRender(); }
+
+  function _shikLevel(){
+    _shikParse(SHIK_LEVELS[SHIK.idx]);
+    var v = a2Shell('🏯 Forbidden City', 'openWonderland()',
+      '<div class="wond-hud" id="shikHud"></div>' + a2KeyLegend('Arrows / WASD move · Z undo · R restart') +
+      '<div class="a2-center" id="shikWrap"></div>' +
+      '<div class="a2-pad">' +
+        '<button type="button" class="btn btn-secondary" onclick="shikMove(0,-1)">▲</button>' +
+        '<div><button type="button" class="btn btn-secondary" onclick="shikMove(-1,0)">◀</button>' +
+        '<button type="button" class="btn btn-secondary" onclick="shikMove(0,1)">▼</button>' +
+        '<button type="button" class="btn btn-secondary" onclick="shikMove(1,0)">▶</button></div>' +
+        '<button type="button" class="btn btn-ghost" onclick="shikUndo()">↶ Undo</button>' +
+        '<button type="button" class="btn btn-ghost" onclick="shikRestart()">↺ Restart</button>' +
+      '</div>',
+      'Push two matching tiles together (🟥+🟥) so they vanish, clearing a path to the 🚪 exit. You can push, never pull — a tile shoved into a corner is stuck, so plan ahead!');
+    if (!v) return;
+    _shikRender();
+    a2Keys(function(e){
+      var m = { ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0],
+                w: [0,-1], s: [0,1], a: [-1,0], d: [1,0] }[e.key];
+      if (m){ e.preventDefault(); shikMove(m[0], m[1]); }
+      else if (e.key === 'z' || e.key === 'Z') shikUndo();
+      else if (e.key === 'r' || e.key === 'R') shikRestart();
+    });
+  }
+
+  function openShikinjou(){ SHIK.idx = 0; _shikLevel(); }
+
+  // ===========================================================================
   // 🔗 Circuit Loop — rotate wire tiles until the ⚡ core lights every 💡 bulb.
   // Board is a random spanning tree, then scrambled; dirs bitmask N1 E2 S4 W8.
   // ===========================================================================

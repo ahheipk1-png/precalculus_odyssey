@@ -64,18 +64,21 @@ non-destructive, never resets a profile. See [process-and-roadmap.md](process-an
   Looping is **manual** (`audioEl.loop = false`): the `ended` event fires `onTrackEnded()`, which
   waits **1.5 s** (`AUDIO.gapTimer`) before replaying, so there's a short breath between loops.
   The pending gap is cancelled on a context/track switch (in `playMusic`) and on mute (in `toggleMute`).
-- **SFX**: `playSfx(name)`. It first checks `SFX_FILES` (real one-shot WAV samples in `../sound/`,
-  played via `playSfxFile()` at `AUDIO.sfxVol`); any name **not** in that map falls back to a
-  WebAudio-oscillator **placeholder** (`solve-correct`, `wrong`, `buy`, `upgrade`, `loot`, `defeat`,
-  `chest-open`, `ui-click`). Real samples are cached and played via `cloneNode()` so rapid combat
-  repeats don't cut each other off; the cache is warmed on the first gesture. All samples are
-  one-shots (no loop). Current real-sample event map:
+- **SFX**: `playSfx(name)`. It first normalises two **back-compat aliases** — `correct` →
+  `solve-correct` and `click` → `ui-click` (many Wonderland minigames call the short names, which
+  weren't in either map and so were silently no-ops until 2026-07-15) — then checks `SFX_FILES` (real
+  one-shot WAV samples in `../sound/`, played via `playSfxFile()` at `AUDIO.sfxVol`); any name **not**
+  in that map falls back to a WebAudio-oscillator **placeholder** (`solve-correct`, `wrong`, `buy`,
+  `upgrade`, `loot`, `defeat`, `chest-open`, `ui-click`). Real samples are cached and played via
+  `cloneNode()` so rapid combat repeats don't cut each other off; the cache is warmed on the first
+  gesture. All samples are one-shots (no loop). (Equip-SFX picker: `heavy` weapon category was dropped
+  from `playEquipSfx` when weapons went swords-only.) Current real-sample event map:
   | event | file | fired from |
   |---|---|---|
   | `battle-hit` | `attack_impact.wav` | combat hits, offensive spells, tile-ball |
   | `victory` | `battle_victory_fanfare.wav` | winning a single battle (`handleBattleVictory`) |
   | `planet-complete` | `planet_complete_celebration.wav` | finishing a whole planet (`advanceToNextLevel`) |
   | `weapon-upgrade` | `weapon_upgrade.wav` | successful gear upgrade (`rpgActions.upgrade`) |
-  | `equip-light` / `equip-heavy` / `equip-scifi` | `metal_equip_light_weapon` / `_heavy_armor` / `_scifi_lock.wav` | `playEquipSfx(item)` on equip/buy — variant chosen by gear category + rarity (archive/stellar/rift/odyssey → sci-fi; shield/armor/heavy/shoes → heavy; else light) |
+  | `equip-light` / `equip-heavy` / `equip-scifi` | `metal_equip_light_weapon` / `_heavy_armor` / `_scifi_lock.wav` | `playEquipSfx(item)` on equip/buy — variant chosen by gear category + rarity (archive/stellar/rift/odyssey → sci-fi; shield/armor/shoes → heavy; else light sword) |
   | `machine` / `warp` | `machine_activate.wav` | trading terminal & alchemy machine open; wormhole/star-gate travel (`playWarpFx`) |
 - **Mute**: `toggleMute()` (🔊/🔇 header button), persisted in `localStorage 'po_muted'`.

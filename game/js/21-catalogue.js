@@ -42,28 +42,6 @@
              '<rect x="47" y="76" width="6" height="16" rx="2" fill="#6b4f30" stroke="#2b2f36" stroke-width="1"/>' +
              '<circle cx="50" cy="94" r="4" fill="url(#'+g+')" stroke="#2b2f36" stroke-width="1"/>' +
              '<path d="M50 12 L50 64" stroke="#fff" stroke-width="1.4" opacity="0.5"/>';
-    },
-    bow: function(g){
-      return '<path d="M32 12 Q78 50 32 88" fill="none" stroke="url(#'+g+')" stroke-width="7" stroke-linecap="round"/>' +
-             '<path d="M32 12 Q70 50 32 88" fill="none" stroke="#2b2f36" stroke-width="1.5"/>' +
-             '<line x1="32" y1="12" x2="32" y2="88" stroke="#e8e8ea" stroke-width="1.5" opacity="0.8"/>' +
-             '<path d="M30 50 L84 50" stroke="url(#'+g+')" stroke-width="3"/>' +
-             '<path d="M84 50 L76 45 M84 50 L76 55" stroke="url(#'+g+')" stroke-width="3" fill="none"/>';
-    },
-    spear: function(g){
-      return '<path d="M50 6 L58 26 L52 34 L50 40 L48 34 L42 26 Z" fill="url(#'+g+')" stroke="#2b2f36" stroke-width="1.5"/>' +
-             '<rect x="47" y="34" width="6" height="60" rx="3" fill="#6b4f30" stroke="#2b2f36" stroke-width="1"/>' +
-             '<path d="M50 10 L50 32" stroke="#fff" stroke-width="1.2" opacity="0.5"/>';
-    },
-    staff: function(g){
-      return '<rect x="47" y="30" width="6" height="64" rx="3" fill="#6b4f30" stroke="#2b2f36" stroke-width="1"/>' +
-             '<circle cx="50" cy="24" r="15" fill="url(#'+g+')" stroke="#2b2f36" stroke-width="1.5"/>' +
-             '<circle cx="45" cy="19" r="4" fill="#fff" opacity="0.6"/>';
-    },
-    heavy: function(g){
-      return '<rect x="45" y="20" width="10" height="74" rx="4" fill="#6b4f30" stroke="#2b2f36" stroke-width="1"/>' +
-             '<path d="M26 16 H74 A6 6 0 0 1 80 22 V40 A6 6 0 0 1 74 46 H26 A6 6 0 0 1 20 40 V22 A6 6 0 0 1 26 16 Z" fill="url(#'+g+')" stroke="#2b2f36" stroke-width="1.5"/>' +
-             '<path d="M28 24 H72" stroke="#fff" stroke-width="1.4" opacity="0.4"/>';
     }
   };
 

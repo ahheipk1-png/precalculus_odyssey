@@ -16,6 +16,21 @@
   function _infRand(a, b){ return (typeof rand === 'function') ? rand(a, b) : (a + Math.floor(Math.random() * (b - a + 1))); }
   function _infPretty(s){ return (typeof mathPretty === 'function') ? mathPretty(s) : String(s == null ? '' : s); }
 
+  // The RISING FLOOR — trivial early arenas drop out of the pool as the player advances,
+  // and difficulty also climbs across the 10-question round and with a hot streak. This is
+  // why a level-30 player no longer gets "5 × 1" from Arena 1. Kept well below maxN so the
+  // draw band always stays wide (the picker skips equation-battle arenas, so a narrow band
+  // could exhaust its retries).
+  function _infMinArena(maxN){
+    if (maxN <= 3) return 1;                                   // early game: use the whole range
+    var progressFloor = Math.floor(maxN * 0.45);              // the further you've cleared, the higher the floor
+    var asked = (INF && INF.asked) || 0;
+    var roundRamp = Math.floor((asked / (INF.target || 10)) * maxN * 0.35);  // climbs during the round
+    var streakBonus = Math.min((INF && INF.streak) || 0, 6);  // reward a hot streak with harder questions
+    var minN = progressFloor + roundRamp + streakBonus;
+    return Math.max(1, Math.min(minN, Math.floor(maxN * 0.7), maxN - 1));    // keep a wide band to draw from
+  }
+
   function _infView(){
     var v = document.getElementById('infinityView');
     if (!v){ v = document.createElement('div'); v.id = 'infinityView'; v.className = 'inf-overlay'; document.body.appendChild(v); }
@@ -25,11 +40,19 @@
   // Pick a self-contained (mcOnly / directInput) question from a random cleared arena.
   function _infPick(){
     var maxN = _infMaxArena();
+    var minN = _infMinArena(maxN);
     for (var t = 0; t < 60; t++){
-      var n = _infRand(1, maxN);
+      var n = _infRand(minN, maxN);
       var p;
       try { p = generateProblem(n); } catch (e){ continue; }
       if (p && (p.mode === 'mcOnly' || p.mode === 'directInput') && (p.prompt || p.choices)){ p._arena = n; return p; }
+    }
+    // Fallback: don't dump the player back to trivial Arena 1 — scan DOWN from the middle of
+    // the band for the first self-contained question, only bottoming out at Arena 1 if nothing
+    // higher works.
+    for (var m = Math.max(minN, Math.round((minN + maxN) / 2)); m >= 1; m--){
+      var q; try { q = generateProblem(m); } catch (e){ continue; }
+      if (q && (q.mode === 'mcOnly' || q.mode === 'directInput') && (q.prompt || q.choices)){ q._arena = m; return q; }
     }
     var f = generateProblem(1); if (f) f._arena = 1; return f;
   }

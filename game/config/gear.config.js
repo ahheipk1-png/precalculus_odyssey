@@ -1,10 +1,10 @@
   // ============================================================================
   // CONFIG · Gear catalogue — weapons, shields, armor, shoes (pure data)
-  // The 25 legendary weapons + 5 legendary shoes are from the user's reference
-  // image (Swords/Bows/Spears/Staves/Heavy + Shoes). Each has a Wu Xing element,
-  // a rarity tier, and 3 AI-chip sockets. Starter gear is kept so existing saves
-  // keep their progression. Stylized SVG art is generated in js/21-catalogue.js.
-  // Add a weapon = append one _wpn(...) line. See CONFIG_GUIDE.md.
+  // Attack weapons are SWORDS ONLY (per the user's request — no bows/spears/staves/heavy).
+  // The 5 legendary swords + 5 legendary shoes each carry a Wu Xing element, a rarity
+  // tier, and 3 AI-chip sockets. Starter gear is kept so existing saves keep their
+  // progression. Stylized SVG art is generated in js/21-catalogue.js.
+  // Add a sword = append one _wpn(...,'sword',...) line. See CONFIG_GUIDE.md.
   // ============================================================================
 
   // Rarity → stat multiplier + frame color + lore (from the image's rarity tiers).
@@ -20,11 +20,7 @@
 
   // Per-category base stats + display icon.
   var WEAPON_CATS = {
-    sword: { atk: 42, spd: 5, icon: '⚔️' },
-    bow:   { atk: 34, spd: 7, icon: '🏹' },
-    spear: { atk: 46, spd: 4, icon: '🔱' },
-    staff: { atk: 30, spd: 5, icon: '🪄' },
-    heavy: { atk: 58, spd: 2, icon: '🔨' }
+    sword: { atk: 42, spd: 5, icon: '⚔️' }
   };
 
   // Compact weapon builder → full def (pure data assembly at load).
@@ -45,43 +41,17 @@
   var STARTER_WEAPONS = [
     { id: 'wood_sword',     name: 'Wooden Sword',   category: 'sword', element: 'wood',  rarity: 'common', power: 2,  speed: 3, crit: 2, cost: 0,   chipSlots: 0, owned: true,  upgradeLvl: 0, desc: 'A humble training sword.' },
     { id: 'bronze_dagger',  name: 'Bronze Dagger',  category: 'sword', element: 'metal', rarity: 'common', power: 7,  speed: 6, crit: 7, cost: 40,  chipSlots: 0, owned: false, upgradeLvl: 0, desc: 'Quick and light.' },
-    { id: 'iron_broadsword',name: 'Iron Broadsword',category: 'sword', element: 'metal', rarity: 'common', power: 15, speed: 3, crit: 4, cost: 100, chipSlots: 0, owned: false, upgradeLvl: 0, desc: 'Heavy and reliable.' },
-    { id: 'flame_bow',      name: 'Flame Bow',      category: 'bow',   element: 'fire',  rarity: 'common', power: 32, speed: 6, crit: 8, cost: 220, chipSlots: 1, owned: false, upgradeLvl: 0, desc: 'Fires burning arrows.' },
-    { id: 'star_scepter',   name: 'Star Scepter',   category: 'staff', element: 'metal', rarity: 'common', power: 68, speed: 5, crit: 6, cost: 450, chipSlots: 2, owned: false, upgradeLvl: 0, desc: 'Channels starlight.' }
+    { id: 'iron_broadsword',name: 'Iron Broadsword',category: 'sword', element: 'metal', rarity: 'common', power: 15, speed: 3, crit: 4, cost: 100, chipSlots: 0, owned: false, upgradeLvl: 0, desc: 'Heavy and reliable.' }
   ];
 
-  // ---- The 25 legendary weapons (from the image) ----
+  // ---- The 5 legendary swords (one per Wu Xing element) ----
   var LEGENDARY_WEAPONS = [
-    // Swords
+    // Swords — all five elements are represented so Wu Xing matchups stay meaningful.
     _wpn('axiom_blade',        'Axiom Blade',          'sword', 'metal', 'legendary'),
     _wpn('solar_meridian',     'Solar Meridian',       'sword', 'fire',  'rift'),
     _wpn('tidal_paradox',      'Tidal Paradox',        'sword', 'water', 'stellar'),
     _wpn('verdant_recursion',  'Verdant Recursion',    'sword', 'wood',  'legendary'),
-    _wpn('gravity_keystone',   'Gravity Keystone',     'sword', 'earth', 'archive'),
-    // Bows
-    _wpn('kepler_arc',         'Kepler Arc',           'bow',   'metal', 'legendary'),
-    _wpn('fibonacci_longbow',  'Fibonacci Longbow',    'bow',   'wood',  'archive'),
-    _wpn('cryo_crescent',      'Cryo Crescent',        'bow',   'water', 'stellar'),
-    _wpn('phoenix_plasma_bow', 'Phoenix Plasma Bow',   'bow',   'fire',  'rift'),
-    _wpn('event_horizon_bow',  'Event Horizon Railbow','bow',   'metal', 'stellar'),
-    // Spears
-    _wpn('vector_lance',       'Vector Lance',         'spear', 'metal', 'legendary'),
-    _wpn('orbitbreaker_spear', 'Orbitbreaker Spear',   'spear', 'earth', 'archive'),
-    _wpn('root_seeker_glaive', 'Root-Seeker Glaive',   'spear', 'wood',  'legendary'),
-    _wpn('hydra_trident',      'Hydra Current Trident','spear', 'water', 'stellar'),
-    _wpn('comet_tail_naginata','Comet-Tail Naginata',  'spear', 'fire',  'rift'),
-    // Staves
-    _wpn('scepter_of_sigma',   'Scepter of Sigma',     'staff', 'metal', 'legendary'),
-    _wpn('logarithm_staff',    'Logarithm Staff',      'staff', 'water', 'stellar'),
-    _wpn('celestial_abacus',   'Celestial Abacus',     'staff', 'earth', 'archive'),
-    _wpn('prism_five_phases',  'Prism of the Five Phases','staff','all',  'odyssey'),
-    _wpn('infinity_relay',     'Infinity Relay',       'staff', 'metal', 'archive'),
-    // Heavy
-    _wpn('titans_equation',    "Titan's Equation",     'heavy', 'earth', 'archive'),
-    _wpn('singularity_maul',   'Singularity Maul',     'heavy', 'earth', 'rift'),
-    _wpn('iron_theorem',       'Iron Theorem',         'heavy', 'metal', 'legendary'),
-    _wpn('meteor_forge_axe',   'Meteor Forge Axe',     'heavy', 'fire',  'rift'),
-    _wpn('avalanche_engine',   'Avalanche Engine',     'heavy', 'water', 'stellar')
+    _wpn('gravity_keystone',   'Gravity Keystone',     'sword', 'earth', 'archive')
   ];
   var WEAPONS = STARTER_WEAPONS.concat(LEGENDARY_WEAPONS);
 

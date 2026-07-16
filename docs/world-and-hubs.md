@@ -72,6 +72,18 @@ clear of a planet = **5 passes**; perfect replays (0 wrong) pay on a diminishing
 3 (×5) → 2 (×6) → 1** thereafter; non-perfect replays earn nothing. State: `wonderPasses`,
 `passEarns`.
 
+**2026-07-15 — Forbidden City (Shikinjou) + Virus Lab preview.**
+- **🏯 Forbidden City** (`openShikinjou` in `39-puzzles.js`, lobby card in `17-wonderland.js`) — a new
+  1-pass Shikinjou/紫禁城 tile-push puzzle built on the shared A2 shell (like the Sokoban games). You
+  walk a 🐼 around the palace and **push spirit tiles** (`SHIK_TILE` colour map); pushing two identical
+  tiles together **cancels both**, pushing into a different tile or a wall is blocked, and you win by
+  reaching the 🚪 exit. 5 hand-authored, verified-solvable chambers (`SHIK_LEVELS`, ASCII
+  `#`/`@`/`E`/`1-6`/`.`), with **Undo** (JSON snapshot stack), **Restart**, arrow/WASD keys + a button
+  pad. Uses `wonderPlay('openShikinjou')` (no self-charging → no double-charge); win pays via `a2Result`.
+- **💊 Virus Lab now shows the next two capsules.** Added a look-ahead queue (`VL.queue`, seeded in
+  `openVirusLab`, advanced in `_vlSpawn` via `_vlRoll`); `_vlHud` renders a "💊 Next:" preview of the
+  upcoming two pills as colour swatches (`_vlPillSwatch`, indexing `VL_COLS`).
+
 ## Farm — `js/18-farm.js` (`#farmView`)
 
 Crops (apple/orange/rice/wheat/corn/coffee/sugarcane) + animals (chicken/duck/sheep/pig/cow) + houses.

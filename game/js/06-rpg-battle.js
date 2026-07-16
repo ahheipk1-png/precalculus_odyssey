@@ -54,14 +54,16 @@
     if (item.upgradeLvl >= maxUpgradeLevel) {
       return 'Upgrade maxed (+3). Resell value: ' + getItemSellValue(item) + ' 💵';
     }
-    var gain = getUpgradeGain(item, type);
-    var statLabel = type === 'weapon' ? 'AP' : 'DP';
-    var curStat = (type === 'weapon' ? item.power : item.defense) + item.upgradeLvl * gain;
+    // Category-aware: read the label + current stat from the gear group itself so shoes
+    // show "SPD: 2 → 4", shields "DP", armor "DEF" — instead of the old "AP: NaN → NaN".
+    var g = gearGroup(type) || gearGroup('weapon');
+    var gain = (type === 'shoes') ? 2 : getUpgradeGain(item, g.up);   // shoes gain a flat +2 SPD/level
+    var curStat = g.stat(item);
     var nextStat = curStat + gain;
     var afterUpgradeLvl = item.upgradeLvl + 1;
     var recipe = getUpgradeRecipe(afterUpgradeLvl, item);
     var need = hasMaterials(recipe);
-    return statLabel + ': ' + curStat + ' → ' + nextStat + ' (+' + gain + ') · needs ' +
+    return g.label + ': ' + curStat + ' → ' + nextStat + ' (+' + gain + ') · needs ' +
       chipsSummary(recipe) + (need ? '' : ' ⚠️ (short on chips)') +
       ' · resell after: ' + getItemSellValue(item, afterUpgradeLvl) + ' 💵';
   }
@@ -108,7 +110,7 @@
           '<span class="shop-item-name">' + item.name + (item.upgradeLvl > 0 ? (' +' + item.upgradeLvl) : '') + ' <span class="gear-el">' + elIcon + '</span></span>' +
           '<span class="gear-rarity">' + rar + ' ' + sockets + '</span>' +
           '<span class="shop-item-stat">' + g.label + ': ' + g.stat(item) + '</span>' +
-          '<span class="shop-upgrade-hint">' + getUpgradeHint(g.up, item) + '</span>' +
+          '<span class="shop-upgrade-hint">' + getUpgradeHint(type, item) + '</span>' +
         '</div>' +
         '<div class="shop-item-actions">' + a + '</div>';
       container.appendChild(div);
@@ -184,17 +186,48 @@
   var HERO_ART_MARKUP = document.querySelector('#playerSprite .hero-character') ? document.querySelector('#playerSprite .hero-character').outerHTML : '';
   var ICE_MONSTER_ART_MARKUP = document.querySelector('#monsterSprite .ice-character') ? document.querySelector('#monsterSprite .ice-character').outerHTML : '';
 
-  var monsterArtSerial = 0;
-  function getMonsterArtMarkup(difficulty) {
-    var tint = difficulty === 'Easy' ? 'hue-rotate(32deg) saturate(.86)' : (difficulty === 'Scout' ? 'hue-rotate(22deg) saturate(.95)' : (difficulty === 'Medium' ? 'hue-rotate(8deg) saturate(1.05)' : (difficulty === 'Boss' ? 'hue-rotate(-38deg) saturate(1.35) contrast(1.12)' : 'saturate(1.2) contrast(1.05)')));
-    var suffix = 'mq' + (++monsterArtSerial);
-    var markup = ICE_MONSTER_ART_MARKUP;
-    ['iceBody','iceDark','iceCore','iceGlow'].forEach(function(id){
-      var unique = id + '_' + suffix;
-      markup = markup.split('id="' + id + '"').join('id="' + unique + '"');
-      markup = markup.split('url(#' + id + ')').join('url(#' + unique + ')');
-    });
-    return '<div class="monster-art-tint" style="filter:' + tint + '">' + markup + '</div>';
+  // Distinct art per monster. Every one of the 30 base monsters (rooms 1-10 × 3 ranks) gets its
+  // own emoji creature; higher arenas reuse them by base id, so a fight always shows art that
+  // matches the monster's identity — no more one-ice-creature-for-everyone.
+  var MONSTER_ART = {
+    r1_1: '👻', r1_2: '👺', r1_3: '👹',
+    r2_1: '🪲', r2_2: '🐹', r2_3: '🗿',
+    r3_1: '💀', r3_2: '☠️', r3_3: '🧛',
+    r4_1: '🌪️', r4_2: '🧞', r4_3: '🏺',
+    r5_1: '🪼', r5_2: '🦑', r5_3: '🐙',
+    r6_1: '🦅', r6_2: '⛈️', r6_3: '🌀',
+    r7_1: '👿', r7_2: '🧙', r7_3: '🐲',
+    r8_1: '🥷', r8_2: '🦇', r8_3: '🦉',
+    r9_1: '🐺', r9_2: '🌋', r9_3: '😈',
+    r10_1: '💫', r10_2: '🪐', r10_3: '👑'
+  };
+  function _monsterBaseId(m){
+    var room = Math.max(1, Number(m && m.room) || 1);
+    var base = ((room - 1) % 10) + 1;                 // rooms 11-65 cycle the base 1-10 roster
+    return 'r' + base + '_' + ((m && m.rank) || 1);
+  }
+  // Now takes the monster OBJECT (was: difficulty string) so it can pick distinct art + tint
+  // by the monster's Wu Xing element. Bosses/elites render larger.
+  function getMonsterArtMarkup(monster) {
+    var m = monster || {};
+    var emoji = MONSTER_ART[_monsterBaseId(m)] || '👾';
+    var col = (typeof elementColor === 'function') ? elementColor(m.element || 'metal') : '#8fd6ff';
+    var big = m.difficulty === 'Boss' ? 120 : (m.difficulty === 'Elite' ? 98 : 84);
+    return '<div class="monster-emoji-art" style="--elcol:' + col + '">' +
+             '<span class="monster-emoji-aura"></span>' +
+             '<span class="monster-emoji-face" style="font-size:' + big + 'px">' + emoji + '</span>' +
+           '</div>';
+  }
+
+  // Small Wu Xing element badge (icon + 中文 + name) used on the battle page and monster cards.
+  function elementBadgeHtml(el){
+    if (!el) return '';
+    var col = (typeof elementColor === 'function') ? elementColor(el) : '#8fd6ff';
+    var icon = (typeof elementIcon === 'function') ? elementIcon(el) : '';
+    var cn = (typeof elementCn === 'function') ? elementCn(el) : '';
+    var nm = (typeof ELEMENTS === 'object' && ELEMENTS[el]) ? ELEMENTS[el].name : el;
+    return '<span class="el-badge" style="border-color:' + col + ';color:' + col + '">' +
+      icon + ' ' + cn + ' ' + nm + '</span>';
   }
 
   function launchBattleProjectile(kind, fromEl, toEl) {
@@ -411,7 +444,7 @@
         card.style.borderStyle = 'dotted';
       }
       card.innerHTML = `
-        <div class="monster-card-art">${getMonsterArtMarkup(m.difficulty)}</div>
+        <div class="monster-card-art">${getMonsterArtMarkup(m)}</div>
         <div class="monster-select-name">${m.name} ${isDefeated ? '💀' : ''}</div>
         <div class="monster-select-stat" style="color:var(--yellow)">${m.difficulty}</div>
         <div class="monster-select-stat">${isDefeated ? '☠️ DEFEATED (Gone Forever)' : ('HP: ' + m.maxHp)}</div>
@@ -469,8 +502,9 @@
         card.style.borderStyle = 'dotted';
       }
       card.innerHTML = `
-        <div class="monster-card-art">${getMonsterArtMarkup(m.difficulty)}</div>
+        <div class="monster-card-art">${getMonsterArtMarkup(m)}</div>
         <div class="monster-select-name">${m.name} ${isDefeated ? '💀' : ''}</div>
+        <div class="monster-select-el">${elementBadgeHtml(m.element)}</div>
         <div class="monster-select-stat" style="color:var(--yellow)">Arena ${m.room} · ${m.difficulty}</div>
         <div class="monster-select-stat">${isDefeated ? '☠️ DEFEATED (Gone Forever)' : ('HP: ' + m.maxHp + ' · MP: ' + m.maxMp)}</div>
         <div class="monster-select-stat">ATK: ${m.attack} &nbsp;|&nbsp; DEF: ${m.defense}</div>
@@ -524,9 +558,7 @@
     var weaponEmojis = {
       wood_sword: '🪵',
       bronze_dagger: '🗡️',
-      iron_broadsword: '⚔️',
-      flame_bow: '🏹',
-      star_scepter: '🪄'
+      iron_broadsword: '⚔️'
     };
     var shieldEmojis = {
       leather_buckler: '🛡️',
@@ -539,7 +571,12 @@
     el.playerShieldSprite.textContent = shieldEmojis[state.equippedShield] || '🛡️';
 
     el.monsterNameText.textContent = monster.name;
-    el.monsterSprite.innerHTML = getMonsterArtMarkup(monster.difficulty);
+    el.monsterSprite.innerHTML = getMonsterArtMarkup(monster);
+    // Wu Xing badges on the battle main page (hero weapon element vs monster element).
+    var _mb = document.getElementById('monsterElementBadge');
+    if (_mb) _mb.innerHTML = elementBadgeHtml(monster.element);
+    var _pb = document.getElementById('playerElementBadge');
+    if (_pb) _pb.innerHTML = elementBadgeHtml(getPlayerElement());
     el.playerApVal.textContent = getPlayerAp();
     el.playerDpVal.textContent = getPlayerDp();
     el.monsterApVal.textContent = monster.attack;
@@ -550,6 +587,9 @@
     el.combatLog.innerHTML = '';
     appendCombatLog(`A wild ${monster.name} blocks your way!`, 'system');
     appendCombatLog(`Equipped AP: ${getPlayerAp()} (Upgrade to hit harder!), DP: ${getPlayerDp()}`, 'system');
+    // Tell the player how their weapon's element fares against this monster (五行).
+    var _wxNote = (typeof elementMatchupNote === 'function') ? elementMatchupNote(getPlayerElement(), monster.element) : '';
+    if (_wxNote) appendCombatLog('☯️ ' + _wxNote, 'system');
 
     // ⚗️ Laboratory: a prepared Acid Vial corrodes THIS monster for 3 rounds.
     if (state.poisonArmed) {

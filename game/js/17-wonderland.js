@@ -286,6 +286,7 @@
           _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — three 7️⃣ pays 50× your bet!', 'openSlots') +
           _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring — classic warehouse puzzling!', 'openCargo') +
           _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes!', 'openGlacier') +
+          _wondCard('🏯', 'Forbidden City', 'Push matching mahjong tiles together to cancel them and reach the exit!', 'openShikinjou') +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🗼</div>' +
             '<div class="wond-card-name">Sky Stacker</div>' +

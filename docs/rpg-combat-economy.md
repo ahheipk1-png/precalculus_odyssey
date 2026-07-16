@@ -114,3 +114,33 @@ quick arithmetic question if none qualify; a correct answer runs `_trDrift`),
 reframed as **Earth**; its buildings (with hover-`title` descriptions) are Practice Hall, Weapon Store,
 Item Store, Hotel, Wonderland, Farm, Laboratory and Trading Room. The Star Atlas is reached from the
 global header nav (removed from the hub to declutter it).
+
+## 2026-07-15 batch — swords-only weapons, distinct monster art, Wu Xing on the battle page
+
+**Weapons are SWORDS ONLY now** (`gear.config.js`). Per the user's request, all bows/spears/staves/heavy
+weapons were removed: `WEAPON_CATS` keeps only `sword`; `STARTER_WEAPONS` keeps the 3 swords
+(wood_sword/bronze_dagger/iron_broadsword); `LEGENDARY_WEAPONS` keeps the 5 element-swords
+(axiom_blade metal, solar_meridian fire, tidal_paradox water, verdant_recursion wood, gravity_keystone
+earth) — so **all five Wu Xing elements stay represented**. The `_catArt` SVG switch (`21-catalogue.js`)
+keeps only the `sword` drawer (`weaponSVG` already falls back to it). Save-compat is automatic:
+`reconcileGear` drops removed weapon ids from a loaded save and `_validEquip` re-homes a removed
+equipped weapon to `wood_sword`.
+
+**Distinct monster art.** `getMonsterArtMarkup` used to clone one shared ice-creature SVG tinted by
+difficulty — every monster looked the same. It now takes the **monster object** and renders a distinct
+**emoji creature** per base id via the `MONSTER_ART` map (30 entries, rooms 1-10 × 3 ranks; higher
+arenas cycle by `_monsterBaseId`), inside an element-tinted glowing aura (`.monster-emoji-art` in
+`styles.css`). All three call sites (startCombat, renderMonsterChoices, the legacy renderer) pass the
+monster.
+
+**Wu Xing shown on the battle main page.** `elementBadgeHtml(el)` renders an icon + 中文 + name badge;
+`startCombat` fills `#monsterElementBadge` and `#playerElementBadge` (new spans in `index.html`) and
+logs the matchup via `elementMatchupNote` (the `☯️ Super effective / Resisted / boost` line). The damage
+multiplier itself was **already** wired (`elementMultiplier` at the two strike sites + the duplicate in
+`castPlayerSpell`); this batch only surfaced it.
+
+**AP-NaN fix.** Shoes showed `AP: NaN → NaN (+NaN)` because `getUpgradeHint` hard-coded weapon/AP and
+read `item.power`. It is now **category-aware** — it pulls the label + current stat from `gearGroup(type)`
+(so shoes read `SPD`, shields `DP`, armor `DEF`), with shoes using a flat +2/level gain; the call site
+passes the real `type` instead of the collapsed `g.up`. `getUpgradeGain` is hardened to coerce the base
+stat to a number so it can never emit `NaN`.

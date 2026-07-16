@@ -188,8 +188,18 @@
   // 💊 Virus Lab — drop 2-color capsules; 4-in-a-row clears; zap every virus!
   // ===========================================================================
   var VL = { COLS: 8, ROWS: 14, CELL: 32, grid: [], cur: null, acc: 0, last: 0,
-             virusTotal: 8, over: false, won: false };
+             virusTotal: 8, over: false, won: false, queue: [] };
   var VL_COLS = ['', '#f0705e', '#f2c14e', '#66e0ff'];
+
+  // A capsule is a pair of colours. We keep a small look-ahead QUEUE so the player
+  // can see the next two medicines (like Dr. Mario's "NEXT" box).
+  function _vlRoll(){ return { c1: rand(1, 3), c2: rand(1, 3) }; }
+  function _vlPillSwatch(p){
+    if (!p) return '';
+    function dot(col){ return '<span style="display:inline-block;width:15px;height:15px;border-radius:5px;' +
+      'vertical-align:middle;background:' + VL_COLS[col] + ';box-shadow:0 0 0 1px rgba(0,0,0,.35) inset"></span>'; }
+    return '<span style="display:inline-block;white-space:nowrap;margin-left:3px">' + dot(p.c1) + dot(p.c2) + '</span>';
+  }
 
   function _vlCells(cur){
     var b = (cur.rot % 2 === 0) ? { x: cur.x + 1, y: cur.y } : { x: cur.x, y: cur.y - 1 };
@@ -206,7 +216,11 @@
     return false;
   }
   function _vlSpawn(){
-    VL.cur = { x: 3, y: 0, rot: 0, c1: rand(1, 3), c2: rand(1, 3) };
+    while (VL.queue.length < 2) VL.queue.push(_vlRoll());   // keep two ready to preview
+    var nx = VL.queue.shift();
+    VL.queue.push(_vlRoll());                               // refill so the preview always shows two
+    VL.cur = { x: 3, y: 0, rot: 0, c1: nx.c1, c2: nx.c2 };
+    _vlHud();                                               // refresh the NEXT preview
     if (_vlBlocked(VL.cur)){
       VL.over = true;
       var killed = VL.virusTotal - _vlVirusLeft();
@@ -220,7 +234,8 @@
   function _vlVirusLeft(){ var n = 0; for (var y = 0; y < VL.ROWS; y++) for (var x = 0; x < VL.COLS; x++){ if (VL.grid[y][x] && VL.grid[y][x].virus) n++; } return n; }
   function _vlHud(){
     var hud = document.getElementById('vlHud');
-    if (hud) hud.innerHTML = '<span class="wond-chip">🦠 Viruses left: <b>' + _vlVirusLeft() + '</b></span>';
+    if (hud) hud.innerHTML = '<span class="wond-chip">🦠 Viruses left: <b>' + _vlVirusLeft() + '</b></span>' +
+      '<span class="wond-chip">💊 Next: ' + _vlPillSwatch(VL.queue[0]) + _vlPillSwatch(VL.queue[1]) + '</span>';
   }
   function _vlResolve(){
     var again = true, clearedVirus = false;
@@ -293,6 +308,7 @@
   function openVirusLab(){
     VL.grid = []; for (var r = 0; r < VL.ROWS; r++) VL.grid.push(new Array(VL.COLS).fill(0));
     VL.over = false; VL.won = false; VL.acc = 0; VL.last = 0; VL.virusTotal = 8;
+    VL.queue = [_vlRoll(), _vlRoll()];                     // seed the NEXT preview
     var placed = 0;
     while (placed < VL.virusTotal){
       var vy = rand(7, VL.ROWS - 1), vx = rand(0, VL.COLS - 1);
