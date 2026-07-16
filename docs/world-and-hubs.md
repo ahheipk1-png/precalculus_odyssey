@@ -320,6 +320,79 @@ rebound again (1/2/9/0), level counts on every lobby card.**
   Verified: move/cycle, a real 3-match → score/clear/gravity/respawn end-to-end, and the
   still-off-screen-lock game-over path, all via direct function calls with no console errors.
 
+**2026-07-16 batch #5 — every non-gambling game gets a free welcome screen with its own top-10
+leaderboard; Tile Ball/Astro Drop/Gone Fishin' lose their last remaining pickers.**
+
+- **`gameWelcome(gameId, icon, title, desc, playFn)` — new shared helper (`js/17-wonderland.js`).**
+  The single entry point every non-gambling Wonderland game now opens into: icon/title/description,
+  a "Your best" chip (`wgMini(gameId).highScore`), that game's own **top 10** leaderboard fetched
+  live from `/api/cloud/leaderboard`, and one "▶ Play!" button. Opening the screen is FREE — no
+  Wonderland Pass is spent just to look. The Play button is the only thing that charges, via
+  `wonderPlay(playFn)`, where `playFn` is a small internal "just start the run" function (e.g.
+  `_qbfStartRun`, `_tbStartRun`) — never the same name as the public `openX()` opener, to keep the
+  free-view/paid-play split unambiguous. `_gwLoadBoard` handles the fetch, rendering "sign in to see
+  the leaderboard" or "network error" gracefully if the request fails (verified both paths).
+- **Backend: `/api/cloud/leaderboard` now returns `byGameTop10[gameId]` (up to 10 entries), not a
+  single best (`functions/api/cloud/leaderboard.js`).** `GAMES` grew from 5 to 19 entries — every
+  non-gambling game now has an id (`tileBall`, `skyStacker`, `astroDrop`, `snake`, `crystal`,
+  `cargo`, `glacier`, `shikinjou`, `virusLab`, `circuit`, `comet`, `blastBot`, `bubble`, `bowling`,
+  plus the original 5). `wgMini`/`wgRecordScore` (`34-wonder-games.js`) gained a `bestLevel` field,
+  snapshotted alongside `highScore` whenever a new high lands, so the leaderboard can show "Lv X ·
+  score Y" per row without a separate per-game field. The existing 🏆 Ranking screen's "Top Minigame
+  Scores" section now reads `byGameTop10[id][0]` instead of the old single-best shape.
+- **`_wondCard(icon, name, desc, launcher, gambling)` gained a 5th param.** Default (`gambling`
+  omitted/false) now renders "View / Play" calling `launcher()` directly — free navigation to that
+  game's welcome screen. Passing `gambling: true` (Star Slots, Pop-a-Tic-Tac-Toe only — entering
+  those two games directly costs a pass, there's no separate "browse first" step) keeps the old
+  `wonderPlay(launcher)` direct-charge behavior. Hoo Hey How's card is hand-written, not through
+  `_wondCard`, and was left untouched (same direct-charge reasoning).
+- **`a2Result(title, headline, detailHtml, frac, replayName)` (`39-puzzles.js`) changed its Play
+  Again button from `wonderPlay(replayName)` to `replayName()` directly** — every a2Result caller's
+  `replayName` is now that game's free welcome-screen opener, so replaying always shows the updated
+  leaderboard first rather than silently re-charging a pass. This is a hard precondition: EVERY
+  a2Result-using game had to gain a welcome screen in the same batch (Comet Muncher, Virus Lab,
+  Circuit Loop, Blast Bot, Bubble Blast, Cargo Bay, Glacier Push, Forbidden City, Snake, Crystal
+  Cascade, Astro Drop) — otherwise replays for whichever games hadn't been converted yet would have
+  become accidentally free. Verified: all of the above render error-free and none double-charge.
+- **Tile Ball's locked level-select grid (`wondTileLevelSelectHtml`) is GONE — the persistent
+  `unlockedCount`/per-level-pass-charge system it drove is retired** (the field stays in
+  `state.miniGames.tileBall` for old saves but is no longer read). `wondOpenTileLevels()` is now the
+  welcome screen; `_tbStartRun()`/`_tbGoToLevel(idx)` replace `startTileBall(idx)` — a run always
+  starts at level 1 and free-advances through `WOND_LEVELS` (clearing no longer re-charges a pass;
+  only the welcome screen's Play button does). `WOND.runScore` accumulates across the whole run for
+  the final `wgRecordScore('tileBall', …)` call. Verified end-to-end: free view → paid start → 2
+  free level-advances → reaching the last level → `wgRecordScore` firing with the correct total.
+- **Astro Drop's level-select grid is GONE.** Its 5 "levels" were never a clear/advance ladder —
+  just 5 different starting-speed presets for one endless Tetris-style run (speed already climbs
+  every 10 lines regardless of preset). Every run now starts at the easiest preset (`AD_LEVELS[0]`)
+  — the built-in ramp supplies the rising difficulty, the same endless-run shape as Crystal Cascade.
+  `adStart()` dropped its `levelIdx` param and self-charge; `_adGameOver` now also calls
+  `wgRecordScore('astroDrop', AD.score, AD.level)`.
+- **Gone Fishin's easy/normal/hard picker is GONE.** The difficulty tier is now DERIVED from the
+  level number (`fishDiffForLevel`: levels 1-2 easy, 3 normal, 4-5 hard) instead of chosen upfront —
+  `fishLevelConf`/`fishGenRule` take the level, not a separate diff string. `fishReward`'s Cash rate
+  and `wgRecordScore('fishin', score, level)`'s third arg both moved from a difficulty string to the
+  level number, fixing a pre-existing type inconsistency in `wgRecordScore` callers.
+- **Sky Stacker also gained a welcome screen** (`openStacker` was the one already-sequential game
+  still self-charging with no browse-first step) — `_stkStartRun()` now does what `openStacker` used
+  to, and `_stkGameOver` records `wgRecordScore('skyStacker', runFloors × 20, levelIdx + 1)`.
+- **Cargo Bay / Glacier Push / Forbidden City (shared/parallel Sokoban-style engines) had no fail
+  state and no persisted score before this batch** — clearing every level was the only way a run
+  ever ended. Added `SOKO.totalMoves`/`SHIK.totalMoves` (cumulative across all levels in the run) and
+  a `wgRecordScore(gameId, max(100, 3000 − totalMoves×10), levelCount)` call right before the
+  "ALL LEVELS CLEAR" `a2Result`, so fewer total moves = a higher leaderboard score for the same full
+  clear. `SOKO` gained a `gameId` field (`'cargo'`/`'glacier'`) since both games share one engine.
+- **Virus Lab / Circuit Loop / Comet Muncher / Blast Bot / Bubble Blast / Star Lanes Bowling** each
+  gained a `wgRecordScore` call at their existing win/game-over point(s) — none had persisted a
+  score before. Scores are synthesized from each game's own natural metrics (Virus Lab: viruses
+  zapped ×100; Circuit Loop: `max(100, 1000 − moves×10)`; Comet Muncher: stars eaten ×10; Blast
+  Bot/Bubble Blast: `level×200 + kills-or-pops×20`; Bowling: the real 0-300 bowling score, already
+  computed by `bowlScoreFrames`). Bowling's result screen also picked up a `</b> / 300` fix for a
+  pre-existing malformed-HTML typo (`<\b> \ 300`) spotted while editing the same lines.
+- Every conversion verified via direct function calls in-browser: free-view (pass count unchanged),
+  `wonderPlay(startFn)` charging exactly 1 pass, and a full sweep of all 19 non-gambling entry
+  points opening with zero console errors.
+
 ## Farm — `js/18-farm.js` (`#farmView`)
 
 Crops (apple/orange/rice/wheat/corn/coffee/sugarcane) + animals (chicken/duck/sheep/pig/cow) + houses.

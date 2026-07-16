@@ -82,7 +82,15 @@
   }
 
   // ---- lifecycle ----
+  // Free to view (no pass charge) — the welcome screen's Play button charges via
+  // wonderPlay('_qbfStartRun').
   function openBlockForge(){
+    gameWelcome('blockForge', '🧩', 'Quantum Block Forge',
+      'Drag blocks to fill rows &amp; columns — clear lines for combos! ' + QBF_LEVELS.length + ' levels, shrinking board.',
+      '_qbfStartRun');
+  }
+
+  function _qbfStartRun(){
     QBF.level = 0; QBF.totalScore = 0;
     _qbfSetup();
   }
@@ -248,7 +256,7 @@
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + (r.coins || 0) + '</span>' +
           (r.chips && r.chips.cpu ? '<span class="wond-chip wond-prize-chip">🖥️ CPU ×' + r.chips.cpu + '</span>' : '') + '</div></div>' +
         '<div class="wond-footer">' +
-          '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openBlockForge\')" data-tooltip="Costs 1 Wonderland Pass — starts back at level 1.">↻ Play again (1 🎟️)</button>' +
+          '<button type="button" class="btn btn-primary" onclick="openBlockForge()" data-tooltip="Back to Quantum Block Forge\'s welcome screen.">↻ Play Again</button>' +
           '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';

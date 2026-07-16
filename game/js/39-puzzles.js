@@ -113,6 +113,10 @@
   }
 
   // Standard result screen. replayName = global launcher name (charged via wonderPlay).
+  // `replayName` is that game's own FREE welcome-screen opener (gameWelcome-based) — calling it
+  // directly (not through wonderPlay) means "Play Again" never double-charges; the pass is only
+  // spent when the player clicks Play on the welcome screen itself. Every a2Result caller's
+  // openX() must be a welcome screen for this to be correct — see docs/world-and-hubs.md.
   function a2Result(title, headline, detailHtml, frac, replayName){
     a2StopAll();
     var v = a2View(); if (!v) return;
@@ -121,7 +125,7 @@
       '<p class="wond-sub">' + title + '</p></div>' +
       '<div class="wond-result-card"><div class="wond-result-label">' + detailHtml + '</div></div>' +
       '<div class="wond-footer">' +
-        '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'' + replayName + '\')">↻ Play again (1 🎟️)</button>' +
+        '<button type="button" class="btn btn-primary" onclick="' + replayName + '()">↻ Play Again</button>' +
         '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button>' +
       '</div></div>';
     a2Reward(frac);
@@ -524,8 +528,8 @@
     });
   }
 
-  var SOKO = { title: '', replay: '', slide: false, levels: [], idx: 0,
-    walls: {}, targets: {}, crates: {}, px: 0, py: 0, W: 0, H: 0, moves: 0, done: false };
+  var SOKO = { title: '', replay: '', gameId: '', slide: false, levels: [], idx: 0,
+    walls: {}, targets: {}, crates: {}, px: 0, py: 0, W: 0, H: 0, moves: 0, totalMoves: 0, done: false };
 
   function _skParse(rows){
     SOKO.walls = {}; SOKO.targets = {}; SOKO.crates = {};
@@ -592,14 +596,17 @@
     _skRender();
     if (_skSolved()){
       SOKO.done = true;
+      SOKO.totalMoves += SOKO.moves;
       if (typeof playSfx === 'function') playSfx('correct');
       if (SOKO.idx + 1 < SOKO.levels.length){
         if (typeof showToast === 'function') showToast('✅ Level ' + (SOKO.idx + 1) + ' clear!');
         a2Later(function(){ SOKO.idx++; _skLevel(); }, 800);
       } else {
+        var score = Math.max(100, 3000 - SOKO.totalMoves * 10);
+        var newHigh = (typeof wgRecordScore === 'function' && SOKO.gameId) ? wgRecordScore(SOKO.gameId, score, SOKO.levels.length) : false;
         a2Later(function(){
-          a2Result(SOKO.title, '🌟 ALL LEVELS CLEAR! 🌟',
-            'You solved every puzzle in ' + SOKO.moves + ' moves this level. Brilliant pushing!',
+          a2Result(SOKO.title, '🌟 ALL LEVELS CLEAR! 🌟' + (newHigh ? ' 🏆' : ''),
+            'You solved every puzzle in ' + SOKO.totalMoves + ' total moves. Brilliant pushing!',
             1, SOKO.replay);
         }, 800);
       }
@@ -631,9 +638,22 @@
     });
   }
 
-  function openCargo(){ SOKO.title = '📦 Cargo Bay'; SOKO.replay = 'openCargo'; SOKO.slide = false; SOKO.levels = CARGO_LEVELS; SOKO.idx = 0; _skLevel(); }
+  // Free to view (no pass charge) — the welcome screen's Play button does the actual charge +
+  // level-1 start.
+  function openCargo(){
+    gameWelcome('cargo', '📦', 'Cargo Bay',
+      'Push every crate onto its ring — classic warehouse puzzling! ' + CARGO_LEVELS.length + ' levels.',
+      '_cargoStartRun');
+  }
+  function _cargoStartRun(){ SOKO.title = '📦 Cargo Bay'; SOKO.replay = 'openCargo'; SOKO.gameId = 'cargo'; SOKO.slide = false; SOKO.levels = CARGO_LEVELS; SOKO.idx = 0; SOKO.totalMoves = 0; _skLevel(); }
+
   // A freshly generated (BFS-verified) set of 8 levels every time — see _glGenerateLevels above.
-  function openGlacier(){ SOKO.title = '❄️ Glacier Push'; SOKO.replay = 'openGlacier'; SOKO.slide = true; SOKO.levels = _glGenerateLevels(); SOKO.idx = 0; _skLevel(); }
+  function openGlacier(){
+    gameWelcome('glacier', '❄️', 'Glacier Push',
+      'Ice blocks SLIDE until they hit something. Plan your pushes! 8 fresh levels every run.',
+      '_glacierStartRun');
+  }
+  function _glacierStartRun(){ SOKO.title = '❄️ Glacier Push'; SOKO.replay = 'openGlacier'; SOKO.gameId = 'glacier'; SOKO.slide = true; SOKO.levels = _glGenerateLevels(); SOKO.idx = 0; SOKO.totalMoves = 0; _skLevel(); }
 
   // ===========================================================================
   // 🏯 Forbidden City (Shikinjou / 紫禁城) — a 1991 Sunsoft-style tile puzzle.
@@ -680,7 +700,7 @@
      '#..3.E#',
      '#######']
   ];
-  var SHIK = { walls: {}, tiles: {}, exit: '', px: 0, py: 0, W: 0, H: 0, moves: 0, idx: 0, done: false, hist: [] };
+  var SHIK = { walls: {}, tiles: {}, exit: '', px: 0, py: 0, W: 0, H: 0, moves: 0, totalMoves: 0, idx: 0, done: false, hist: [] };
 
   function _shikParse(rows){
     SHIK.walls = {}; SHIK.tiles = {}; SHIK.exit = '';
@@ -759,14 +779,17 @@
     _shikRender();
     if ((SHIK.px + ',' + SHIK.py) === SHIK.exit){
       SHIK.done = true;
+      SHIK.totalMoves += SHIK.moves;
       if (typeof playSfx === 'function') playSfx('victory');
       if (SHIK.idx + 1 < SHIK_LEVELS.length){
         if (typeof showToast === 'function') showToast('✅ Chamber ' + (SHIK.idx + 1) + ' cleared!');
         a2Later(function(){ SHIK.idx++; _shikLevel(); }, 800);
       } else {
+        var score = Math.max(100, 3000 - SHIK.totalMoves * 10);
+        var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('shikinjou', score, SHIK_LEVELS.length) : false;
         a2Later(function(){
-          a2Result('🏯 Forbidden City', '🌟 EVERY CHAMBER CLEARED! 🌟',
-            'You matched the spirit tiles and escaped the palace in ' + SHIK.moves + ' moves. Masterful!',
+          a2Result('🏯 Forbidden City', '🌟 EVERY CHAMBER CLEARED! 🌟' + (newHigh ? ' 🏆' : ''),
+            'You matched the spirit tiles and escaped the palace in ' + SHIK.totalMoves + ' total moves. Masterful!',
             1, 'openShikinjou');
         }, 800);
       }
@@ -806,7 +829,14 @@
     });
   }
 
-  function openShikinjou(){ SHIK.idx = 0; _shikLevel(); }
+  // Free to view (no pass charge) — the welcome screen's Play button charges via
+  // wonderPlay('_shikStartRun').
+  function openShikinjou(){
+    gameWelcome('shikinjou', '🏯', 'Forbidden City',
+      'Push matching mahjong tiles together to cancel them and reach the exit! ' + SHIK_LEVELS.length + ' levels.',
+      '_shikStartRun');
+  }
+  function _shikStartRun(){ SHIK.idx = 0; SHIK.totalMoves = 0; _shikLevel(); }
 
   // ===========================================================================
   // 🔗 Circuit Loop — rotate wire tiles until the ⚡ core lights every 💡 bulb.
@@ -899,15 +929,25 @@
     if (_circAllLit()){
       CIRC.done = true;
       if (typeof playSfx === 'function') playSfx('victory');
+      var score = Math.max(100, 1000 - CIRC.moves * 10);
+      var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('circuit', score, 1) : false;
       a2Later(function(){
-        a2Result('🔗 Circuit Loop', '⚡ FULL POWER! ⚡',
+        a2Result('🔗 Circuit Loop', '⚡ FULL POWER! ⚡' + (newHigh ? ' 🏆' : ''),
           'Every bulb lit in ' + CIRC.moves + ' turns. The station hums back to life!',
           1, 'openCircuit');
       }, 700);
     }
   }
 
+  // Free to view (no pass charge) — the welcome screen's Play button charges via
+  // wonderPlay('_circuitStartRun').
   function openCircuit(){
+    gameWelcome('circuit', '🔗', 'Circuit Loop',
+      'Rotate the wires so the power core lights every bulb!',
+      '_circuitStartRun');
+  }
+
+  function _circuitStartRun(){
     _circGen();
     a2Shell('🔗 Circuit Loop', 'openWonderland()',
       '<div class="wond-hud" id="circHud"></div><div class="a2-center" id="circWrap"></div>',
@@ -931,8 +971,14 @@
   var STK = { W: 420, H: 580, blocks: [], cur: null, t: 0, speed: 1, floors: 0, over: false, flash: 0, levelIdx: 0, maxW: 170, runFloors: 0 };
 
   // One pass buys a whole RUN — start at level 1 and climb through all 5 in sequence (no level-select).
+  // Free to view (no pass charge) — the welcome screen's Play button charges via
+  // wonderPlay('_stkStartRun').
   function openStacker(){
-    if (typeof wonderSpendPass === 'function' && !wonderSpendPass()) return;
+    gameWelcome('skyStacker', '🗼', 'Sky Stacker',
+      'Stack the swinging blocks! Clear all ' + STK_LEVELS.length + ' levels one by one — each tower taller than the last.',
+      '_stkStartRun');
+  }
+  function _stkStartRun(){
     STK.runFloors = 0;
     stkStart(0);
   }
@@ -1013,7 +1059,8 @@
     var totalTargets = STK_LEVELS.reduce(function(s, l){ return s + l.target; }, 0);
     var runFloors = STK.runFloors || STK.floors;
     var frac = clearedAll ? 1 : Math.min(1, runFloors / totalTargets);
-    var headline = clearedAll ? '🌟 ALL LEVELS CLEARED! 🌟' : '🏗️ Tower toppled!';
+    var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('skyStacker', runFloors * 20, STK.levelIdx + 1) : false;
+    var headline = (clearedAll ? '🌟 ALL LEVELS CLEARED! 🌟' : '🏗️ Tower toppled!') + (newHigh ? ' 🏆' : '');
     var view = a2View(); if (!view) return;
     view.innerHTML = '<div class="wond-board">' +
       '<div class="wond-head"><h2 class="wond-title">' + headline + '</h2>' +
@@ -1021,7 +1068,7 @@
         (clearedAll ? ' — you topped out the sky!' : '. Clear all 5 levels for the grand prize!') + '</p></div>' +
       '<div class="wond-result-card"><div class="wond-result-label">Your prizes</div><div class="wond-prizes" id="stkPrizes"></div></div>' +
       '<div class="wond-footer">' +
-        '<button type="button" class="btn btn-primary" onclick="openStacker()" data-tooltip="Costs 1 Wonderland Pass.">↻ Play again (1 🎟️)</button>' +
+        '<button type="button" class="btn btn-primary" onclick="openStacker()" data-tooltip="Back to Sky Stacker\'s welcome screen.">↻ Play Again</button>' +
         '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button>' +
       '</div></div>';
     var r = a2Reward(frac);

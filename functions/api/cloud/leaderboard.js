@@ -1,8 +1,9 @@
 // GET /api/cloud/leaderboard — global rankings across EVERY player's cloud profile: highest
-// level reached, plus the best score on each Wonderland minigame that tracks one. Read-only;
-// requires being signed in (same auth model as the rest of /api/cloud/*) but is not scoped to
-// the caller's own account — it reads every non-deleted profile. No new D1 table: save_json
-// already carries state.level and state.miniGames[id].highScore for every profile.
+// level reached, plus a top-10 leaderboard for each Wonderland minigame (shown on that game's
+// own welcome screen — see gameWelcome() in js/17-wonderland.js). Read-only; requires being
+// signed in (same auth model as the rest of /api/cloud/*) but is not scoped to the caller's own
+// account — it reads every non-deleted profile. No new D1 table: save_json already carries
+// state.level and state.miniGames[id].{highScore,bestLevel} for every profile.
 import { json, bad, nowIso, authAccount } from './_shared.js';
 
 var GAMES = [
@@ -10,8 +11,23 @@ var GAMES = [
   { id: 'rhythm',     label: '🎵 Cosmic Rhythm' },
   { id: 'fishin',     label: "🎣 Gone Fishin'" },
   { id: 'memory',     label: '🃏 Star Match' },
-  { id: 'sudoku',     label: '🔢 Mini Sudoku' }
+  { id: 'sudoku',     label: '🔢 Mini Sudoku' },
+  { id: 'tileBall',   label: '🧱 Tile Ball' },
+  { id: 'skyStacker', label: '🗼 Sky Stacker' },
+  { id: 'astroDrop',  label: '🟦 Astro Drop' },
+  { id: 'snake',      label: '🐍 Snake' },
+  { id: 'crystal',    label: '💎 Crystal Cascade' },
+  { id: 'cargo',      label: '📦 Cargo Bay' },
+  { id: 'glacier',    label: '❄️ Glacier Push' },
+  { id: 'shikinjou',  label: '🏯 Forbidden City' },
+  { id: 'virusLab',   label: '💊 Virus Lab' },
+  { id: 'circuit',    label: '🔗 Circuit Loop' },
+  { id: 'comet',      label: '👾 Comet Muncher' },
+  { id: 'blastBot',   label: '💣 Blast Bot' },
+  { id: 'bubble',     label: '🫧 Bubble Blast' },
+  { id: 'bowling',    label: '🎳 Star Lanes Bowling' }
 ];
+var TOP_N = 10;
 var MAX_PROFILES_SCANNED = 2000;   // defensive cap — this is a small personal-scale game, not a bottleneck today
 
 export async function onRequestGet(context) {
@@ -24,7 +40,7 @@ export async function onRequestGet(context) {
       .bind(MAX_PROFILES_SCANNED).all();
 
     var byLevel = [];
-    var byGame = {}; GAMES.forEach(function (g) { byGame[g.id] = null; });
+    var byGameAll = {}; GAMES.forEach(function (g) { byGameAll[g.id] = []; });
 
     (results || []).forEach(function (row) {
       var save;
@@ -38,8 +54,9 @@ export async function onRequestGet(context) {
       GAMES.forEach(function (g) {
         var m = mg[g.id];
         var score = m && Number.isFinite(m.highScore) ? m.highScore : 0;
-        if (score > 0 && (!byGame[g.id] || score > byGame[g.id].score)) {
-          byGame[g.id] = { playerName: name, score: score };
+        if (score > 0) {
+          var lv = m && Number.isFinite(m.bestLevel) ? m.bestLevel : 1;
+          byGameAll[g.id].push({ playerName: name, score: score, level: lv });
         }
       });
     });
@@ -47,7 +64,13 @@ export async function onRequestGet(context) {
     byLevel.sort(function (a, b) { return b.level - a.level; });
     byLevel = byLevel.slice(0, 20);
 
-    return json(200, { ok: true, byLevel: byLevel, byGame: byGame, games: GAMES, generatedAt: nowIso() });
+    var byGameTop10 = {};
+    GAMES.forEach(function (g) {
+      var arr = byGameAll[g.id].slice().sort(function (a, b) { return b.score - a.score; });
+      byGameTop10[g.id] = arr.slice(0, TOP_N);
+    });
+
+    return json(200, { ok: true, byLevel: byLevel, byGameTop10: byGameTop10, games: GAMES, generatedAt: nowIso() });
   } catch (e) {
     return bad('SERVER_ERROR', 'Could not load leaderboard.', 500);
   }

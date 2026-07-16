@@ -59,6 +59,7 @@
     raf: 0,               // requestAnimationFrame id (0 = not scheduled)
     running: false,
     over: false,
+    runScore: 0,           // accumulates across the whole paid run, for wgRecordScore at the end
     canvas: null,
     ctx2d: null,
     lastTs: 0,
@@ -213,8 +214,9 @@
     if (typeof updateStats === 'function') updateStats();   // HUD + autosave
     return true;
   }
-  // Charge a pass, then launch the named global (single-session games). Tile Ball charges
-  // per-play in startTileBall instead, so its lobby button goes straight to the level select.
+  // Charge a pass, then launch the named global. Non-gambling games route through this via their
+  // own welcome screen's Play button (see gameWelcome()) rather than straight from the lobby card,
+  // so browsing a game's leaderboard is always free — only clicking Play spends a pass.
   function wonderPlay(launchName){
     if (!wonderSpendPass()) return;
     var fn = window[launchName];
@@ -223,12 +225,18 @@
   }
 
   // One lobby card for a pass-charged game (launcher = global function name).
-  function _wondCard(icon, name, desc, launcher){
+  // gambling=true keeps the old direct-charge behavior (Star Slots, Pop-a-Tic-Tac-Toe — entering
+  // IS the "play"). Every other game is free to browse: launcher is that game's own welcome
+  // screen (gameWelcome-based); the pass is only spent when the player clicks Play there.
+  function _wondCard(icon, name, desc, launcher, gambling){
+    var btn = gambling
+      ? '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'' + launcher + '\')" data-tooltip="' + name + ' — costs 1 Wonderland Pass.">Play! (1 🎟️)</button>'
+      : '<button type="button" class="btn btn-primary wond-play" onclick="' + launcher + '()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>';
     return '<div class="wond-card">' +
       '<div class="wond-card-icon">' + icon + '</div>' +
       '<div class="wond-card-name">' + name + '</div>' +
       '<div class="wond-card-desc">' + desc + '</div>' +
-      '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'' + launcher + '\')" data-tooltip="' + name + ' — costs 1 Wonderland Pass.">Play! (1 🎟️)</button></div>';
+      btn + '</div>';
   }
 
   // ---------- Lobby ----------
@@ -239,8 +247,8 @@
       '<div class="wond-card">' +
         '<div class="wond-card-icon">🎣</div>' +
         '<div class="wond-card-name">Gone Fishin’</div>' +
-        '<div class="wond-card-desc">Catch only the fish whose number matches the rule! ' + (typeof FISH_MAX_LEVEL !== 'undefined' ? FISH_MAX_LEVEL : 5) + ' levels.</div>' +
-        '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openFishin\')" data-tooltip="Play Gone Fishin — costs 1 Wonderland Pass.">Play! (1 🎟️)</button></div>';
+        '<div class="wond-card-desc">Catch only the fish whose number matches the rule! ' + (typeof FISH_MAX_LEVEL !== 'undefined' ? FISH_MAX_LEVEL : 5) + ' levels, rising difficulty.</div>' +
+        '<button type="button" class="btn btn-primary wond-play" onclick="openFishin()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button></div>';
     var locked = carnival;
     return '' +
       '<div class="wond-board">' +
@@ -270,21 +278,21 @@
             '<div class="wond-card-icon">🧩</div>' +
             '<div class="wond-card-name">Quantum Block Forge</div>' +
             '<div class="wond-card-desc">Drag blocks to fill rows &amp; columns — clear lines for combos! ' + QBF_LEVELS.length + ' levels, shrinking board.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openBlockForge\')" data-tooltip="An original block-placement puzzle. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openBlockForge()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🃏</div>' +
             '<div class="wond-card-name">Star Match</div>' +
             '<div class="wond-card-desc">Memorise the board, then match every cosmic pair! ' + MEM_LEVELS.length + ' levels, less preview time each round.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openMemory\')" data-tooltip="A memory / concentration game. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openMemory()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🔢</div>' +
             '<div class="wond-card-name">Mini Sudoku</div>' +
             '<div class="wond-card-desc">Drag numbered tiles so every row, column &amp; box is complete. ' + SUD_LEVELS.length + ' levels — grows from a 4×4 warm-up to a full 9×9!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openSudoku\')" data-tooltip="Sequential levels, 4x4 up to 9x9. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openSudoku()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
           '</div>' +
-          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots') +
+          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots', true) +
           _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring — classic warehouse puzzling! ' + CARGO_LEVELS.length + ' levels.', 'openCargo') +
           _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes! 8 fresh levels every run.', 'openGlacier') +
           _wondCard('🏯', 'Forbidden City', 'Push matching mahjong tiles together to cancel them and reach the exit! ' + SHIK_LEVELS.length + ' levels.', 'openShikinjou') +
@@ -297,15 +305,15 @@
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🟦</div>' +
             '<div class="wond-card-name">Astro Drop</div>' +
-            '<div class="wond-card-desc">Falling blocks! Fill whole lines to clear them — ' + AD_LEVELS.length + ' levels, rising speed.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="One run through all levels. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+            '<div class="wond-card-desc">Falling blocks! Fill whole lines to clear them — speed rises every 10 lines. An endless run — how far can you push it?</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
           '</div>' +
           _wondCard('💊', 'Virus Lab', 'Drop 2-color capsules; match 4 in a line to zap every virus!', 'openVirusLab') +
           _wondCard('🔗', 'Circuit Loop', 'Rotate the wires so the power core lights every bulb!', 'openCircuit') +
           _wondCard('👾', 'Comet Muncher', 'Munch every star in the maze — dodge the UFOs!', 'openComet') +
           _wondCard('💣', 'Blast Bot', 'Bomb the crates and zap the drones — mind the blast! ' + BB_LEVELS.length + ' levels.', 'openBlastBot') +
           _wondCard('🫧', 'Bubble Blast', 'Trap gremlins in bubbles, then pop them platform-style! ' + BU_LEVELS.length + ' levels.', 'openBubble') +
-          _wondCard('🎯', 'Pop-a-Tic-Tac-Toe', 'Roll 4 balls onto the board, FIX the ones you like, reroll the rest — chase the jackpot pattern!', 'openPopTicTacToe') +
+          _wondCard('🎯', 'Pop-a-Tic-Tac-Toe', 'Roll 4 balls onto the board, FIX the ones you like, reroll the rest — chase the jackpot pattern!', 'openPopTicTacToe', true) +
           _wondCard('🎳', 'Star Lanes Bowling', 'A full 10-frame game — stop the marker to set your aim, power & spin. Strikes pay +100 Gold!', 'openBowling') +
           _wondCard('🎵', 'Cosmic Rhythm', 'Hit the falling notes on the beat — ' + RHY_LEVELS.length + ' levels, faster and denser as you climb!', 'openRhythm') +
           _wondCard('🐍', 'Snake', 'Steer the classic snake — eat food to grow, avoid the walls and your own tail! ' + SN_LEVELS.length + ' levels, faster each time.', 'openSnake') +
@@ -363,7 +371,8 @@
         '<span class="rank-val">Level ' + row.level + '</span></div>';
     }).join('');
     var gameRows = (data.games || []).map(function (g){
-      var best = data.byGame && data.byGame[g.id];
+      var top = (data.byGameTop10 && data.byGameTop10[g.id]) || [];
+      var best = top[0];
       return '<div class="rank-row"><span class="rank-name">' + g.label + '</span>' +
         '<span class="rank-val">' + (best ? (_rankEsc(best.playerName) + ' — <b>' + best.score + '</b>') : '—') + '</span></div>';
     }).join('');
@@ -371,45 +380,68 @@
       '<div class="rank-section"><h3>🎮 Top Minigame Scores</h3>' + gameRows + '</div>';
   }
 
-  // ---------- Tile Ball: level select ----------
-  function wondOpenTileLevels(){
-    stopTileBall();
-    var view = wondShowView();
+  // ---------- Shared per-game welcome screen ----------
+  // Every non-gambling Wonderland game shows this instead of a difficulty/level picker: icon,
+  // title, description, that game's own top-10 leaderboard (from the SAME /api/cloud/leaderboard
+  // endpoint the Ranking screen uses), and a single Play button. wonderPlay(playFn) charges the
+  // pass and hands off straight into that game's own level-1 start function — there is no picker
+  // to choose a starting level or difficulty; every paid run always begins at level 1.
+  function gameWelcome(gameId, icon, title, desc, playFn){
+    var view = document.getElementById('wonderlandView');
     if (!view) return;
-    view.innerHTML = wondTileLevelSelectHtml();
+    document.querySelectorAll('.view-container').forEach(function (v){ v.classList.remove('active'); });
+    view.classList.add('active');
+    var m = (typeof wgMini === 'function') ? wgMini(gameId) : { highScore: 0 };
+    view.innerHTML =
+      '<div class="wond-board">' +
+        '<div class="wond-head"><h2 class="wond-title"><span class="wond-wheel">' + icon + '</span> ' + title + '</h2>' +
+          '<p class="wond-sub">' + desc + '</p></div>' +
+        '<div class="wond-passrow"><span class="wond-passes">🏆 Your best: <b>' + (m.highScore || 0) + '</b></span>' +
+          '<span class="wond-hint">Always starts at level 1 — see how far you can get!</span></div>' +
+        '<div id="gwBoard" class="rank-body"><p class="wond-sub">Loading leaderboard…</p></div>' +
+        '<div class="wond-footer">' +
+          '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'' + playFn + '\')" data-tooltip="' + title + ' — costs 1 Wonderland Pass.">▶ Play! (1 🎟️)</button>' +
+          '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Lobby</button>' +
+        '</div>' +
+      '</div>';
+    _gwLoadBoard(gameId);
   }
 
-  function wondTileLevelSelectHtml(){
-    var tb = wondTB();
-    var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
-    var cards = WOND_LEVELS.map(function(lv, i){
-      var unlocked = i < tb.unlockedCount;
-      var cleared = !!tb.firstCleared[i];
-      var best = tb.best[i] ? Math.round(tb.best[i] * 100) + '%' : '—';
-      var badge = cleared ? '<span class="wond-lvl-badge wond-lvl-clear">✔ Cleared</span>'
-                          : (unlocked ? '<span class="wond-lvl-badge">New</span>' : '<span class="wond-lvl-badge wond-lvl-lock">🔒 Locked</span>');
-      var btn = unlocked
-        ? '<button type="button" class="btn btn-primary wond-lvl-play" onclick="startTileBall(' + i + ')" data-tooltip="Play ' + lv.name + ' — costs 1 Wonderland Pass.">Play (1 🎟️)</button>'
-        : '<button type="button" class="btn btn-ghost wond-lvl-play" disabled>Clear the level before to unlock</button>';
-      return '<div class="wond-lvl-card' + (unlocked ? '' : ' wond-lvl-locked') + '">' +
-        '<div class="wond-lvl-num">Level ' + (i + 1) + '</div>' +
-        '<div class="wond-lvl-name">' + lv.name + '</div>' +
-        badge +
-        '<div class="wond-lvl-meta">' + lv.cols + '×' + lv.rows + ' tiles · ' + lv.balls + ' balls · best ' + best + '</div>' +
-        btn +
-      '</div>';
-    }).join('');
-    return '' +
-      '<div class="wond-board">' +
-        '<div class="wond-head">' +
-          '<h2 class="wond-title"><span class="wond-wheel">🧱</span> Tile Ball — Choose a Level</h2>' +
-          '<p class="wond-sub">Clear every tile to unlock the next level. Higher levels pay bigger prizes!</p>' +
-        '</div>' +
-        '<div class="wond-passrow"><span class="wond-passes">🎟️ Passes: <b>' + passes + '</b></span>' +
-          '<span class="wond-hint">Each play costs 1 pass.</span></div>' +
-        '<div class="wond-lvl-grid">' + cards + '</div>' +
-        '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the Wonderland lobby.">← Lobby</button></div>' +
-      '</div>';
+  function _gwLoadBoard(gameId){
+    var sess = (typeof authSession === 'function') ? authSession() : null;
+    var box = document.getElementById('gwBoard');
+    if (!sess || !sess.token){
+      if (box) box.innerHTML = '<p class="wond-sub">Sign in with a cloud account to see the leaderboard.</p>';
+      return;
+    }
+    fetch('/api/cloud/leaderboard', { headers: { Authorization: 'Bearer ' + sess.token } })
+      .then(function (res){ return res.json().then(function (data){ return { status: res.status, data: data }; }); })
+      .then(function (r){
+        var b = document.getElementById('gwBoard'); if (!b) return;
+        if (!r.data || !r.data.ok){ b.innerHTML = '<p class="wond-sub">' + ((r.data && r.data.error) || 'Could not load the leaderboard.') + '</p>'; return; }
+        var top = (r.data.byGameTop10 && r.data.byGameTop10[gameId]) || [];
+        if (!top.length){ b.innerHTML = '<p class="wond-sub">No scores yet — be the first!</p>'; return; }
+        b.innerHTML = top.map(function (row, i){
+          return '<div class="rank-row"><span class="rank-n">#' + (i + 1) + '</span>' +
+            '<span class="rank-name">' + _rankEsc(row.playerName) + '</span>' +
+            '<span class="rank-val">Lv ' + row.level + ' · <b>' + row.score + '</b></span></div>';
+        }).join('');
+      })
+      .catch(function (){
+        var b = document.getElementById('gwBoard'); if (!b) return;
+        b.innerHTML = '<p class="wond-sub">Network error — is the game deployed to Cloudflare?</p>';
+      });
+  }
+
+  // ---------- Tile Ball: level select ----------
+  // Free to view (no pass charge) — the welcome screen's own Play button is what charges via
+  // wonderPlay('_tbStartRun'). No more locked level-select grid: every run always starts at
+  // level 1 and free-advances through WOND_LEVELS within that one paid run (see _tbGoToLevel).
+  function wondOpenTileLevels(){
+    stopTileBall();
+    gameWelcome('tileBall', '🧱', 'Tile Ball',
+      'Bounce the ball and smash every tile! ' + WOND_LEVELS.length + ' levels of rising difficulty — clear one to advance for free. Higher levels pay bigger prizes!',
+      '_tbStartRun');
   }
 
   // ---------- Tile Ball: screens ----------
@@ -418,7 +450,7 @@
       '<div class="wond-board wond-game">' +
         '<div class="wond-game-top">' +
           '<h2 class="wond-title wond-title-sm">🧱 Tile Ball — L' + (WOND.levelIdx + 1) + ' ' + (WOND.level ? WOND.level.name : '') + '</h2>' +
-          '<button type="button" class="btn btn-ghost" onclick="wondOpenTileLevels()" data-tooltip="Leave this game and pick a level. Leaving mid-game skips the prize.">← Levels</button>' +
+          '<button type="button" class="btn btn-ghost" onclick="wondOpenTileLevels()" data-tooltip="Quit this run. Leaving mid-game skips the prize.">✕ Quit</button>' +
         '</div>' +
         '<div class="wond-hud" id="wondHud"></div>' +
         '<div class="wond-canvas-wrap">' +
@@ -446,23 +478,26 @@
     return parts.join('');
   }
 
-  function wondResultHtml(f, destroyed, r){
+  // runOver = this ends the whole paid run (failed to clear, or just cleared the LAST level);
+  // otherwise the level was cleared and the run continues — the "Next Level" button advances
+  // for FREE (already paid for by this run's single pass), matching the other Wonderland games.
+  function wondResultHtml(f, destroyed, r, runOver, newHigh){
     var pct = Math.round(f * 100);
-    var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
     var idx = WOND.levelIdx, lv = WOND.level || WOND_LEVELS[idx];
     var cleared = f >= 1.0;
-    var headline = cleared ? '🌟 LEVEL CLEAR! 🌟' : (f >= 0.4 ? '🎉 Nice run!' : '💪 Nice try!');
+    var headline = !runOver ? '🌟 LEVEL CLEAR! 🌟' : (cleared ? '🌟 ALL LEVELS CLEARED! 🌟' : (f >= 0.4 ? '🎉 Nice run!' : '💪 Nice try!'));
     var bonusLine = r.firstClearBonus ? '<p class="wond-sub">🎉 First clear bonus awarded!</p>'
-                  : (r.repeat ? '<p class="wond-sub">↩ Replay clear — reduced prize (no farming!).</p>' : '');
+                  : (r.repeat ? '<p class="wond-sub">↩ Repeat clear — reduced prize (no farming!).</p>' : '');
     var nextIdx = idx + 1;
-    var nextBtn = (cleared && nextIdx < WOND_LEVELS.length)
-      ? '<button type="button" class="btn btn-primary" onclick="startTileBall(' + nextIdx + ')" data-tooltip="Advance to the next, harder level.">▶ Next Level: ' + WOND_LEVELS[nextIdx].name + ' (1 🎟️)</button>'
-      : '';
+    var footerMain = !runOver
+      ? '<button type="button" class="btn btn-primary" onclick="_tbGoToLevel(' + nextIdx + ')" data-tooltip="Advance to the next, harder level — already paid for this run.">▶ Next Level: ' + WOND_LEVELS[nextIdx].name + '</button>'
+      : '<button type="button" class="btn btn-primary" onclick="wondOpenTileLevels()" data-tooltip="Back to Tile Ball\'s welcome screen.">↻ Play Again</button>';
     return '' +
       '<div class="wond-board">' +
         '<div class="wond-head">' +
-          '<h2 class="wond-title">' + headline + '</h2>' +
+          '<h2 class="wond-title">' + headline + (newHigh ? ' 🏆' : '') + '</h2>' +
           '<p class="wond-sub">Level ' + (idx + 1) + ' · ' + lv.name + ' — smashed <b>' + destroyed + ' / ' + WOND.tilesTotal + '</b> tiles (' + pct + '%) — ' + wondTierLabel(f) + '</p>' +
+          (runOver ? '<p class="wond-sub">Run score: <b>' + WOND.runScore + '</b></p>' : '') +
           bonusLine +
         '</div>' +
         '<div class="wond-result-card">' +
@@ -470,34 +505,31 @@
           '<div class="wond-prizes">' + wondPrizeChips(r) + '</div>' +
         '</div>' +
         '<div class="wond-footer">' +
-          nextBtn +
-          '<button type="button" class="btn btn-ghost" onclick="startTileBall(' + idx + ')" data-tooltip="Replay this level (repeat clears pay less).">↻ Replay (1 🎟️ — you have ' + passes + ')</button>' +
-          '<button type="button" class="btn btn-ghost" onclick="wondOpenTileLevels()" data-tooltip="Pick another level.">🎚️ Level Select</button>' +
+          footerMain +
+          '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';
   }
 
   // ---------- Tile Ball: lifecycle ----------
-  function startTileBall(levelIdx){
+  // Entry point for the welcome screen's Play button (wonderPlay('_tbStartRun') already charged
+  // the pass) — always begins a fresh run at level 1. No more per-level pass charges or unlock
+  // gating; clearing a level advances to the next one for free within the same run (_tbGoToLevel).
+  function _tbStartRun(){
+    WOND.runScore = 0;
+    var tb = wondTB();
+    tb.plays = (tb.plays || 0) + 1;
+    if (typeof updateStats === 'function') updateStats();
+    _tbGoToLevel(0);
+  }
+
+  // Renders + initializes a given level — no pass charge, no unlock check. Called by
+  // _tbStartRun (level 0) and by the result screen's free "Next Level" advance.
+  function _tbGoToLevel(levelIdx){
     if (WOND.running) return;                                 // ignore double-clicks
     var view = document.getElementById('wonderlandView');
     if (!view) return;                                        // container not wired yet
     levelIdx = (typeof levelIdx === 'number' && levelIdx >= 0 && levelIdx < WOND_LEVELS.length) ? levelIdx : 0;
-    var tb = wondTB();
-    if (levelIdx >= tb.unlockedCount){
-      if (typeof showToast === 'function') showToast('Clear the earlier level first to unlock this one!');
-      if (typeof playSfx === 'function') playSfx('wrong');
-      return;
-    }
-    var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
-    if (passes < 1){
-      if (typeof showToast === 'function') showToast('You need a Wonderland Pass! Finish a planet to earn some.');
-      if (typeof playSfx === 'function') playSfx('wrong');
-      return;
-    }
-    state.wonderPasses = passes - 1;
-    tb.plays = (tb.plays || 0) + 1;
-    if (typeof updateStats === 'function') updateStats();     // HUD refresh + autosave
     WOND.levelIdx = levelIdx;
     WOND.level = WOND_LEVELS[levelIdx];
     wondShowView();
@@ -561,15 +593,21 @@
     var wasFirstClear = !tb.firstCleared[idx];
     var r = wondLevelReward(idx, f, wasFirstClear);
     applyWonderReward(r);
-    // Record best fraction + unlock the next level on a full clear.
+    var cleared = f >= 1;
     if (!tb.best[idx] || f > tb.best[idx]) tb.best[idx] = f;
-    if (f >= 1){
-      tb.firstCleared[idx] = true;
-      if (idx + 1 < WOND_LEVELS.length && tb.unlockedCount < idx + 2) tb.unlockedCount = idx + 2;
-    }
+    if (cleared) tb.firstCleared[idx] = true;
+    WOND.runScore += destroyed * 5 + (cleared ? 300 * (idx + 1) : 0);
     if (typeof saveGame === 'function') saveGame();
+
+    var lastLevel = idx + 1 >= WOND_LEVELS.length;
     var view = document.getElementById('wonderlandView');
-    if (view) view.innerHTML = wondResultHtml(f, destroyed, r);
+    if (cleared && !lastLevel){
+      if (view) view.innerHTML = wondResultHtml(f, destroyed, r, false);   // free-advance, run continues
+      return;
+    }
+    // Run over — failed to clear, or just cleared the LAST level.
+    var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('tileBall', WOND.runScore, idx + 1) : false;
+    if (view) view.innerHTML = wondResultHtml(f, destroyed, r, true, newHigh);
   }
 
   // ---------- Tile Ball: setup helpers ----------

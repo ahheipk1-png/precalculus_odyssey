@@ -13,20 +13,24 @@
 
   // ---------- shared mini-game helpers ----------
   function wgMini(id){
-    if (typeof state !== 'object' || !state) return { highScore: 0, plays: 0, bestByDiff: {} };
+    if (typeof state !== 'object' || !state) return { highScore: 0, plays: 0, bestByDiff: {}, bestLevel: 0 };
     if (!state.miniGames) state.miniGames = {};
     var m = state.miniGames[id];
-    if (!m || typeof m !== 'object'){ m = { highScore: 0, plays: 0, bestByDiff: {} }; state.miniGames[id] = m; }
+    if (!m || typeof m !== 'object'){ m = { highScore: 0, plays: 0, bestByDiff: {}, bestLevel: 0 }; state.miniGames[id] = m; }
     if (!m.bestByDiff) m.bestByDiff = {};
+    if (!m.bestLevel) m.bestLevel = 0;
     return m;
   }
-  // Record a run; returns true if it's a new personal best. Persists via saveGame.
-  function wgRecordScore(id, score, diff){
+  // Record a run; returns true if it's a new personal best. Persists via saveGame. `level` is
+  // whatever level/reach number that run achieved — snapshotted into m.bestLevel alongside
+  // m.highScore whenever a new high score lands, so the global leaderboard can show "Lv X · score Y"
+  // (see functions/api/cloud/leaderboard.js) without a separate tracked field per game.
+  function wgRecordScore(id, score, level){
     var m = wgMini(id);
     m.plays = (m.plays || 0) + 1;
     var isHigh = score > (m.highScore || 0);
-    if (isHigh) m.highScore = score;
-    if (diff && score > (m.bestByDiff[diff] || 0)) m.bestByDiff[diff] = score;
+    if (isHigh){ m.highScore = score; m.bestLevel = level || 1; }
+    if (level && score > (m.bestByDiff[level] || 0)) m.bestByDiff[level] = score;
     if (typeof saveGame === 'function') saveGame();
     return isHigh;
   }
@@ -56,16 +60,23 @@
   // Gone Fishin' 🎣 — catch the fish whose number matches the rule.
   // ===========================================================================
   var FISH_MAX_LEVEL = 5;
-  var FISH = { active: false, timer: 0, spawner: 0, score: 0, combo: 0, best: 0, diff: 'easy', rule: null, catches: 0, wrong: 0, seq: 0, level: 1, target: 0 };
+  var FISH = { active: false, timer: 0, spawner: 0, score: 0, combo: 0, best: 0, rule: null, catches: 0, wrong: 0, seq: 0, level: 1, target: 0 };
 
   function fishConf(diff){
     if (diff === 'hard')   return { min: 1, max: 30, dur: 3.4, spawn: 560 };
     if (diff === 'normal') return { min: 1, max: 20, dur: 4.6, spawn: 720 };
     return { min: 1, max: 12, dur: 6.2, spawn: 900 };
   }
+  // No more difficulty picker — the run itself ramps the difficulty tier as levels climb.
+  function fishDiffForLevel(level){
+    if (level >= 4) return 'hard';
+    if (level >= 3) return 'normal';
+    return 'easy';
+  }
   // Level-based: each level you must catch `target` matching fish. Higher levels spawn faster fish
-  // more often. Chosen difficulty sets the base speed/number-range.
-  function fishLevelConf(diff, level){
+  // more often; the underlying difficulty tier also rises with the level (fishDiffForLevel).
+  function fishLevelConf(level){
+    var diff = fishDiffForLevel(level);
     var base = fishConf(diff), lv = Math.max(1, level);
     return { min: base.min, max: base.max,
       dur: Math.max(2.2, base.dur - (lv - 1) * 0.5),
@@ -116,36 +127,26 @@
     return rand(conf.min, conf.max);
   }
 
+  // Free to view (no pass charge) — the welcome screen's Play button charges via
+  // wonderPlay('fishStart'). No more easy/normal/hard picker: every run starts at level 1 and
+  // the difficulty tier itself rises with the level (fishDiffForLevel).
   function openFishin(){
     wgStopAll();
-    var view = wgShowView();
-    if (!view) return;
-    var m = wgMini('fishin');
-    view.innerHTML =
-      '<div class="wond-board">' +
-        '<div class="wond-head"><h2 class="wond-title"><span class="wond-wheel">🎣</span> Gone Fishin’</h2>' +
-          '<p class="wond-sub">Catch only the fish whose number matches the rule!</p></div>' +
-        '<div class="wond-passrow"><span class="wond-passes">🏆 High score: <b>' + (m.highScore || 0) + '</b></span>' +
-          '<span class="wond-hint">Free to play · tap fish · clear ' + FISH_MAX_LEVEL + ' levels</span></div>' +
-        '<div class="wg-diff-row">' +
-          '<button type="button" class="btn btn-primary" onclick="fishStart(\'easy\')" data-tooltip="Slow fish, simple rules.">🟢 Easy</button>' +
-          '<button type="button" class="btn btn-primary" onclick="fishStart(\'normal\')" data-tooltip="Faster fish, more rules.">🟡 Normal</button>' +
-          '<button type="button" class="btn btn-primary" onclick="fishStart(\'hard\')" data-tooltip="Fast shoals — best Cash.">🔴 Hard</button>' +
-        '</div>' +
-        '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the Wonderland lobby.">← Lobby</button></div>' +
-      '</div>';
+    gameWelcome('fishin', '🎣', "Gone Fishin'",
+      'Catch only the fish whose number matches the rule! ' + FISH_MAX_LEVEL + ' levels — fish get faster and rules trickier as you climb.',
+      'fishStart');
   }
 
-  function fishStart(diff){
+  function fishStart(){
     wgStopAll();
     var view = document.getElementById('wonderlandView');
     if (!view) return;
-    FISH.active = true; FISH.diff = diff; FISH.score = 0; FISH.combo = 0;
+    FISH.active = true; FISH.score = 0; FISH.combo = 0;
     FISH.wrong = 0; FISH.seq = 0; FISH.level = 1;
     FISH.best = wgMini('fishin').highScore || 0;
     view.innerHTML =
       '<div class="wond-board wond-game">' +
-        '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🎣 Gone Fishin’ — ' + diff.charAt(0).toUpperCase() + diff.slice(1) + '</h2>' +
+        '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🎣 Gone Fishin’</h2>' +
           '<button type="button" class="btn btn-ghost" onclick="openFishin()" data-tooltip="Quit this run (progress is not saved).">✕ Quit</button></div>' +
         '<div class="wond-hud" id="fishHud"></div>' +
         '<div class="fish-rule" id="fishRule"></div>' +
@@ -159,10 +160,10 @@
   // Sets up (or advances to) one level: fresh rule + target, faster spawns, resets the catch counter.
   function fishStartLevel(level){
     FISH.level = level;
-    var lc = fishLevelConf(FISH.diff, level);
+    var lc = fishLevelConf(level);
     FISH.target = lc.target;
     FISH.catches = 0;
-    FISH.rule = fishGenRule(FISH.diff);
+    FISH.rule = fishGenRule(fishDiffForLevel(level));
     fishUpdateRule();
     fishUpdateHud();
     if (FISH.spawner){ clearInterval(FISH.spawner); FISH.spawner = 0; }
@@ -182,7 +183,7 @@
     if (!FISH.active) return;
     var pond = document.getElementById('fishPond');
     if (!pond) return;
-    var conf = fishLevelConf(FISH.diff, FISH.level);
+    var conf = fishLevelConf(FISH.level);
     var n = fishNumber(FISH.rule, conf);
     var id = 'fish' + (FISH.seq++);
     var top = 8 + Math.floor(Math.random() * 72);              // % of pond height
@@ -234,13 +235,13 @@
       '<span class="wond-chip">🔥 Combo: <b>' + FISH.combo + '</b></span>';
   }
 
-  // Cash-only reward (mini-games aren't a gear farm), modelled on qbfReward. Replaces the deleted
-  // bullReward, which used to throw a ReferenceError here and break the whole end screen.
-  function fishReward(score, diff, newHigh){
-    var rate = diff === 'hard' ? 0.14 : (diff === 'normal' ? 0.10 : 0.07);
+  // Cash-only reward (mini-games aren't a gear farm), modelled on qbfReward. Rate scales with the
+  // level reached — higher levels pay better, matching every other Wonderland game.
+  function fishReward(score, level, newHigh){
+    var rate = 0.07 + level * 0.014;
     var r = { coins: Math.max(0, Math.round(score * rate)) };
     if (newHigh){ r.coins += 25; r.newHigh = true; }
-    if (diff === 'hard' && newHigh && score >= 400){ r.chips = { cpu: 1 }; }
+    if (level >= FISH_MAX_LEVEL && newHigh && score >= 400){ r.chips = { cpu: 1 }; }
     return r;
   }
 
@@ -251,25 +252,24 @@
   }
 
   function fishEnd(allCleared){
-    var diff = FISH.diff, wrong = FISH.wrong, level = FISH.level;
+    var level = FISH.level;
     // Score gets a level bonus so clearing further pays more.
     var score = FISH.score + (allCleared ? 200 : level * 30);
     fishStop();
-    var newHigh = wgRecordScore('fishin', score, diff);
-    var r = fishReward(score, diff, newHigh);
+    var newHigh = wgRecordScore('fishin', score, level);
+    var r = fishReward(score, level, newHigh);
     wgPayReward(r);
     var view = document.getElementById('wonderlandView');
     if (!view) return;
     view.innerHTML =
       '<div class="wond-board">' +
         '<div class="wond-head"><h2 class="wond-title">' + (allCleared ? '🌟 ALL LEVELS CLEARED!' : '🎣 Nice fishing!') + (newHigh ? ' 🏆' : '') + '</h2>' +
-          '<p class="wond-sub">Cleared <b>' + (allCleared ? FISH_MAX_LEVEL : (level - 1)) + ' / ' + FISH_MAX_LEVEL + '</b> levels · score <b>' + score + '</b> · ' + diff + (newHigh ? ' · new best!' : '') + '</p></div>' +
+          '<p class="wond-sub">Cleared <b>' + (allCleared ? FISH_MAX_LEVEL : (level - 1)) + ' / ' + FISH_MAX_LEVEL + '</b> levels · score <b>' + score + '</b>' + (newHigh ? ' · new best!' : '') + '</p></div>' +
         '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + (r.coins || 0) + '</span>' +
           (r.chips && r.chips.cpu ? '<span class="wond-chip wond-prize-chip">🖥️ CPU ×' + r.chips.cpu + '</span>' : '') + '</div></div>' +
         '<div class="wond-footer">' +
-          '<button type="button" class="btn btn-primary" onclick="fishStart(\'' + diff + '\')" data-tooltip="Play this difficulty again.">↻ Play again</button>' +
-          '<button type="button" class="btn btn-ghost" onclick="openFishin()" data-tooltip="Change difficulty.">🎣 Difficulty</button>' +
+          '<button type="button" class="btn btn-primary" onclick="openFishin()" data-tooltip="Back to Gone Fishin\'s welcome screen.">↻ Play Again</button>' +
           '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';

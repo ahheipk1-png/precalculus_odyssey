@@ -62,7 +62,15 @@
 
   function memPairs(level){ var c = MEM_LEVELS[level] || MEM_LEVELS[0]; return c.cols * c.rows / 2; }
 
+  // Free to view (no pass charge) — the welcome screen's Play button charges via
+  // wonderPlay('_memStartRun').
   function openMemory(){
+    gameWelcome('memory', '🃏', 'Star Match',
+      'Memorise the board, then match every cosmic pair! ' + MEM_LEVELS.length + ' levels, less preview time each round.',
+      '_memStartRun');
+  }
+
+  function _memStartRun(){
     MEM.level = 0; MEM.totalScore = 0;
     _memSetup();
   }
@@ -175,7 +183,7 @@
         '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + coins + '</span></div></div>' +
         '<div class="wond-footer" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
-          '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openMemory\')" data-tooltip="Costs 1 Wonderland Pass — starts back at level 1.">↻ Play again (1 🎟️)</button>' +
+          '<button type="button" class="btn btn-primary" onclick="openMemory()" data-tooltip="Back to Star Match\'s welcome screen.">↻ Play Again</button>' +
           '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';
@@ -254,7 +262,15 @@
     return bad;
   }
 
+  // Free to view (no pass charge) — the welcome screen's Play button charges via
+  // wonderPlay('_sudStartRun').
   function openSudoku(){
+    gameWelcome('sudoku', '🔢', 'Mini Sudoku',
+      'Drag numbered tiles so every row, column &amp; box is complete. ' + SUD_LEVELS.length + ' levels — grows from a 4×4 warm-up to a full 9×9!',
+      '_sudStartRun');
+  }
+
+  function _sudStartRun(){
     SUD.level = 0; SUD.totalScore = 0;
     _sudSetup();
   }
@@ -384,7 +400,7 @@
         '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + coins + '</span></div></div>' +
         '<div class="wond-footer" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
-          '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openSudoku\')" data-tooltip="Costs 1 Wonderland Pass — starts back at level 1.">↻ Play again (1 🎟️)</button>' +
+          '<button type="button" class="btn btn-primary" onclick="openSudoku()" data-tooltip="Back to Mini Sudoku\'s welcome screen.">↻ Play Again</button>' +
           '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';
