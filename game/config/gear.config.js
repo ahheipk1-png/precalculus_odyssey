@@ -23,6 +23,13 @@
     sword: { atk: 42, spd: 5, icon: '⚔️' }
   };
 
+  // Sword prices per rarity. The gaps WIDEN sharply at each tier (≈ doubling) so that
+  // fully UPGRADING your current sword (cheap — ~15% of its price per +1, ~45% for a full +3)
+  // is the sensible bridge while you save for the next, far pricier tier. The old formula
+  // (650×rarity-mult) clustered the five legendaries at ~1000-1820 — gaps of only ~260 —
+  // so buying up always beat upgrading, making upgrades pointless.
+  var WEAPON_COST = { common: 150, legendary: 700, archive: 1600, stellar: 3200, rift: 6000, odyssey: 10000 };
+
   // Compact weapon builder → full def (pure data assembly at load).
   function _wpn(id, name, cat, el, rar) {
     var c = WEAPON_CATS[cat], r = GEAR_RARITY[rar];
@@ -31,7 +38,7 @@
       power: Math.round(c.atk * r.mult),
       speed: c.spd,
       crit: 5 + Math.round((r.mult - 1) * 8),
-      cost: Math.round(650 * r.mult),
+      cost: WEAPON_COST[rar] || Math.round(650 * r.mult),
       chipSlots: 3, uniqueAnim: true,
       owned: false, upgradeLvl: 0,
       desc: name + ' — a ' + r.label + ' ' + cat + ' of ' + el + '.'
@@ -40,8 +47,8 @@
 
   var STARTER_WEAPONS = [
     { id: 'wood_sword',     name: 'Wooden Sword',   category: 'sword', element: 'wood',  rarity: 'common', power: 2,  speed: 3, crit: 2, cost: 0,   chipSlots: 0, owned: true,  upgradeLvl: 0, desc: 'A humble training sword.' },
-    { id: 'bronze_dagger',  name: 'Bronze Dagger',  category: 'sword', element: 'metal', rarity: 'common', power: 7,  speed: 6, crit: 7, cost: 40,  chipSlots: 0, owned: false, upgradeLvl: 0, desc: 'Quick and light.' },
-    { id: 'iron_broadsword',name: 'Iron Broadsword',category: 'sword', element: 'metal', rarity: 'common', power: 15, speed: 3, crit: 4, cost: 100, chipSlots: 0, owned: false, upgradeLvl: 0, desc: 'Heavy and reliable.' }
+    { id: 'bronze_dagger',  name: 'Bronze Dagger',  category: 'sword', element: 'metal', rarity: 'common', power: 7,  speed: 6, crit: 7, cost: 60,  chipSlots: 0, owned: false, upgradeLvl: 0, desc: 'Quick and light.' },
+    { id: 'iron_broadsword',name: 'Iron Broadsword',category: 'sword', element: 'metal', rarity: 'common', power: 15, speed: 3, crit: 4, cost: 220, chipSlots: 0, owned: false, upgradeLvl: 0, desc: 'Heavy and reliable.' }
   ];
 
   // ---- The 5 legendary swords (one per Wu Xing element) ----

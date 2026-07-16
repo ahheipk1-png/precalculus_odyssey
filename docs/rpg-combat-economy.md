@@ -126,6 +126,16 @@ keeps only the `sword` drawer (`weaponSVG` already falls back to it). Save-compa
 `reconcileGear` drops removed weapon ids from a loaded save and `_validEquip` re-homes a removed
 equipped weapon to `wood_sword`.
 
+**Widened sword price ladder (upgrade-first economy).** Sword costs now come from a per-rarity table
+`WEAPON_COST` (`gear.config.js`) instead of the old `650×rarity-mult` formula that clustered the five
+legendaries at ~1000-1820 (gaps of only ~260). The ladder is **0 → 60 → 220 → 700 → 1600 → 3200 →
+6000** (the two legendaries share 700 as an element sidegrade). The gaps widen so that **fully
+upgrading your current sword (~45% of its price for a +3) is always cheaper than the gap to the next
+tier** — verified at every step (e.g. Iron→Axiom upgrade 123 vs gap 480; Gravity→Tidal 744 vs 1600).
+A maxed sword also overshoots the next tier's base AP (maxed Axiom 113 > Gravity base 82), so upgrading
+carries you into the next power band while you save for the real jump. Only weapon costs changed;
+shield/armor/shoes still use their own `Math.round(BASE×mult)` formulas.
+
 **Distinct monster art.** `getMonsterArtMarkup` used to clone one shared ice-creature SVG tinted by
 difficulty — every monster looked the same. It now takes the **monster object** and renders a distinct
 **emoji creature** per base id via the `MONSTER_ART` map (30 entries, rooms 1-10 × 3 ranks; higher
