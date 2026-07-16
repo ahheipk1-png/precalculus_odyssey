@@ -126,15 +126,26 @@ keeps only the `sword` drawer (`weaponSVG` already falls back to it). Save-compa
 `reconcileGear` drops removed weapon ids from a loaded save and `_validEquip` re-homes a removed
 equipped weapon to `wood_sword`.
 
-**Widened sword price ladder (upgrade-first economy).** Sword costs now come from a per-rarity table
-`WEAPON_COST` (`gear.config.js`) instead of the old `650×rarity-mult` formula that clustered the five
-legendaries at ~1000-1820 (gaps of only ~260). The ladder is **0 → 60 → 220 → 700 → 1600 → 3200 →
-6000** (the two legendaries share 700 as an element sidegrade). The gaps widen so that **fully
-upgrading your current sword (~45% of its price for a +3) is always cheaper than the gap to the next
-tier** — verified at every step (e.g. Iron→Axiom upgrade 123 vs gap 480; Gravity→Tidal 744 vs 1600).
-A maxed sword also overshoots the next tier's base AP (maxed Axiom 113 > Gravity base 82), so upgrading
-carries you into the next power band while you save for the real jump. Only weapon costs changed;
-shield/armor/shoes still use their own `Math.round(BASE×mult)` formulas.
+**Widened sword price + power ladders (upgrade-first economy).** Swords now take both their **cost** and
+their **attack power** from per-rarity tables (`WEAPON_COST` + `WEAPON_POWER` in `gear.config.js`)
+instead of the shared `650×rarity-mult` / `42×rarity-mult` formulas, which had clustered the five
+legendaries at ~1000-1820 cash (gaps ~260) and 65/82/99/118 AP (gaps ~17). The new ladders:
+
+| Sword | Rarity | AP | Cost |
+|---|---|---|---|
+| Wooden / Bronze / Iron | common | 2 / 8 / 20 | 0 / 60 / 220 |
+| Axiom Blade · Verdant Recursion | legendary | 55 | 700 |
+| Gravity Keystone | archive | 95 | 1600 |
+| Tidal Paradox | stellar | 150 | 3200 |
+| Solar Meridian | rift | 230 | 6000 |
+
+Both gaps **widen** at each tier. Cost: fully upgrading (~45% of price for a +3) is always cheaper than
+the gap to the next sword (verified at every step — Iron→Axiom upgrade 123 vs gap 480; Gravity→Tidal
+744 vs 1600). Power: a maxed sword lands about at the **next tier's base** AP (maxed Axiom 97 ≈ Gravity
+95; maxed Gravity 167 > Tidal 150; maxed Tidal 264 > Solar 230) while the next tier keeps a far higher
+ceiling — so upgrading carries you into the next power band and buying up is the bigger, later leap.
+Only **weapons** changed; shield/armor/shoes still use their own `Math.round(BASE×mult)` formulas.
+(The two legendaries share 55 AP / 700 cash as an element sidegrade.)
 
 **Distinct monster art.** `getMonsterArtMarkup` used to clone one shared ice-creature SVG tinted by
 difficulty — every monster looked the same. It now takes the **monster object** and renders a distinct
