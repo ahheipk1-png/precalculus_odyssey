@@ -128,14 +128,19 @@ sequential level systems on 3 more games, and 3 new games (Bowling, Cosmic Rhyth
   onto ANY target's cell, not just its own). Verified end-to-end: 120/120 generated levels solved
   correctly through the real `sokoMove` engine (walking to each push position, then pushing). Stays
   sequential, no level-select.
-- **🎰 Star Slots: skill-stop ONE REEL AT A TIME.** `SL.stopTimers` is now indexed per-column (was one
-  flat array cleared all-at-once); `slStopOne(col)` cancels just that column's auto-stop timer and
-  locks it in immediately, leaving the other 4 reels spinning. 5 new `.sl-reel-stop` buttons
-  (`#slReelStop0..4`) sit above the grid; `slStop()` remains as a stop-ALL convenience. Also (same day):
-  3×5 grid (was 5×5), reworked odds (3+ matching from the left only — the old "any pair" rule was
-  removed, so the machine can genuinely lose), bigger jackpots (`SL_JP_CORNER`/`SL_JP_CROSS`), the
-  jackpot amount shown live in the HUD, and the bought paylines drawn as translucent SVG polylines
-  (`_slDrawLines`) over the grid so the player can see what they bought.
+- **🎰 Star Slots: pure skill-stop, no auto-stop, rebalanced odds, capped bet + spins/pass.** Reels
+  now spin FOREVER — the old per-column auto-stop timers (`SL.stopTimers`, scheduled at
+  700/1050/1400/1750/2100ms in `slSpin()`) are gone entirely; a column only ever locks in when the
+  player calls `slStopOne(col)` (one of the 5 `#slReelStop0..4` buttons) or `slStop()` (STOP ALL).
+  Odds were too rare at 3+-only (~3%/line), so `_slLineMatch()` now also pays a smaller 2-symbol run:
+  `SL_RUN_MULT = { 2: 0.5, 3: 1, 4: 4, 5: 15 }` (the 3/4/5 tiers are unchanged from before — only the
+  new 2-tier was added, keeping EV per unit bet ≈ 59% from line wins, not a money-printer). Max total
+  bet is capped at `SL_MAX_BET = 1000` (bet-per-line options `10/50/100/200` × line-count `1/3/5` can't
+  exceed it — `200 × 5 = 1000` exactly — plus a defensive runtime guard in `slSpin()`). One Wonderland
+  Pass now buys `SL_MAX_SPINS = 3` spins (`SL.spinsLeft`, shown in the HUD); once exhausted, `#slSpinBtn`
+  disables and `#slPlayAgainRow` appears with a "🔁 Play Again (1 🎟️ · 3 spins)" button that re-invokes
+  `wonderPlay('openSlots')` to buy another 3. `_slSettle()` rounds win amounts (`Math.round`) since the
+  new 0.5 multiplier can otherwise produce fractional cash.
 - **🎲 Hoo Hey How: skill-stop ONE DIE AT A TIME (`js/27-hoohey.js`).** Previously one "Stop" button
   jumped straight to the payout. Now each of the 3 dice has its own state (`_hhDieStopped[i]`), its own
   auto-stop fallback timer (`_hhDieTimers[i]`), and its own ⏹ button; `_hhStopDie(i)` locks that die's

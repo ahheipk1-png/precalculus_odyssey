@@ -1,19 +1,24 @@
   // ============================================================================
   // 🎰 Star Slots (module 41; uses the A2 shell from 39-puzzles.js)
-  // A 3-row × 5-column reel machine. Entry costs 1 Wonderland Pass (wonderPlay).
-  // Buy 1/3/5 paylines (rows + zig-zags; the active ones are drawn as translucent
-  // coloured lines over the grid) and a bet per line, then SPIN; a manual STOP
-  // hurries the reels. A line pays when 3+ MATCHING symbols run from the LEFT
-  // (×4 for 4, ×15 for 5). Two special SHAPES — the four corners, or the full
-  // centre cross — pay a big JACKPOT on top. The reel is weighted with cheap
-  // fruit fillers so most spins LOSE — it is beatable, not a money printer.
+  // A 3-row × 5-column reel machine. Entry costs 1 Wonderland Pass (wonderPlay);
+  // one pass buys SL_MAX_SPINS (3) spins, then the pass is spent — play again to
+  // buy another 3. Reels spin FOREVER (no auto-stop) until the player stops them,
+  // one at a time (⏹1-⏹5) or all at once (STOP ALL) — pure skill-stop, no waiting.
+  // Buy 1/3/5 paylines (rows + zig-zags, drawn as translucent coloured lines over
+  // the grid) and a bet per line (max total bet SL_MAX_BET = 1000), then SPIN. A
+  // line pays on 2+ MATCHING symbols from the LEFT (small — ×0.5), scaling up for
+  // 3/4/5 (×1/×4/×15). Two special SHAPES — the four corners, or the full centre
+  // cross — pay a big JACKPOT on top. The reel is weighted with cheap fruit
+  // fillers so it's still beatable, not a money printer, but wins land often
+  // enough to feel fair (2026-07-16: was 3+-only, which was too rare).
   // ============================================================================
-  var SL = { spinning: false, bet: 10, lineCount: 3, grid: [], finalGrid: null, stopped: [], tumble: 0, stopTimers: [] };
+  var SL = { spinning: false, bet: 10, lineCount: 3, grid: [], finalGrid: null, stopped: [], tumble: 0, spinsLeft: 3 };
   var SL_ROWS = 3, SL_COLS = 5;
+  var SL_MAX_SPINS = 3, SL_MAX_BET = 1000;
   // Weighted bag: cheap fruit fillers are common, premium symbols rare → most spins don't line up.
   var SL_REEL = ['🍒','🍒','🍒','🍒','🍒','🍋','🍋','🍋','🍋','🔔','🔔','🔔','🚀','🚀','⭐','⭐','🪐','👽','💎','7️⃣'];
   var SL_PAY = { '🍒': 2, '🍋': 3, '🔔': 4, '🚀': 6, '⭐': 8, '🪐': 12, '👽': 20, '💎': 40, '7️⃣': 100 };
-  var SL_RUN_MULT = { 3: 1, 4: 4, 5: 15 };       // multiplier for a 3 / 4 / 5-long run from the left
+  var SL_RUN_MULT = { 2: 0.5, 3: 1, 4: 4, 5: 15 };   // multiplier for a 2/3/4/5-long run from the left
   var SL_JP_CORNER = 250, SL_JP_CROSS = 1000;    // jackpot payouts = multiplier × total bet
   var SL_LINES = [
     { id: 'r0', label: 'Top',    cells: [[0,0],[0,1],[0,2],[0,3],[0,4]] },
@@ -37,6 +42,7 @@
 
   function openSlots(){
     SL.spinning = false; SL.bet = 10; SL.lineCount = 3; SL.grid = _slNewGrid(); SL.stopped = [false, false, false, false, false];
+    SL.spinsLeft = SL_MAX_SPINS;   // one Wonderland Pass buys 3 spins; "Play Again" buys 3 more
     var payRows = ['7️⃣', '💎', '👽', '🪐', '⭐', '🚀', '🔔', '🍋', '🍒'].map(function(s){
       return '<span class="wond-chip">' + s + s + s + ' ×<b>' + SL_PAY[s] + '</b></span>';
     }).join('');
@@ -52,17 +58,20 @@
           [1, 3, 5].map(function(n){ return '<button type="button" class="btn btn-secondary sl-opt sl-line" data-n="' + n + '" onclick="slSetLines(' + n + ')">' + n + '</button>'; }).join('') +
         '</div>' +
         '<div class="sl-row"><span class="sl-row-label">💵 Bet/line:</span>' +
-          [10, 50, 100].map(function(n){ return '<button type="button" class="btn btn-secondary sl-opt sl-bet" data-n="' + n + '" onclick="slSetBet(' + n + ')">💵' + n + '</button>'; }).join('') +
+          [10, 50, 100, 200].map(function(n){ return '<button type="button" class="btn btn-secondary sl-opt sl-bet" data-n="' + n + '" onclick="slSetBet(' + n + ')">💵' + n + '</button>'; }).join('') +
         '</div>' +
         '<div class="sl-row">' +
           '<button type="button" class="btn btn-primary sl-spin" id="slSpinBtn" onclick="slSpin()">🎰 SPIN!</button>' +
           '<button type="button" class="btn btn-secondary sl-stop" id="slStopBtn" onclick="slStop()" disabled>⏹ STOP ALL</button>' +
         '</div>' +
+        '<div class="sl-row" id="slPlayAgainRow" style="display:none">' +
+          '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openSlots\')" data-tooltip="Buy 3 more spins for 1 Wonderland Pass.">🔁 Play Again (1 🎟️ · 3 spins)</button>' +
+        '</div>' +
       '</div>' +
-      '<div class="sl-paytable"><span class="wond-chip">3+ from the left pays · ×4 for 4 · ×15 for 5</span>' + payRows +
+      '<div class="sl-paytable"><span class="wond-chip">2+ from the left pays a little · 3+ pays more · ×4 for 4 · ×15 for 5</span>' + payRows +
         '<span class="wond-chip sl-jp-chip">🎆 4 corners = JACKPOT ×' + SL_JP_CORNER + ' bet</span>' +
         '<span class="wond-chip sl-jp-chip">✨ full cross = MEGA ×' + SL_JP_CROSS + ' bet</span></div>',
-      'Buy lines (drawn as coloured lines on the grid), set a bet, SPIN, then tap ⏹1-⏹5 to stop one reel at a time (skill-stop) or STOP ALL to hurry every reel at once.');
+      'Buy lines (drawn as coloured lines on the grid), set a bet (max total 💵' + SL_MAX_BET + '), then SPIN — the reels spin until YOU stop them: tap ⏹1-⏹5 to stop one reel at a time (skill-stop) or STOP ALL to lock in every reel at once. ' + SL_MAX_SPINS + ' spins per Wonderland Pass.');
     slSetLines(3);
     slSetBet(10);
     _slRenderGrid();
@@ -74,6 +83,7 @@
     var hud = document.getElementById('slHud');
     if (hud) hud.innerHTML = '<span class="wond-chip">💵 Cash: <b>' + ((state && state.coins) || 0) + '</b></span>' +
       '<span class="wond-chip">🎯 Total bet: <b>💵' + _slTotalBet() + '</b></span>' +
+      '<span class="wond-chip">🎰 Spins left: <b>' + Math.max(0, SL.spinsLeft) + ' / ' + SL_MAX_SPINS + '</b></span>' +
       '<span class="wond-chip sl-jp-chip">🎆 Mega jackpot: <b>💵' + (_slTotalBet() * SL_JP_CROSS) + '</b></span>';
   }
 
@@ -129,20 +139,30 @@
 
   function slSpin(){
     if (SL.spinning || !a2Active()) return;
+    if (SL.spinsLeft <= 0){
+      if (typeof showToast === 'function') showToast('Out of spins for this pass — Play Again for 3 more!');
+      return;
+    }
     var total = _slTotalBet();
+    if (total > SL_MAX_BET){   // defensive — the bet/line + line-count UI options can't reach this, but stay safe
+      if (typeof showToast === 'function') showToast('Max total bet is 💵' + SL_MAX_BET + '!');
+      if (typeof playSfx === 'function') playSfx('wrong');
+      return;
+    }
     if (!state || (state.coins || 0) < total){
       if (typeof showToast === 'function') showToast('Not enough Cash for that bet!');
       if (typeof playSfx === 'function') playSfx('wrong');
       return;
     }
     state.coins -= total;
+    SL.spinsLeft--;
     if (typeof updateStats === 'function') updateStats();
     SL.spinning = true;
     SL.stopped = [false, false, false, false, false];
     SL.finalGrid = _slNewGrid();
     document.querySelectorAll('.sl-cell').forEach(function(el){ el.classList.remove('sl-cell-win', 'sl-cell-jackpot', 'sl-stop-flash'); });
     var banner = document.getElementById('slBanner');
-    if (banner){ banner.textContent = 'Spinning…'; banner.className = 'sl-banner'; }
+    if (banner){ banner.textContent = 'Spinning… tap ⏹ to stop each reel!'; banner.className = 'sl-banner'; }
     var spinBtn = document.getElementById('slSpinBtn'); if (spinBtn) spinBtn.disabled = true;
     var stopBtn = document.getElementById('slStopBtn'); if (stopBtn) stopBtn.disabled = false;
     for (var rc = 0; rc < SL_COLS; rc++){
@@ -150,6 +170,8 @@
       if (rb){ rb.disabled = false; rb.classList.remove('sl-reel-stopped'); }
     }
     if (typeof playSfx === 'function') playSfx('click');
+    // Tumbles FOREVER — no auto-stop timers. The reels only lock in when the player calls
+    // slStopOne(col) or slStop(), a pure skill-stop with no "wait it out" option.
     SL.tumble = a2Every(function(){
       for (var c = 0; c < SL_COLS; c++){
         if (SL.stopped[c]) continue;
@@ -159,12 +181,7 @@
         }
       }
     }, 80);
-    // One auto-stop timer PER COLUMN (indexed by column, so a single reel can be cancelled and
-    // stopped early via slStopOne() without touching the others' timers).
-    SL.stopTimers = [];
-    [700, 1050, 1400, 1750, 2100].forEach(function(ms, col){
-      SL.stopTimers[col] = a2Later(function(){ _slStopColumn(col); }, ms);
-    });
+    _slHud();
   }
 
   function _slStopColumn(col){
@@ -185,28 +202,26 @@
     }
   }
 
-  // Skill-stop ONE reel: cancel just that column's auto-stop timer, then lock it in now.
-  // Lets the player time each of the 5 reels individually instead of only a stop-all.
+  // Skill-stop ONE reel — the reels never auto-stop, so this (or slStop below) is the ONLY way a
+  // column ever locks in. Lets the player time each of the 5 reels individually.
   function slStopOne(col){
     if (!SL.spinning || SL.stopped[col]) return;
-    if (SL.stopTimers[col]){ clearTimeout(SL.stopTimers[col]); SL.stopTimers[col] = null; }
     _slStopColumn(col);
   }
 
   // Manual skill-stop: immediately finalize every column still spinning.
   function slStop(){
     if (!SL.spinning) return;
-    SL.stopTimers.forEach(function(id){ if (id) clearTimeout(id); });
-    SL.stopTimers = [];
     for (var c = 0; c < SL_COLS; c++){ if (!SL.stopped[c]) _slStopColumn(c); }
   }
 
-  // A line pays when 3+ identical symbols run from the LEFT (classic slot rule).
+  // A line pays when 2+ identical symbols run from the LEFT (classic slot rule; 2026-07-16: was
+  // 3+-only — too rare to feel fair, see SL_RUN_MULT for the tiered payout).
   function _slLineMatch(line){
     var syms = line.cells.map(function(rc){ return SL.grid[rc[0]][rc[1]]; });
     var first = syms[0], run = 1;
     for (var i = 1; i < syms.length; i++){ if (syms[i] === first) run++; else break; }
-    if (run >= 3) return { sym: first, count: run };
+    if (run >= 2) return { sym: first, count: run };
     return null;
   }
   function _slCheckJackpots(){
@@ -223,7 +238,7 @@
     lines.forEach(function(line){
       var m = _slLineMatch(line);
       if (m){
-        var w = SL.bet * (SL_PAY[m.sym] || 2) * (SL_RUN_MULT[m.count] || 1);
+        var w = Math.round(SL.bet * (SL_PAY[m.sym] || 2) * (SL_RUN_MULT[m.count] || 1));
         totalWin += w;
         wins.push({ line: line, m: m, win: w });
       }
@@ -262,6 +277,16 @@
       jpCells.forEach(function(rc){ var cell = document.getElementById('slC' + rc[0] + '_' + rc[1]); if (cell) cell.classList.add('sl-cell-jackpot'); });
     }
     SL.spinning = false;
-    var spinBtn = document.getElementById('slSpinBtn'); if (spinBtn) spinBtn.disabled = false;
+    var spinBtn = document.getElementById('slSpinBtn');
     var stopBtn = document.getElementById('slStopBtn'); if (stopBtn) stopBtn.disabled = true;
+    var againRow = document.getElementById('slPlayAgainRow');
+    if (SL.spinsLeft <= 0){
+      // Pass exhausted — lock SPIN and surface the Play Again flow instead.
+      if (spinBtn) spinBtn.disabled = true;
+      if (againRow) againRow.style.display = '';
+    } else {
+      if (spinBtn) spinBtn.disabled = false;
+      if (againRow) againRow.style.display = 'none';
+    }
+    _slHud();
   }
