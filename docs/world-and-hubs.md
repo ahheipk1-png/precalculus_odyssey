@@ -296,6 +296,30 @@ rebound again (1/2/9/0), level counts on every lobby card.**
   a 4×4 warm-up to a full 9×9". Games with no discrete level concept (Hoo Hey How, Star Slots,
   Virus Lab, Circuit Loop, Comet Muncher, Pop-a-Tic-Tac-Toe, Star Lanes Bowling) were left as-is.
 
+**2026-07-16 batch #4 — 💎 Crystal Cascade (new game).**
+
+- **💎 Crystal Cascade (`js/40-action.js`, new).** A falling vertical-triplet match-3 (Puyo-Puyo
+  style), adapted from a reference the user supplied. A column of 3 gems falls down a 6×13 board;
+  ← → moves it, ↑/X cycles the 3 gems' colour order in place (`piece.colors.unshift(pop())` — a
+  recolour, not a spatial rotation), ↓ soft-drops (+1 score/step), Space hard-drops (+2/step).
+  Landing locks the triplet into the board, then `_ccResolveChain` cascades: find every gem in a
+  3+ run along any of the 4 line directions (row/col/either diagonal) via the codebase's usual
+  object-as-set idiom, score `(count×30 + max(0,count-3)×18) × chain × level`, clear, apply
+  gravity, and repeat until a round finds nothing — each step paced with `a2Later` (260/90/210ms)
+  instead of the reference's native `async`/`await`, to match this file's callback-chain style used
+  everywhere else. Unlike Snake/Sudoku/Block Forge/Rhythm/Memory, this is an ENDLESS single run
+  with no discrete levels to select or clear — `level = 1 + floor(cleared/40)` climbs automatically
+  as more gems clear (speeding up the fall via `_ccFallInterval`), the same continuous-ramp idea as
+  Tile Ball, so its lobby card has no level count. Ends when a fresh column can't spawn (top-out);
+  reward scales via `a2Result`/`a2Reward` (frac = score/4000, capped at 1) like its Comet
+  Muncher/Virus Lab canvas-game siblings, not the Cash-only `wg*` track. Gem art keeps the
+  reference's faceted-octagon + radial-gradient + shine-highlight look (canvas `createRadialGradient`)
+  rather than flattening to the plain-colour style elsewhere — a small enough per-piece visual
+  flourish not to need "chrome simplification" the way Snake's Nokia-phone HTML wrapper did. The
+  "Next" preview reuses Virus Lab's inline-colour-dot-in-the-HUD pattern instead of a second canvas.
+  Verified: move/cycle, a real 3-match → score/clear/gravity/respawn end-to-end, and the
+  still-off-screen-lock game-over path, all via direct function calls with no console errors.
+
 ## Farm — `js/18-farm.js` (`#farmView`)
 
 Crops (apple/orange/rice/wheat/corn/coffee/sugarcane) + animals (chicken/duck/sheep/pig/cow) + houses.
