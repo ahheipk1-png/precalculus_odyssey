@@ -46,52 +46,47 @@
   }
 
   // ===========================================================================
-  // Star Match 🃏 — flip two cards at a time and match every pair.
+  // Star Match 🃏 — flip two cards at a time and match every pair. Sequential
+  // levels (no difficulty picker): grid size grows and preview time shrinks
+  // as you advance, matching every other Wonderland game's pattern.
   // ===========================================================================
   var MEM_SYMBOLS = ['🚀','🪐','⭐','☄️','🌙','👽','🛸','🔭','🌌','⚡','🔥','💎'];
-  var MEM_CONF = { easy: { cols: 4, rows: 3, name: 'Easy' }, normal: { cols: 4, rows: 4, name: 'Normal' }, hard: { cols: 5, rows: 4, name: 'Hard' } };
-  var MEM = { active: false, diff: 'easy', cards: [], first: -1, matched: 0, moves: 0, lock: false, _t: null, _pt: null, previewLeft: 0 };
+  var MEM_LEVELS = [
+    { cols: 4, rows: 3, previewSecs: 5 },
+    { cols: 4, rows: 4, previewSecs: 4 },
+    { cols: 4, rows: 4, previewSecs: 3 },
+    { cols: 5, rows: 4, previewSecs: 3 },
+    { cols: 5, rows: 4, previewSecs: 2 }
+  ];
+  var MEM = { active: false, level: 0, cards: [], first: -1, matched: 0, moves: 0, lock: false, _t: null, _pt: null, previewLeft: 0, totalScore: 0 };
 
-  function memPairs(diff){ var c = MEM_CONF[diff] || MEM_CONF.easy; return c.cols * c.rows / 2; }
+  function memPairs(level){ var c = MEM_LEVELS[level] || MEM_LEVELS[0]; return c.cols * c.rows / 2; }
 
   function openMemory(){
-    if (typeof wgStopAll === 'function') wgStopAll();
-    var view = agShowView(); if (!view) return;
-    var m = wgMini('memory');
-    view.innerHTML =
-      '<div class="wond-board wond-game">' +
-        agTopBar('🃏 Star Match', 'openWonderland()') +
-        '<p class="wond-sub" style="text-align:center;margin-bottom:14px">Flip two cards at a time — match every pair in as few moves as you can!</p>' +
-        '<div class="wg-diff-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
-          '<button type="button" class="btn btn-primary" onclick="memStart(\'easy\')" data-tooltip="6 pairs · 4×3 grid.">🟢 Easy · 6 pairs</button>' +
-          '<button type="button" class="btn btn-primary" onclick="memStart(\'normal\')" data-tooltip="8 pairs · 4×4 grid.">🟡 Normal · 8 pairs</button>' +
-          '<button type="button" class="btn btn-primary" onclick="memStart(\'hard\')" data-tooltip="10 pairs · 5×4 grid. Best Cash.">🔴 Hard · 10 pairs</button>' +
-        '</div>' +
-        '<p class="wond-sub" style="text-align:center;margin-top:18px">🏆 Best score: <b>' + (m.highScore || 0) + '</b></p>' +
-      '</div>';
+    MEM.level = 0; MEM.totalScore = 0;
+    _memSetup();
   }
 
-  function memStart(diff){
+  function _memSetup(){
     if (typeof wgStopAll === 'function') wgStopAll();
     var view = document.getElementById('wonderlandView'); if (!view) return;
-    var conf = MEM_CONF[diff] || MEM_CONF.easy;
+    var conf = MEM_LEVELS[MEM.level] || MEM_LEVELS[MEM_LEVELS.length - 1];
     var pairs = conf.cols * conf.rows / 2;
     var syms = MEM_SYMBOLS.slice(0, pairs);
     var deck = syms.concat(syms).map(function(s){ return { sym: s, up: false, done: false }; });
     shuffle(deck);
-    MEM.active = true; MEM.diff = diff; MEM.cards = deck; MEM.first = -1; MEM.matched = 0; MEM.moves = 0; MEM.lock = false;
+    MEM.active = true; MEM.cards = deck; MEM.first = -1; MEM.matched = 0; MEM.moves = 0; MEM.lock = false;
     view.innerHTML =
       '<div class="wond-board wond-game">' +
-        agTopBar('🃏 Star Match · ' + conf.name, 'openMemory()') +
+        agTopBar('🃏 Star Match — Level ' + (MEM.level + 1) + ' / ' + MEM_LEVELS.length, 'openWonderland()') +
         '<div class="wond-hud" id="memHud"></div>' +
         '<div class="mem-grid" id="memGrid" style="grid-template-columns:repeat(' + conf.cols + ',1fr)"></div>' +
         '<p class="wond-tip">Click a card to flip it. Match all ' + pairs + ' pairs — fewer moves = more Cash!</p>' +
       '</div>';
     if (typeof playSfx === 'function') playSfx('ui-click');
-    // Preview: reveal every card first — 5s easy, 3s normal, 2s hard — then hide them.
-    var previewSecs = diff === 'hard' ? 2 : (diff === 'normal' ? 3 : 5);
+    // Preview: reveal every card first, then hide them — later levels get less time to memorise.
     MEM.lock = true;
-    MEM.previewLeft = previewSecs;
+    MEM.previewLeft = conf.previewSecs;
     MEM.cards.forEach(function(c){ c.up = true; });
     memRender();
     if (MEM._pt) clearInterval(MEM._pt);
@@ -113,7 +108,8 @@
       h.innerHTML = '<span class="wond-chip wond-chip-hot">👀 Memorise the board! <b>' + MEM.previewLeft + 's</b></span>';
       return;
     }
-    h.innerHTML = '<span class="wond-chip">🃏 Pairs: <b>' + MEM.matched + ' / ' + memPairs(MEM.diff) + '</b></span>' +
+    h.innerHTML = '<span class="wond-chip">🎚️ Level <b>' + (MEM.level + 1) + ' / ' + MEM_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">🃏 Pairs: <b>' + MEM.matched + ' / ' + memPairs(MEM.level) + '</b></span>' +
       '<span class="wond-chip">🔄 Moves: <b>' + MEM.moves + '</b></span>';
   }
 
@@ -140,7 +136,7 @@
       a.done = b.done = true; MEM.matched++; MEM.first = -1;
       if (typeof playSfx === 'function') playSfx('solve-correct');
       memRender();
-      if (MEM.matched >= memPairs(MEM.diff)) memWin();
+      if (MEM.matched >= memPairs(MEM.level)) memWin();
     } else {
       MEM.lock = true;
       if (typeof playSfx === 'function') playSfx('wrong');
@@ -150,62 +146,105 @@
 
   function memStop(){ MEM.active = false; if (MEM._t){ clearTimeout(MEM._t); MEM._t = null; } if (MEM._pt){ clearInterval(MEM._pt); MEM._pt = null; } MEM.previewLeft = 0; }
 
+  // Cleared this level's pairs — advance to the next level for FREE (fresh shuffled board), or
+  // end the run if that was the last level (matching the other Wonderland games' pattern).
   function memWin(){
-    var pairs = memPairs(MEM.diff), moves = MEM.moves, diff = MEM.diff;
+    var pairs = memPairs(MEM.level), moves = MEM.moves;
     MEM.active = false;
     var extra = Math.max(0, moves - pairs);                  // wasted flips beyond a perfect run
-    var score = Math.max(20, pairs * 40 - extra * 6);
-    var newHigh = wgRecordScore('memory', score, diff);
-    var coins = Math.round(score * 0.25) + (newHigh ? 20 : 0);
+    var levelScore = Math.max(20, pairs * 40 - extra * 6);
+    MEM.totalScore += levelScore;
+    if (MEM.level + 1 >= MEM_LEVELS.length){ _memGameOver(true); return; }
+    if (typeof playSfx === 'function') playSfx('victory');
+    if (typeof showToast === 'function') showToast('🌟 Level ' + (MEM.level + 1) + ' clear in ' + moves + ' moves! Next up!');
+    MEM.level++;
+    if (typeof a2Later === 'function') a2Later(_memSetup, 900); else setTimeout(_memSetup, 900);
+  }
+
+  function _memGameOver(wonAll){
+    var total = MEM.totalScore, level = MEM.level;
+    var newHigh = wgRecordScore('memory', total, level + 1);
+    var coins = Math.round(total * 0.25) + (newHigh ? 20 : 0);
     wgPayReward({ coins: coins, newHigh: newHigh });
     var view = document.getElementById('wonderlandView'); if (!view) return;
     view.innerHTML =
       '<div class="wond-board wond-game">' +
-        agTopBar('🃏 Star Match', 'openMemory()') +
-        '<div class="wond-head"><h2 class="wond-title">' + (newHigh ? '🏆 NEW BEST!' : '🎉 All matched!') + '</h2>' +
-          '<p class="wond-sub">' + pairs + ' pairs in <b>' + moves + '</b> moves · score ' + score + '</p></div>' +
+        agTopBar('🃏 Star Match', 'openWonderland()') +
+        '<div class="wond-head"><h2 class="wond-title">' + (wonAll ? '🌟 ALL LEVELS MATCHED! 🌟' : (newHigh ? '🏆 NEW BEST!' : '🎉 All matched!')) + '</h2>' +
+          '<p class="wond-sub">Reached level <b>' + (level + 1) + ' / ' + MEM_LEVELS.length + '</b> · total score ' + total + '</p></div>' +
         '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + coins + '</span></div></div>' +
         '<div class="wond-footer" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
-          '<button type="button" class="btn btn-primary" onclick="memStart(\'' + diff + '\')" data-tooltip="Play this difficulty again.">↻ Play again</button>' +
-          '<button type="button" class="btn btn-ghost" onclick="openMemory()" data-tooltip="Change difficulty.">🎚️ Difficulty</button>' +
+          '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openMemory\')" data-tooltip="Costs 1 Wonderland Pass — starts back at level 1.">↻ Play again (1 🎟️)</button>' +
           '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';
   }
 
   // ===========================================================================
-  // Mini Sudoku 🔢 — a 4×4 grid (2×2 boxes, digits 1–4). Fill so every row,
-  // column and box has 1–4 exactly once. Win is validated by the RULES (not a
-  // single fixed solution), so any valid completion counts.
+  // Mini Sudoku 🔢 — an N×N grid (k×k boxes, digits 1–N). Fill so every row,
+  // column and box has 1–N exactly once. Win is validated by the RULES (not a
+  // single fixed solution), so any valid completion counts. Sequential levels
+  // (no difficulty picker): early levels are 4×4, later levels graduate to a
+  // full 9×9 board for real high-difficulty play (SUD_LEVELS).
   // ===========================================================================
-  var SUD_CONF = { easy: { clues: 10, name: 'Easy' }, normal: { clues: 8, name: 'Normal' }, hard: { clues: 6, name: 'Hard' } };
-  var SUD_BOXES = [[0,1,4,5],[2,3,6,7],[8,9,12,13],[10,11,14,15]];
-  var SUD = { active: false, diff: 'easy', cells: [], given: [], startTs: 0 };
+  var SUD_LEVELS = [
+    { N: 4, k: 2, clues: 10 },
+    { N: 4, k: 2, clues: 8 },
+    { N: 4, k: 2, clues: 6 },
+    { N: 9, k: 3, clues: 36 },
+    { N: 9, k: 3, clues: 30 },
+    { N: 9, k: 3, clues: 24 }
+  ];
+  var SUD = { active: false, level: 0, N: 4, k: 2, cells: [], given: [], startTs: 0, totalScore: 0, sel: 0 };
 
-  // A random valid 4×4 solution: relabel + validity-preserving row/col/band/stack swaps + transpose.
-  function sudGenSolution(){
-    var grid = [1,2,3,4, 3,4,1,2, 2,1,4,3, 4,3,2,1];
-    var perm = [1,2,3,4]; shuffle(perm);
-    grid = grid.map(function(v){ return perm[v - 1]; });
-    function swapRows(a, b){ for (var c = 0; c < 4; c++){ var t = grid[a*4+c]; grid[a*4+c] = grid[b*4+c]; grid[b*4+c] = t; } }
-    function swapCols(a, b){ for (var r = 0; r < 4; r++){ var t = grid[r*4+a]; grid[r*4+a] = grid[r*4+b]; grid[r*4+b] = t; } }
-    if (rand(0,1)) swapRows(0,1);
-    if (rand(0,1)) swapRows(2,3);
-    if (rand(0,1)) swapCols(0,1);
-    if (rand(0,1)) swapCols(2,3);
-    if (rand(0,1)){ swapRows(0,2); swapRows(1,3); }          // swap the two horizontal bands
-    if (rand(0,1)){ swapCols(0,2); swapCols(1,3); }          // swap the two vertical stacks
-    if (rand(0,1)){ var t = grid.slice(); for (var r = 0; r < 4; r++) for (var c = 0; c < 4; c++) grid[c*4+r] = t[r*4+c]; }  // transpose
-    return grid;
+  // A random valid N×N Sudoku solution (box size k, N=k*k): start from the standard base grid
+  // `(k*(r%k) + floor(r/k) + c) % N`, then relabel digits and apply validity-preserving shuffles —
+  // rows/cols shuffled WITHIN their band/stack, whole bands/stacks reordered, optional transpose.
+  // Generalizes the old hand-written 4×4-only swap logic to any box size.
+  function sudGenSolution(N, k){
+    var base = [];
+    for (var r = 0; r < N; r++){
+      var row = [];
+      for (var c = 0; c < N; c++) row.push((k * (r % k) + Math.floor(r / k) + c) % N);
+      base.push(row);
+    }
+    var perm = []; for (var d = 0; d < N; d++) perm.push(d); shuffle(perm);
+    var grid = base.map(function(row){ return row.map(function(v){ return perm[v]; }); });
+
+    function shuffledGroupOrder(){
+      var groupOrder = []; for (var g = 0; g < k; g++) groupOrder.push(g); shuffle(groupOrder);
+      var order = [];
+      groupOrder.forEach(function(g){
+        var within = []; for (var i = 0; i < k; i++) within.push(g * k + i); shuffle(within);
+        order = order.concat(within);
+      });
+      return order;
+    }
+    var rowOrder = shuffledGroupOrder();
+    grid = rowOrder.map(function(r){ return grid[r]; });
+    var colOrder = shuffledGroupOrder();
+    grid = grid.map(function(row){ return colOrder.map(function(c){ return row[c]; }); });
+
+    if (rand(0, 1)){
+      var t = [];
+      for (var r2 = 0; r2 < N; r2++){ var row2 = []; for (var c2 = 0; c2 < N; c2++) row2.push(grid[c2][r2]); t.push(row2); }
+      grid = t;
+    }
+    var flat = []; grid.forEach(function(row){ row.forEach(function(v){ flat.push(v + 1); }); });
+    return flat;
   }
 
   // Indices that clash (same value seen twice in a row/col/box) — used to flag conflicts live.
-  function sudConflicts(cells){
+  function sudConflicts(cells, N, k){
     var bad = {}, groups = [], r, c;
-    for (r = 0; r < 4; r++){ var g = []; for (c = 0; c < 4; c++) g.push(r*4+c); groups.push(g); }
-    for (c = 0; c < 4; c++){ var g2 = []; for (r = 0; r < 4; r++) g2.push(r*4+c); groups.push(g2); }
-    SUD_BOXES.forEach(function(b){ groups.push(b); });
+    for (r = 0; r < N; r++){ var g = []; for (c = 0; c < N; c++) g.push(r*N+c); groups.push(g); }
+    for (c = 0; c < N; c++){ var g2 = []; for (r = 0; r < N; r++) g2.push(r*N+c); groups.push(g2); }
+    for (var br = 0; br < k; br++) for (var bc = 0; bc < k; bc++){
+      var g3 = [];
+      for (var i = 0; i < k; i++) for (var j = 0; j < k; j++) g3.push((br*k+i)*N + (bc*k+j));
+      groups.push(g3);
+    }
     groups.forEach(function(g){
       for (var i = 0; i < g.length; i++) for (var j = i + 1; j < g.length; j++){
         var vi = cells[g[i]], vj = cells[g[j]];
@@ -216,39 +255,28 @@
   }
 
   function openSudoku(){
-    if (typeof wgStopAll === 'function') wgStopAll();
-    var view = agShowView(); if (!view) return;
-    var m = wgMini('sudoku');
-    view.innerHTML =
-      '<div class="wond-board wond-game">' +
-        agTopBar('🔢 Mini Sudoku', 'openWonderland()') +
-        '<p class="wond-sub" style="text-align:center;margin-bottom:14px">Fill the 4×4 grid so every row, column and 2×2 box has 1, 2, 3 and 4.</p>' +
-        '<div class="wg-diff-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
-          '<button type="button" class="btn btn-primary" onclick="sudStart(\'easy\')" data-tooltip="10 given numbers.">🟢 Easy</button>' +
-          '<button type="button" class="btn btn-primary" onclick="sudStart(\'normal\')" data-tooltip="8 given numbers.">🟡 Normal</button>' +
-          '<button type="button" class="btn btn-primary" onclick="sudStart(\'hard\')" data-tooltip="6 given numbers. Best Cash.">🔴 Hard</button>' +
-        '</div>' +
-        '<p class="wond-sub" style="text-align:center;margin-top:18px">🏆 Best score: <b>' + (m.highScore || 0) + '</b></p>' +
-      '</div>';
+    SUD.level = 0; SUD.totalScore = 0;
+    _sudSetup();
   }
 
-  function sudStart(diff){
+  function _sudSetup(){
     if (typeof wgStopAll === 'function') wgStopAll();
     var view = document.getElementById('wonderlandView'); if (!view) return;
-    var conf = SUD_CONF[diff] || SUD_CONF.easy;
-    var sol = sudGenSolution();
-    var idx = []; for (var i = 0; i < 16; i++) idx.push(i); shuffle(idx);
-    var given = []; for (var j = 0; j < 16; j++) given[j] = false;
-    for (var k = 0; k < conf.clues; k++) given[idx[k]] = true;
-    var cells = []; for (var c = 0; c < 16; c++) cells[c] = given[c] ? sol[c] : 0;
-    SUD.active = true; SUD.diff = diff; SUD.cells = cells; SUD.given = given; SUD.startTs = (new Date()).getTime();
+    var lv = SUD_LEVELS[SUD.level] || SUD_LEVELS[SUD_LEVELS.length - 1];
+    var N = lv.N, k = lv.k, total = N * N;
+    var sol = sudGenSolution(N, k);
+    var idx = []; for (var i = 0; i < total; i++) idx.push(i); shuffle(idx);
+    var given = []; for (var j = 0; j < total; j++) given[j] = false;
+    for (var g = 0; g < lv.clues; g++) given[idx[g]] = true;
+    var cells = []; for (var c = 0; c < total; c++) cells[c] = given[c] ? sol[c] : 0;
+    SUD.active = true; SUD.N = N; SUD.k = k; SUD.cells = cells; SUD.given = given; SUD.startTs = (new Date()).getTime();
     view.innerHTML =
       '<div class="wond-board wond-game">' +
-        agTopBar('🔢 Mini Sudoku · ' + conf.name, 'openSudoku()') +
+        agTopBar('🔢 Mini Sudoku — Level ' + (SUD.level + 1) + ' / ' + SUD_LEVELS.length, 'openWonderland()') +
         '<div class="wond-hud" id="sudHud"></div>' +
         '<div class="sud-grid" id="sudGrid"></div>' +
         '<div class="sud-tray" id="sudTray"></div>' +
-        '<p class="wond-tip">DRAG a number tile into an empty cell — or tap a tile, then tap cells to stamp it. 🧽 erases.</p>' +
+        '<p class="wond-tip">DRAG a number tile into an empty cell — or tap a tile, then tap cells to stamp it. 🧽 erases. Fill every row, column and ' + k + '×' + k + ' box with 1–' + N + '.</p>' +
       '</div>';
     SUD.sel = 0;
     if (typeof playSfx === 'function') playSfx('ui-click');
@@ -257,18 +285,23 @@
 
   function sudRender(){
     var g = document.getElementById('sudGrid'); if (!g) return;
-    var bad = sudConflicts(SUD.cells);
+    var N = SUD.N, k = SUD.k;
+    g.style.gridTemplateColumns = 'repeat(' + N + ', 1fr)';
+    g.style.setProperty('--sud-font', N > 6 ? 'clamp(14px,3.2vw,22px)' : 'clamp(28px,7vw,46px)');
+    var bad = sudConflicts(SUD.cells, N, k);
     g.innerHTML = SUD.cells.map(function(v, i){
-      var r = Math.floor(i / 4), c = i % 4;
-      var cls = 'sud-cell' + (SUD.given[i] ? ' sud-given' : '') + (bad[i] ? ' sud-bad' : '') + (c === 1 ? ' sud-redge' : '') + (r === 1 ? ' sud-bedge' : '');
+      var r = Math.floor(i / N), c = i % N;
+      var cls = 'sud-cell' + (SUD.given[i] ? ' sud-given' : '') + (bad[i] ? ' sud-bad' : '') +
+        ((c % k === k - 1 && c < N - 1) ? ' sud-redge' : '') + ((r % k === k - 1 && r < N - 1) ? ' sud-bedge' : '');
       var dz = SUD.given[i] ? '' : ' data-dropzone="1" data-cell="' + i + '"';
       return '<button type="button" class="' + cls + '" onclick="sudTap(' + i + ')"' + (SUD.given[i] ? ' disabled' : '') + dz + '>' + (v || '') + '</button>';
     }).join('');
-    // Draggable 1-4 tiles + eraser (POINTER-based — works on touch too). Click selects
+    // Draggable 1-N tiles + eraser (POINTER-based — works on touch too). Click selects
     // (stamp mode); drag drops straight into a cell.
     var tray = document.getElementById('sudTray');
     if (tray){
-      var tiles = [1, 2, 3, 4].map(function(n){
+      var nums = []; for (var n = 1; n <= N; n++) nums.push(n);
+      var tiles = nums.map(function(n){
         return '<button type="button" class="sud-tile' + (SUD.sel === n ? ' sud-sel' : '') + '"' +
           ' onpointerdown="sudPointerDown(event,' + n + ')" onclick="sudPick(' + n + ')">' + n + '</button>';
       }).join('');
@@ -297,13 +330,14 @@
     });
   }
   function sudCheckWin(){
-    if (SUD.active && SUD.cells.every(function(v){ return v > 0; }) && Object.keys(sudConflicts(SUD.cells)).length === 0) sudWin();
+    if (SUD.active && SUD.cells.every(function(v){ return v > 0; }) && Object.keys(sudConflicts(SUD.cells, SUD.N, SUD.k)).length === 0) sudWin();
   }
 
   function sudHud(){
     var h = document.getElementById('sudHud'); if (!h) return;
     var filled = SUD.cells.filter(function(v){ return v; }).length;
-    h.innerHTML = '<span class="wond-chip">▦ Filled: <b>' + filled + ' / 16</b></span>';
+    h.innerHTML = '<span class="wond-chip">🎚️ Level <b>' + (SUD.level + 1) + ' / ' + SUD_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">▦ Filled: <b>' + filled + ' / ' + (SUD.N * SUD.N) + '</b></span>';
   }
 
   function sudTap(i){
@@ -311,7 +345,7 @@
     if (SUD.sel){                                             // stamp mode: place the selected tile
       SUD.cells[i] = (SUD.sel === -1) ? 0 : SUD.sel;
     } else {
-      SUD.cells[i] = (SUD.cells[i] + 1) % 5;                  // no tile selected: cycle 1→2→3→4→empty
+      SUD.cells[i] = (SUD.cells[i] + 1) % (SUD.N + 1);        // no tile selected: cycle 1→2→…→N→empty
     }
     if (typeof playSfx === 'function') playSfx('ui-click');
     sudRender();
@@ -320,26 +354,37 @@
 
   function sudStop(){ SUD.active = false; if (typeof a2DragCancel === 'function') a2DragCancel(); }
 
+  // Solved this level's puzzle — advance to the next level for FREE (fresh puzzle), or end the
+  // run if that was the last level (matching Block Forge / Cosmic Rhythm's sequential pattern).
   function sudWin(){
-    var diff = SUD.diff; SUD.active = false;
+    SUD.active = false;
     var secs = Math.round(((new Date()).getTime() - SUD.startTs) / 1000);
-    var base = { easy: 60, normal: 100, hard: 160 }[diff] || 60;
-    var score = base + Math.max(0, 180 - secs);              // faster solve → higher score
-    var newHigh = wgRecordScore('sudoku', score, diff);
-    var coins = Math.round(score * 0.3) + (newHigh ? 20 : 0);
+    var base = 50 + SUD.level * 20;
+    var levelScore = base + Math.max(0, 180 - secs);          // faster solve → higher score
+    SUD.totalScore += levelScore;
+    if (SUD.level + 1 >= SUD_LEVELS.length){ _sudGameOver(true); return; }
+    if (typeof playSfx === 'function') playSfx('victory');
+    if (typeof showToast === 'function') showToast('🌟 Level ' + (SUD.level + 1) + ' clear in ' + secs + 's! Next up!');
+    SUD.level++;
+    if (typeof a2Later === 'function') a2Later(_sudSetup, 900); else setTimeout(_sudSetup, 900);
+  }
+
+  function _sudGameOver(wonAll){
+    var total = SUD.totalScore, level = SUD.level;
+    var newHigh = wgRecordScore('sudoku', total, level + 1);
+    var coins = Math.round(total * 0.3) + (newHigh ? 20 : 0);
     wgPayReward({ coins: coins, newHigh: newHigh });
     if (typeof playSfx === 'function') playSfx('victory');
     var view = document.getElementById('wonderlandView'); if (!view) return;
     view.innerHTML =
       '<div class="wond-board wond-game">' +
-        agTopBar('🔢 Mini Sudoku', 'openSudoku()') +
-        '<div class="wond-head"><h2 class="wond-title">' + (newHigh ? '🏆 NEW BEST!' : '🎉 Solved!') + '</h2>' +
-          '<p class="wond-sub">Solved in <b>' + secs + 's</b> · score ' + score + '</p></div>' +
+        agTopBar('🔢 Mini Sudoku', 'openWonderland()') +
+        '<div class="wond-head"><h2 class="wond-title">' + (wonAll ? '🌟 ALL LEVELS SOLVED! 🌟' : (newHigh ? '🏆 NEW BEST!' : '🎉 Solved!')) + '</h2>' +
+          '<p class="wond-sub">Reached level <b>' + (level + 1) + ' / ' + SUD_LEVELS.length + '</b> · total score ' + total + '</p></div>' +
         '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + coins + '</span></div></div>' +
         '<div class="wond-footer" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
-          '<button type="button" class="btn btn-primary" onclick="sudStart(\'' + diff + '\')" data-tooltip="New puzzle, same difficulty.">↻ New puzzle</button>' +
-          '<button type="button" class="btn btn-ghost" onclick="openSudoku()" data-tooltip="Change difficulty.">🎚️ Difficulty</button>' +
+          '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openSudoku\')" data-tooltip="Costs 1 Wonderland Pass — starts back at level 1.">↻ Play again (1 🎟️)</button>' +
           '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';

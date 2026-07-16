@@ -369,10 +369,12 @@ body:has(#wonderlandView.active) .wond-tip{ font-size: 16px; }
 .mem-done .mem-face{ color: #0d2216; }
 
 /* ---- Mini Sudoku ---- */
+/* grid-template-columns + --sud-font are set inline by sudRender() since the board scales from
+   4x4 (early levels) up to 9x9 (high-difficulty levels) — see SUD_LEVELS. */
 .sud-grid{ display: grid; grid-template-columns: repeat(4,1fr); width: min(480px,90vw); margin: 0 auto 6px;
   background: #0f1424; padding: 4px; border-radius: 12px; }
 .sud-cell{ aspect-ratio: 1; box-sizing: border-box; border: 1px solid rgba(244,241,232,0.15); cursor: pointer;
-  font-family: 'Patrick Hand', cursive; font-size: clamp(28px,7vw,46px); font-weight: 700; color: var(--sky); background: rgba(20,28,50,0.9); }
+  font-family: 'Patrick Hand', cursive; font-size: var(--sud-font, clamp(28px,7vw,46px)); font-weight: 700; color: var(--sky); background: rgba(20,28,50,0.9); }
 .sud-cell:hover:not(:disabled){ background: rgba(40,52,88,0.95); }
 .sud-given{ color: var(--chalk) !important; background: rgba(60,70,100,0.7) !important; cursor: default; }
 .sud-bad{ color: #ff6b6b !important; background: rgba(120,30,30,0.55) !important; }
@@ -467,7 +469,7 @@ body:has(#wonderlandView.active) .frame{ max-width:none; width:100%; }
 body:has(#wonderlandView.active) .board{ max-width:none !important; }
 
 /* ---- Sudoku drag tray ---- */
-.sud-tray{ display:flex; gap:12px; justify-content:center; margin:16px 0 6px; }
+.sud-tray{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:16px 0 6px; }
 .sud-tile{ width:64px; height:64px; font-family:'Quicksand',sans-serif; font-weight:800; font-size:30px;
   color:var(--chalk,#f4f1e8); background:rgba(110,193,228,.12); border:2px solid rgba(110,193,228,.45);
   border-radius:12px; cursor:grab; touch-action:none; }

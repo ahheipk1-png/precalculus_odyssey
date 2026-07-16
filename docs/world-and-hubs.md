@@ -226,7 +226,7 @@ resize/reposition, Virus Lab medicine redesign, Cosmic Rhythm rebind, global Ran
   the cell) plus a glossy highlight ellipse; viruses draw as a bumpy 8-point spiked blob with angled
   angry eyebrows + a jagged frown, clearly distinct from the friendly medicine. The HUD's "Next"
   pill-queue swatch (`_vlPillSwatch`) got a matching circular/glossy tweak.
-- **🎵 Cosmic Rhythm: rebound to D/F/J/K** — see the entry above (updated in place).
+- **🎵 Cosmic Rhythm: rebound to D/F/J/K** (superseded same day — see batch #3 below, now 1/2/9/0).
 - **🏆 Ranking — new global leaderboard (`functions/api/cloud/leaderboard.js`,
   `js/17-wonderland.js`).** A "🏆 Ranking" button sits in the Wonderland lobby's pass row
   (`openRanking()`). It calls the new `GET /api/cloud/leaderboard` Cloudflare Pages Function (same
@@ -238,6 +238,63 @@ resize/reposition, Virus Lab medicine redesign, Cosmic Rhythm rebind, global Ran
   (`_rankHtml`) or a friendly message if signed out / the request fails (verified: a fake/invalid
   Bearer token correctly surfaces "Network error — is the game deployed to Cloudflare?" without
   throwing, since this dev environment has no real D1-backed Functions runtime to test against live).
+
+**2026-07-16 batch #3 — new Snake game, Star Slots symbol/jackpot rebalance, Sudoku 9×9 +
+sequential, difficulty pickers removed from Block Forge/Cosmic Rhythm/Star Match, Cosmic Rhythm
+rebound again (1/2/9/0), level counts on every lobby card.**
+
+- **🐍 Snake (`js/40-action.js`, new).** Classic grid snake in the `a2Shell` canvas style (same
+  family as Comet Muncher/Virus Lab), adapted from a reference implementation the user supplied.
+  16×16 grid, arrow keys/WASD + an on-screen ◀▲▼▶ pad; grid-based movement on a `SN.tick =
+  a2Every(_snStep, tickMs)` timer, never allowed to reverse straight into its own neck (`_snDir`).
+  Sequential levels (`SN_LEVELS`, no difficulty picker): each level raises the food target and
+  lowers `tickMs` (speed); reaching a level's target advances to a fresh snake for free
+  (`_snLevelClear`), hitting a wall or the snake's own tail ends the run (`_snGameOver`) — both
+  route through `_snEnd`/`a2Result`/`a2Reward` like its canvas-game siblings, not the Cash-only
+  `wg*` reward track. Verified: food-eat growth, level-clear transition (target/tickMs update
+  correctly on the next level), wall-collision game over, and reversal-prevention all via direct
+  function calls; no console errors.
+- **🎰 Star Slots: dropped 2 of 9 symbol types (🚀, 🪐) to raise win frequency, then fixed a
+  pre-existing jackpot imbalance the drop would have made much worse (`js/41-slots.js`).** Fewer
+  distinct symbols mechanically raises match probability — confirmed by Monte Carlo simulation
+  (300k+ spins per run) that per-line win rate rose from the prior rebalance's baseline. But the
+  SAME simulation revealed the ORIGINAL `SL_JP_CORNER=250`/`SL_JP_CROSS=1000` jackpot multipliers
+  were already a severe money-printer even at 9 symbol types (a naive hand-computed corner-jackpot
+  EV alone was ≈181% — a 4-corner match is far more common than a ×250 payout can tolerate), and
+  dropping to 7 types made 4-cell/7-cell matches easier still (empirically ≈108-110% combined RTP
+  with the old jackpot values immediately after the symbol drop — a real money-printer). Retuned to
+  `SL_JP_CORNER=4`, `SL_JP_CROSS=150`, verified by simulation to hold a stable ~88-90% combined RTP
+  (line wins + both jackpots) across every bet-per-line/line-count combination — generous (up from
+  the prior batch's ~59% line-only baseline), not broken.
+- **🔢 Mini Sudoku: generalized from a hardcoded 4×4-only engine to any box size, added real 9×9
+  levels, removed the difficulty picker (`js/36-arcade.js`, `css/wonderland.css`).** `sudGenSolution`,
+  `sudConflicts`, and the render/tap/tray logic were all hardcoded to N=4/k=2 (16 cells, fixed
+  `SUD_BOXES`, `%5` digit-cycle, etc.); rewritten to take `N`/`k` and generalize the base-grid
+  formula (`(k*(r%k) + floor(r/k) + c) % N`) plus band/stack shuffling to any box size — verified
+  valid (no row/col/box conflicts) across 200 generated 4×4 AND 200 generated 9×9 solutions. Win
+  is still validated by the RULES, not a fixed solution (any valid completion counts), so clue
+  count needs no uniqueness guarantee. `SUD_LEVELS` (6, no picker): 3 levels of 4×4 (10→8→6 clues)
+  as a warm-up, then 3 levels of a REAL 9×9 board (36→30→24 clues) for genuine high-difficulty
+  play. `--sud-font` CSS var shrinks the digit size for the 9×9 board so it still fits. Verified
+  end-to-end through all 6 levels including the 4×4→9×9 transition and the final "ALL LEVELS
+  SOLVED!" screen.
+- **Difficulty pickers removed from Quantum Block Forge, Cosmic Rhythm, and Star Match — all three
+  now follow the Sky Stacker/Blast Bot sequential-level pattern** (pay 1 pass, always start at
+  level 1, advance for free on clearing a level, run ends on failure/song-miss or completing the
+  last level; `wonderPlay(...)` again to restart from level 1). `QBF_LEVELS` (5, shrinking board
+  9×9→7×7 + rising score goal), `RHY_LEVELS` (5, rising note density/chords; ≥50% accuracy clears
+  a level), `MEM_LEVELS` (5, growing grid + shrinking preview time) replace the old
+  `easy`/`normal`/`hard` picker screens outright. Each keeps a `totalScore` accumulator across the
+  whole run for the final Cash reward, separate from the per-level score that gates advancement.
+  All three verified end-to-end (level clear → advance with fresh state, and the failure path)
+  with no console errors.
+- **🎵 Cosmic Rhythm: rebound again, to 1/2/9/0** (same day the D/F/J/K rebind above shipped) —
+  `RHY_KEYS`/`RHY_KEY_LABEL`, matched case-insensitively like before.
+- **Every Wonderland lobby card that has discrete levels now states the count** (`js/17-wonderland.js`),
+  reading each game's own `*_LEVELS.length` (or `FISH_MAX_LEVEL`) live rather than a hand-typed
+  number, so the text can't drift out of sync — e.g. Sudoku's card explicitly calls out "grows from
+  a 4×4 warm-up to a full 9×9". Games with no discrete level concept (Hoo Hey How, Star Slots,
+  Virus Lab, Circuit Loop, Comet Muncher, Pop-a-Tic-Tac-Toe, Star Lanes Bowling) were left as-is.
 
 ## Farm — `js/18-farm.js` (`#farmView`)
 

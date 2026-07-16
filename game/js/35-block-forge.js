@@ -4,13 +4,22 @@
   // Turn-based (no timers/gravity): you're given a tray of 3 original "quantum
   // block" shapes; place each on the grid (click a shape, then a cell). A filled
   // row OR column clears; consecutive line-clearing placements build a combo
-  // multiplier. Game over when no tray piece fits anywhere. High score persists
-  // in state.miniGames.blockForge; Cash reward scaled by score (beat-your-best
-  // bonus). Plugs into #wonderlandView; shares wg* helpers from 34-wonder-games.js.
+  // multiplier. Sequential levels (no difficulty picker) — everyone starts at
+  // level 1 on a roomy 9×9 board; each level shrinks the board and raises the
+  // score goal, resetting to a fresh empty board on advance. Game over when no
+  // tray piece fits anywhere, or the run ends after the last level. High score
+  // persists in state.miniGames.blockForge; Cash reward scaled by total score
+  // (beat-your-best bonus). Plugs into #wonderlandView; shares wg* helpers.
   //
   // The core (canPlace / clearLines / anyPlaceable) is pure + console-testable.
   // ============================================================================
-  var QBF_SIZES = { easy: 9, normal: 8, hard: 7 };
+  var QBF_LEVELS = [
+    { size: 9, goal: 150 },
+    { size: 9, goal: 220 },
+    { size: 8, goal: 250 },
+    { size: 8, goal: 320 },
+    { size: 7, goal: 400 }
+  ];
 
   // Original shapes — each an array of [row,col] offsets from a top-left anchor.
   var QBF_SHAPES = [
@@ -25,7 +34,7 @@
   ];
   var QBF_COLORS = ['#6EC1E4', '#F2C14E', '#F0705E', '#7bd88f', '#9a6cff', '#66e0ff'];
 
-  var QBF = { active: false, size: 8, board: null, tray: [], sel: -1, score: 0, combo: 0, lines: 0, placed: 0, diff: 'normal' };
+  var QBF = { active: false, level: 0, size: 8, board: null, tray: [], sel: -1, score: 0, totalScore: 0, combo: 0, lines: 0, placed: 0 };
 
   // ---- pure core ----
   function qbfNewBoard(size){ var b = []; for (var r = 0; r < size; r++){ b.push([]); for (var c = 0; c < size; c++) b[r].push(0); } return b; }
@@ -63,53 +72,39 @@
     return { cells: cells, color: QBF_COLORS[rand(0, QBF_COLORS.length - 1)] };
   }
 
-  // PURE: Cash reward for a run — modest rate (block scores accumulate) + best-beating bonus.
-  function qbfReward(score, diff, newHigh){
-    var rate = diff === 'hard' ? 0.14 : (diff === 'normal' ? 0.10 : 0.07);
-    var r = { coins: Math.max(0, Math.round(score * rate)) };
+  // PURE: Cash reward for a whole run — modest rate (block scores accumulate) + best-beating bonus.
+  function qbfReward(totalScore, level, newHigh){
+    var rate = 0.07 + level * 0.015;   // later levels pay a better rate
+    var r = { coins: Math.max(0, Math.round(totalScore * rate)) };
     if (newHigh){ r.coins += 25; r.newHigh = true; }
-    if (diff === 'hard' && newHigh && score >= 400){ r.chips = { cpu: 1 }; }
+    if (level >= QBF_LEVELS.length - 1 && newHigh && totalScore >= 400){ r.chips = { cpu: 1 }; }
     return r;
   }
 
   // ---- lifecycle ----
   function openBlockForge(){
-    wgStopAll();
-    var view = wgShowView();
-    if (!view) return;
-    var m = wgMini('blockForge');
-    view.innerHTML =
-      '<div class="wond-board">' +
-        '<div class="wond-head"><h2 class="wond-title"><span class="wond-wheel">🧩</span> Quantum Block Forge</h2>' +
-          '<p class="wond-sub">Place blocks to fill rows &amp; columns — clear lines for big combos!</p></div>' +
-        '<div class="wond-passrow"><span class="wond-passes">🏆 High score: <b>' + (m.highScore || 0) + '</b></span>' +
-          '<span class="wond-hint">Free to play · click a block then a cell</span></div>' +
-        '<div class="wg-diff-row">' +
-          '<button type="button" class="btn btn-primary" onclick="qbfStart(\'easy\')" data-tooltip="Roomy 9×9 board.">🟢 Easy 9×9</button>' +
-          '<button type="button" class="btn btn-primary" onclick="qbfStart(\'normal\')" data-tooltip="Classic 8×8 board.">🟡 Normal 8×8</button>' +
-          '<button type="button" class="btn btn-primary" onclick="qbfStart(\'hard\')" data-tooltip="Tight 7×7 board — best Cash.">🔴 Hard 7×7</button>' +
-        '</div>' +
-        '<div class="wond-footer"><button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the Wonderland lobby.">← Lobby</button></div>' +
-      '</div>';
+    QBF.level = 0; QBF.totalScore = 0;
+    _qbfSetup();
   }
 
-  function qbfStart(diff){
+  function _qbfSetup(){
     wgStopAll();
     var view = document.getElementById('wonderlandView');
     if (!view) return;
-    QBF.active = true; QBF.diff = diff; QBF.size = QBF_SIZES[diff] || 8;
+    var lv = QBF_LEVELS[QBF.level] || QBF_LEVELS[QBF_LEVELS.length - 1];
+    QBF.active = true; QBF.size = lv.size;
     QBF.board = qbfNewBoard(QBF.size);
     QBF.score = 0; QBF.combo = 0; QBF.lines = 0; QBF.placed = 0; QBF.sel = -1;
-    QBF.goal = { easy: 250, normal: 350, hard: 450 }[diff] || 350;   // reach it to WIN the forge
+    QBF.goal = lv.goal;   // reach it to clear this level
     QBF.best = wgMini('blockForge').highScore || 0;
     qbfRefillTray();
     view.innerHTML =
       '<div class="wond-board wond-game">' +
-        '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🧩 Quantum Block Forge — ' + diff + '</h2>' +
-          '<button type="button" class="btn btn-ghost" onclick="openBlockForge()" data-tooltip="Quit this run (score is not saved).">✕ Quit</button></div>' +
+        '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🧩 Quantum Block Forge — Level ' + (QBF.level + 1) + ' / ' + QBF_LEVELS.length + '</h2>' +
+          '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Quit this run (score is not saved).">✕ Quit</button></div>' +
         '<div class="wond-hud" id="qbfHud"></div>' +
         '<div class="qbf-wrap"><div class="qbf-grid" id="qbfGrid"></div><div class="qbf-tray" id="qbfTray"></div></div>' +
-        '<p class="wond-tip">DRAG a block onto the grid (or click it, then click the grid). Fill a row or column to clear it — reach the 🎯 goal score to master the forge!</p>' +
+        '<p class="wond-tip">DRAG a block onto the grid (or click it, then click the grid). Fill a row or column to clear it — reach the 🎯 goal score to clear this level!</p>' +
       '</div>';
     if (typeof playSfx === 'function') playSfx('ui-click');
     qbfRender();
@@ -160,6 +155,7 @@
     var hud = document.getElementById('qbfHud');
     if (!hud) return;
     hud.innerHTML =
+      '<span class="wond-chip">🎚️ Level <b>' + (QBF.level + 1) + ' / ' + QBF_LEVELS.length + '</b></span>' +
       '<span class="wond-chip">⭐ Score: <b>' + QBF.score + '</b></span>' +
       '<span class="wond-chip' + (QBF.score >= QBF.goal ? ' wond-chip-hot' : '') + '">🎯 Goal: <b>' + QBF.score + ' / ' + QBF.goal + '</b></span>' +
       '<span class="wond-chip">🔥 Combo: <b>×' + Math.max(1, QBF.combo) + '</b></span>' +
@@ -217,30 +213,42 @@
     }
     if (QBF.tray.every(function(x){ return !x; })) qbfRefillTray();  // new tray when all placed
     qbfRender();
-    if (QBF.score >= QBF.goal){ qbfEnd(true); return; }              // 🎯 goal reached = WIN!
+    if (QBF.score >= QBF.goal){ _qbfLevelClear(); return; }          // 🎯 goal reached — advance!
     if (!qbfAnyPlaceable(QBF.board, QBF.tray, QBF.size)) qbfEnd(false);
+  }
+
+  // Goal reached — advance to the next level for FREE (fresh board), or end the run if that was
+  // the last one (matching Sky Stacker / Blast Bot's sequential-level pattern).
+  function _qbfLevelClear(){
+    QBF.active = false;
+    QBF.totalScore += QBF.score;
+    if (QBF.level + 1 >= QBF_LEVELS.length){ qbfEnd(true); return; }
+    if (typeof playSfx === 'function') playSfx('victory');
+    if (typeof showToast === 'function') showToast('🌟 Level ' + (QBF.level + 1) + ' clear! Score ' + QBF.score + ' — next up!');
+    QBF.level++;
+    if (typeof a2Later === 'function') a2Later(_qbfSetup, 900); else setTimeout(_qbfSetup, 900);
   }
 
   function qbfEnd(won){
     QBF.active = false;
-    var score = QBF.score, diff = QBF.diff, lines = QBF.lines;
-    var newHigh = wgRecordScore('blockForge', score, diff);
-    var r = qbfReward(score, diff, newHigh);
+    if (won) QBF.totalScore += QBF.score;   // final level's score wasn't folded in yet
+    var total = QBF.totalScore, level = QBF.level, lines = QBF.lines;
+    var newHigh = wgRecordScore('blockForge', total, level + 1);
+    var r = qbfReward(total, level, newHigh);
     wgPayReward(r);
-    // Mastering the forge (hitting the goal) also opens the gold treasure chest.
+    // Mastering the forge (clearing every level) also opens the gold treasure chest.
     if (won && typeof a2Reward === 'function') a2Reward(1);
     var view = document.getElementById('wonderlandView');
     if (!view) return;
     view.innerHTML =
       '<div class="wond-board">' +
         '<div class="wond-head"><h2 class="wond-title">' + (won ? '🌟 FORGE MASTERED! 🎯' : (newHigh ? '🏆 NEW HIGH SCORE!' : '🧩 Board full!')) + '</h2>' +
-          '<p class="wond-sub">Score <b>' + score + '</b> · ' + lines + ' lines cleared · ' + diff + '</p></div>' +
+          '<p class="wond-sub">Reached level <b>' + (level + 1) + ' / ' + QBF_LEVELS.length + '</b> · total score <b>' + total + '</b> · ' + lines + ' lines cleared (last level)</p></div>' +
         '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
           '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + (r.coins || 0) + '</span>' +
           (r.chips && r.chips.cpu ? '<span class="wond-chip wond-prize-chip">🖥️ CPU ×' + r.chips.cpu + '</span>' : '') + '</div></div>' +
         '<div class="wond-footer">' +
-          '<button type="button" class="btn btn-primary" onclick="qbfStart(\'' + diff + '\')" data-tooltip="Play this difficulty again.">↻ Play again</button>' +
-          '<button type="button" class="btn btn-ghost" onclick="openBlockForge()" data-tooltip="Change board size.">🧩 Difficulty</button>' +
+          '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openBlockForge\')" data-tooltip="Costs 1 Wonderland Pass — starts back at level 1.">↻ Play again (1 🎟️)</button>' +
           '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
         '</div>' +
       '</div>';

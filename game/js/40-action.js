@@ -1185,32 +1185,36 @@
   }
 
   // ===========================================================================
-  // 🎵 Cosmic Rhythm — a 4-lane falling-note rhythm game. Press D F J K (or tap
+  // 🎵 Cosmic Rhythm — a 4-lane falling-note rhythm game. Press 1 2 9 0 (or tap
   // the lane buttons) exactly when a note crosses the hit line. Entered via
-  // wonderPlay('openRhythm') (1 Wonderland Pass); difficulty picks the song
-  // length + note density; replay/difficulty-change inside the game is free
-  // (routes through rhythmStart/openRhythm directly, not wonderPlay again).
+  // wonderPlay('openRhythm') (1 Wonderland Pass); levels increase in speed/
+  // density sequentially (no difficulty picker — see _rhySetup/RHY_LEVELS).
   // Cash-only reward via wgPayReward, like the other carnival games.
   // ===========================================================================
   var RHY_LANES = 4;
-  var RHY_KEYS = ['d', 'f', 'j', 'k'];   // classic 4-key rhythm-game layout, left to right
-  var RHY_KEY_LABEL = ['D', 'F', 'J', 'K'];
+  var RHY_KEYS = ['1', '2', '9', '0'];   // outer-left/inner-left/inner-right/outer-right, left to right
+  var RHY_KEY_LABEL = ['1', '2', '9', '0'];
   var RHY_LANE_COL = ['#f0705e', '#f2c14e', '#7bd88f', '#5aa9ff'];
   var RHY_BEAT_MS = 500;          // 120 BPM
   var RHY_LEAD_MS = 2000;         // ms a note takes to fall from spawn to the hit line
   var RHY_PERFECT_MS = 90, RHY_GOOD_MS = 180;
-  var RHY_DIFFS = {
-    easy:   { beats: 48, density: 0.5,  doubleChance: 0.04 },
-    normal: { beats: 64, density: 0.72, doubleChance: 0.14 },
-    hard:   { beats: 80, density: 0.92, doubleChance: 0.28 }
-  };
-  var RHY = { active: false, diff: 'normal', chart: [], t: 0, lastTs: 0, ended: false,
-              score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, laneFlash: [0, 0, 0, 0] };
+  // Sequential levels (no difficulty picker) — everyone starts at level 1; each song gets longer,
+  // denser and chordier. RHY_CLEAR_ACC% accuracy on a level advances to the next for free; falling
+  // short (or finishing the last level) ends the run.
+  var RHY_LEVELS = [
+    { beats: 40, density: 0.45, doubleChance: 0.02 },
+    { beats: 48, density: 0.55, doubleChance: 0.06 },
+    { beats: 56, density: 0.68, doubleChance: 0.12 },
+    { beats: 64, density: 0.80, doubleChance: 0.20 },
+    { beats: 72, density: 0.92, doubleChance: 0.30 }
+  ];
+  var RHY_CLEAR_ACC = 50;
+  var RHY = { active: false, level: 0, chart: [], t: 0, lastTs: 0, ended: false,
+              score: 0, totalScore: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, laneFlash: [0, 0, 0, 0] };
 
-  // PURE: builds a beatmap for a difficulty. Every note is { t (ms), lane (0-3), judged }.
+  // PURE: builds a beatmap for a level config. Every note is { t (ms), lane (0-3), judged }.
   // A "double" occasionally adds a 2nd note on the SAME beat in a different lane (a chord).
-  function rhyGenChart(diff){
-    var cfg = RHY_DIFFS[diff] || RHY_DIFFS.normal;
+  function rhyGenChart(cfg){
     var chart = [];
     for (var b = 0; b < cfg.beats; b++){
       if (Math.random() >= cfg.density) continue;
@@ -1226,34 +1230,23 @@
   }
 
   function openRhythm(){
-    if (typeof wgStopAll === 'function') wgStopAll();
-    var v = (typeof agShowView === 'function') ? agShowView() : document.getElementById('wonderlandView');
-    if (!v) return;
-    var best = (typeof wgMini === 'function') ? wgMini('rhythm').highScore || 0 : 0;
-    v.innerHTML = '<div class="wond-board wond-game">' +
-      (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm', 'openWonderland()') : '') +
-      '<p class="wond-sub" style="text-align:center;margin-bottom:10px">Hit D F J K exactly when each note crosses the line. Pick a difficulty — replay is free until you leave!</p>' +
-      '<div class="wg-diff-row" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">' +
-        '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'easy\')" data-tooltip="Slower, sparser notes.">🟢 Easy</button>' +
-        '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'normal\')" data-tooltip="A steady beat.">🟡 Normal</button>' +
-        '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'hard\')" data-tooltip="Dense chords, best Cash.">🔴 Hard</button>' +
-      '</div>' +
-      '<p class="wond-sub" style="text-align:center;margin-top:16px">🏆 Best score: <b>' + best + '</b></p>' +
-    '</div>';
+    RHY.level = 0; RHY.totalScore = 0;
+    _rhySetup();
   }
 
-  function rhythmStart(diff){
+  function _rhySetup(){
     if (typeof wgStopAll === 'function') wgStopAll();
     var v = document.getElementById('wonderlandView'); if (!v) return;
-    RHY.active = true; RHY.diff = diff; RHY.chart = rhyGenChart(diff);
+    var cfg = RHY_LEVELS[RHY.level] || RHY_LEVELS[RHY_LEVELS.length - 1];
+    RHY.active = true; RHY.chart = rhyGenChart(cfg);
     RHY.t = 0; RHY.lastTs = 0; RHY.ended = false;
     RHY.score = 0; RHY.combo = 0; RHY.maxCombo = 0; RHY.perfect = 0; RHY.good = 0; RHY.miss = 0;
     RHY.laneFlash = [0, 0, 0, 0];
     var W = 320, H = 460;
     v.innerHTML = '<div class="wond-board wond-game">' +
-      (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm — ' + diff.charAt(0).toUpperCase() + diff.slice(1), 'openRhythm()') : '') +
+      (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm — Level ' + (RHY.level + 1) + ' / ' + RHY_LEVELS.length, 'openWonderland()') : '') +
       '<div class="wond-hud" id="rhyHud"></div>' +
-      a2KeyLegend('D F J K to hit each lane') +
+      a2KeyLegend('1 2 9 0 to hit each lane') +
       '<div class="wond-canvas-wrap"><canvas id="rhyCanvas" class="a2-canvas" width="' + W + '" height="' + H + '"></canvas></div>' +
       '<div class="a2-pad">' + RHY_KEY_LABEL.map(function(lb, i){
         return '<button type="button" class="btn btn-secondary" onclick="rhyHitLane(' + i + ')">' + lb + '</button>';
@@ -1270,7 +1263,8 @@
 
   function _rhyHud(){
     var hud = document.getElementById('rhyHud'); if (!hud) return;
-    hud.innerHTML = '<span class="wond-chip">⭐ Score: <b>' + RHY.score + '</b></span>' +
+    hud.innerHTML = '<span class="wond-chip">🎚️ Level <b>' + (RHY.level + 1) + ' / ' + RHY_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">⭐ Score: <b>' + RHY.score + '</b></span>' +
       '<span class="wond-chip">🔥 Combo: <b>' + RHY.combo + '</b></span>' +
       '<span class="wond-chip">🎯 Perfect: <b>' + RHY.perfect + '</b></span>' +
       '<span class="wond-chip">👍 Good: <b>' + RHY.good + '</b></span>' +
@@ -1350,24 +1344,174 @@
     a2StopAll();
     var total = RHY.perfect + RHY.good + RHY.miss;
     var acc = total > 0 ? Math.round(((RHY.perfect + RHY.good * 0.5) / total) * 100) : 0;
-    var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('rhythm', RHY.score, RHY.diff) : false;
-    var rate = RHY.diff === 'hard' ? 0.12 : (RHY.diff === 'normal' ? 0.08 : 0.05);
-    var coins = Math.max(0, Math.round(RHY.score * rate)) + (newHigh ? 20 : 0);
+    RHY.totalScore += RHY.score;
+    var cleared = acc >= RHY_CLEAR_ACC;
+    var lastLevel = RHY.level + 1 >= RHY_LEVELS.length;
+    if (cleared && !lastLevel){
+      // Level cleared — advance for FREE, no re-charge, matching Sky Stacker/Blast Bot.
+      if (typeof playSfx === 'function') playSfx('victory');
+      if (typeof showToast === 'function') showToast('🌟 Level ' + (RHY.level + 1) + ' clear! (' + acc + '% accuracy) — next up!');
+      RHY.level++;
+      a2Later(_rhySetup, 900);
+      return;
+    }
+    _rhyGameOver(acc, cleared && lastLevel);
+  }
+
+  function _rhyGameOver(acc, wonAll){
+    var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('rhythm', RHY.totalScore, RHY.level + 1) : false;
+    var rate = 0.05 + RHY.level * 0.02;   // later levels pay a better rate
+    var coins = Math.max(0, Math.round(RHY.totalScore * rate)) + (newHigh ? 20 : 0);
     if (coins > 0 && typeof wgPayReward === 'function') wgPayReward({ coins: coins, newHigh: newHigh });
-    if (typeof playSfx === 'function') playSfx(acc >= 80 ? 'victory' : (acc >= 50 ? 'ui-click' : 'wrong'));
+    if (typeof playSfx === 'function') playSfx(wonAll ? 'victory' : (acc >= 50 ? 'ui-click' : 'wrong'));
     var view = document.getElementById('wonderlandView'); if (!view) return;
-    var headline = acc >= 95 ? '🌟 FLAWLESS SET!' : (acc >= 80 ? '🎵 Great rhythm!' : (acc >= 50 ? '🎶 Nice try!' : '🎵 Off-beat!'));
+    var headline = wonAll ? '🌟 ALL LEVELS CLEARED! 🌟' : (acc >= RHY_CLEAR_ACC ? '🎵 Great rhythm!' : '🎵 Off-beat!');
     view.innerHTML = '<div class="wond-board wond-game">' +
-      (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm', 'openRhythm()') : '') +
+      (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm', 'openWonderland()') : '') +
       '<div class="wond-head"><h2 class="wond-title">' + headline + (newHigh ? ' 🏆' : '') + '</h2>' +
-      '<p class="wond-sub">Score <b>' + RHY.score + '</b> · ' + acc + '% accuracy · max combo <b>' + RHY.maxCombo + '</b> · ' + RHY.diff + '</p>' +
-      '<p class="wond-sub">🎯 ' + RHY.perfect + ' Perfect · 👍 ' + RHY.good + ' Good · 💢 ' + RHY.miss + ' Miss</p></div>' +
+      '<p class="wond-sub">Reached level <b>' + (RHY.level + 1) + ' / ' + RHY_LEVELS.length + '</b> · total score <b>' + RHY.totalScore + '</b> · ' + acc + '% accuracy on that level</p>' +
+      '<p class="wond-sub">🎯 ' + RHY.perfect + ' Perfect · 👍 ' + RHY.good + ' Good · 💢 ' + RHY.miss + ' Miss (last level)</p></div>' +
       '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
         '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + coins + '</span></div></div>' +
       '<div class="wond-footer" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
-        '<button type="button" class="btn btn-primary" onclick="rhythmStart(\'' + RHY.diff + '\')" data-tooltip="Play again, same difficulty.">↻ Replay</button>' +
-        '<button type="button" class="btn btn-ghost" onclick="openRhythm()" data-tooltip="Change difficulty.">🎚️ Difficulty</button>' +
+        '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openRhythm\')" data-tooltip="Costs 1 Wonderland Pass — starts back at level 1.">↻ Play again (1 🎟️)</button>' +
         '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Back to the lobby.">← Lobby</button>' +
       '</div>' +
     '</div>';
+  }
+
+  // ===========================================================================
+  // 🐍 Snake — classic grid snake. Steer with arrows/WASD; eat 🍎 to grow and
+  // hit this level's target to advance; hitting a wall or your own tail ends
+  // the run. Sequential levels (no difficulty picker) — board size stays fixed,
+  // each level raises the food target and speeds up the tick.
+  // ===========================================================================
+  var SN_LEVELS = [
+    { target: 5,  tickMs: 150 },
+    { target: 8,  tickMs: 130 },
+    { target: 12, tickMs: 112 },
+    { target: 16, tickMs: 96 },
+    { target: 20, tickMs: 82 }
+  ];
+  var SN_COLS = 16, SN_ROWS = 16, SN_T = 20;
+  var SN = { active: false, level: 0, snake: [], dir: [1, 0], nextDir: [1, 0], food: null, eaten: 0, target: 0, tickMs: 150, tick: 0, totalScore: 0 };
+
+  function _snPlaceFood(){
+    var free = [];
+    for (var y = 0; y < SN_ROWS; y++) for (var x = 0; x < SN_COLS; x++){
+      if (!SN.snake.some(function(s){ return s.x === x && s.y === y; })) free.push({ x: x, y: y });
+    }
+    SN.food = free[rand(0, free.length - 1)] || { x: 0, y: 0 };
+  }
+
+  function openSnake(){
+    SN.level = 0; SN.totalScore = 0;
+    _snSetup();
+  }
+
+  function _snSetup(){
+    var lv = SN_LEVELS[SN.level] || SN_LEVELS[SN_LEVELS.length - 1];
+    SN.active = true;
+    SN.snake = [{ x: 8, y: 8 }, { x: 7, y: 8 }, { x: 6, y: 8 }];
+    SN.dir = [1, 0]; SN.nextDir = [1, 0];
+    SN.eaten = 0; SN.target = lv.target; SN.tickMs = lv.tickMs;
+    _snPlaceFood();
+    a2Shell('🐍 Snake', 'openWonderland()',
+      '<div class="wond-hud" id="snHud"></div>' + a2KeyLegend('Arrow keys or WASD to steer') +
+      '<div class="wond-canvas-wrap"><canvas id="snCanvas" class="a2-canvas" width="' + (SN_COLS * SN_T) + '" height="' + (SN_ROWS * SN_T) + '"></canvas></div>' +
+      '<div class="a2-pad"><div>' +
+        '<button type="button" class="btn btn-secondary" onclick="_snDir(-1,0)">◀</button>' +
+        '<button type="button" class="btn btn-secondary" onclick="_snDir(0,-1)">▲</button>' +
+        '<button type="button" class="btn btn-secondary" onclick="_snDir(0,1)">▼</button>' +
+        '<button type="button" class="btn btn-secondary" onclick="_snDir(1,0)">▶</button>' +
+      '</div></div>',
+      'Eat ' + SN.target + ' 🍎 to clear this level. Hitting a wall or your own tail ends the run!');
+    _snHud();
+    _snDraw();
+    a2Keys(function(e){
+      var k = e.key.toLowerCase();
+      if (k === 'arrowleft' || k === 'a'){ e.preventDefault(); _snDir(-1, 0); }
+      else if (k === 'arrowup' || k === 'w'){ e.preventDefault(); _snDir(0, -1); }
+      else if (k === 'arrowdown' || k === 's'){ e.preventDefault(); _snDir(0, 1); }
+      else if (k === 'arrowright' || k === 'd'){ e.preventDefault(); _snDir(1, 0); }
+    });
+    SN.tick = a2Every(_snStep, SN.tickMs);
+  }
+
+  // Queues the next direction (applied on the next tick) — never allowed to reverse straight
+  // into the snake's own neck.
+  function _snDir(dx, dy){
+    if (!SN.active) return;
+    if (dx === -SN.dir[0] && dy === -SN.dir[1]) return;
+    SN.nextDir = [dx, dy];
+  }
+
+  function _snHud(){
+    var hud = document.getElementById('snHud'); if (!hud) return;
+    hud.innerHTML = '<span class="wond-chip">🎚️ Level <b>' + (SN.level + 1) + ' / ' + SN_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">🍎 Eaten: <b>' + SN.eaten + ' / ' + SN.target + '</b></span>' +
+      '<span class="wond-chip">📏 Length: <b>' + SN.snake.length + '</b></span>';
+  }
+
+  function _snStep(){
+    if (!SN.active) return;
+    SN.dir = SN.nextDir;
+    var head = SN.snake[0];
+    var next = { x: head.x + SN.dir[0], y: head.y + SN.dir[1] };
+    var hitWall = next.x < 0 || next.x >= SN_COLS || next.y < 0 || next.y >= SN_ROWS;
+    var hitSelf = SN.snake.some(function(s){ return s.x === next.x && s.y === next.y; });
+    if (hitWall || hitSelf){ _snGameOver(); return; }
+    SN.snake.unshift(next);
+    if (next.x === SN.food.x && next.y === SN.food.y){
+      SN.eaten++;
+      if (typeof playSfx === 'function') playSfx('correct');
+      if (SN.eaten >= SN.target){ _snLevelClear(); return; }
+      _snPlaceFood();
+    } else {
+      SN.snake.pop();
+    }
+    _snDraw();
+    _snHud();
+  }
+
+  function _snDraw(){
+    var cv = document.getElementById('snCanvas'); if (!cv) return;
+    var c = cv.getContext('2d'), T = SN_T;
+    c.fillStyle = '#0f1e12'; c.fillRect(0, 0, cv.width, cv.height);
+    c.fillStyle = '#e0524a';
+    c.beginPath(); c.arc(SN.food.x * T + T / 2, SN.food.y * T + T / 2, T * 0.38, 0, 7); c.fill();
+    for (var i = SN.snake.length - 1; i >= 0; i--){
+      var s = SN.snake[i];
+      c.fillStyle = i === 0 ? '#8be05a' : '#5aa93f';
+      c.fillRect(s.x * T + 1, s.y * T + 1, T - 2, T - 2);
+    }
+  }
+
+  // Level's food target reached — advance to the next level for FREE (fresh snake, faster tick),
+  // or end the run if that was the last level (matching every other Wonderland game's pattern).
+  function _snLevelClear(){
+    SN.active = false;
+    if (SN.tick){ clearInterval(SN.tick); SN.tick = 0; }
+    SN.totalScore += SN.eaten * 10 + SN.snake.length * 2;
+    if (SN.level + 1 >= SN_LEVELS.length){ _snEnd(true); return; }
+    if (typeof playSfx === 'function') playSfx('victory');
+    if (typeof showToast === 'function') showToast('🌟 Level ' + (SN.level + 1) + ' clear! Next up!');
+    SN.level++;
+    a2Later(_snSetup, 900);
+  }
+
+  function _snGameOver(){
+    SN.active = false;
+    if (SN.tick){ clearInterval(SN.tick); SN.tick = 0; }
+    SN.totalScore += SN.eaten * 10 + SN.snake.length * 2;
+    if (typeof playSfx === 'function') playSfx('wrong');
+    _snEnd(false);
+  }
+
+  function _snEnd(wonAll){
+    var level = SN.level;
+    var frac = Math.min(1, (level + (wonAll ? 1 : 0)) / SN_LEVELS.length);
+    a2Result('🐍 Snake', wonAll ? '🌟 ALL LEVELS CLEARED! 🌟' : '💥 Game Over!',
+      'Reached level <b>' + (level + 1) + ' / ' + SN_LEVELS.length + '</b> · total score <b>' + SN.totalScore + '</b> · length ' + SN.snake.length,
+      frac, 'openSnake');
   }

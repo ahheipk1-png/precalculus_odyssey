@@ -10,16 +10,25 @@
   // 3/4/5 (×1/×4/×15). Two special SHAPES — the four corners, or the full centre
   // cross — pay a big JACKPOT on top. The reel is weighted with cheap fruit
   // fillers so it's still beatable, not a money printer, but wins land often
-  // enough to feel fair (2026-07-16: was 3+-only, which was too rare).
+  // enough to feel fair (2026-07-16: was 3+-only, which was too rare; later same
+  // day: dropped 🚀 and 🪐 from 9→7 symbol types — fewer distinct symbols means
+  // more matches — and rebalanced the jackpot multipliers down since fewer types
+  // ALSO makes the 4-corner/full-cross patterns much easier to hit; verified by
+  // Monte Carlo simulation, not just hand math — see docs).
   // ============================================================================
   var SL = { spinning: false, bet: 10, lineCount: 3, grid: [], finalGrid: null, stopped: [], tumble: 0, spinsLeft: 3 };
   var SL_ROWS = 3, SL_COLS = 5;
   var SL_MAX_SPINS = 3, SL_MAX_BET = 1000;
   // Weighted bag: cheap fruit fillers are common, premium symbols rare → most spins don't line up.
-  var SL_REEL = ['🍒','🍒','🍒','🍒','🍒','🍋','🍋','🍋','🍋','🔔','🔔','🔔','🚀','🚀','⭐','⭐','🪐','👽','💎','7️⃣'];
-  var SL_PAY = { '🍒': 2, '🍋': 3, '🔔': 4, '🚀': 6, '⭐': 8, '🪐': 12, '👽': 20, '💎': 40, '7️⃣': 100 };
+  var SL_REEL = ['🍒','🍒','🍒','🍒','🍒','🍒','🍋','🍋','🍋','🍋','🍋','🔔','🔔','🔔','🔔','⭐','⭐','👽','💎','7️⃣'];
+  var SL_PAY = { '🍒': 2, '🍋': 3, '🔔': 4, '⭐': 8, '👽': 20, '💎': 40, '7️⃣': 100 };
   var SL_RUN_MULT = { 2: 0.5, 3: 1, 4: 4, 5: 15 };   // multiplier for a 2/3/4/5-long run from the left
-  var SL_JP_CORNER = 250, SL_JP_CROSS = 1000;    // jackpot payouts = multiplier × total bet
+  // Jackpot multipliers — tuned by Monte Carlo simulation (200k+ spins), not hand math: the OLD
+  // ×250/×1000 values were already a severe money-printer even at 9 symbol types (corner alone
+  // ≈181% EV — a 4-corner match is way more common than "jackpot" pay implies), and dropping to
+  // 7 types makes 4/7-cell matches easier still. ×4/×150 lands combined RTP (line wins + both
+  // jackpots) at a stable ~88-90% across every bet/line-count combination — generous, not broken.
+  var SL_JP_CORNER = 4, SL_JP_CROSS = 150;    // jackpot payouts = multiplier × total bet
   var SL_LINES = [
     { id: 'r0', label: 'Top',    cells: [[0,0],[0,1],[0,2],[0,3],[0,4]] },
     { id: 'r1', label: 'Middle', cells: [[1,0],[1,1],[1,2],[1,3],[1,4]] },
@@ -43,7 +52,7 @@
   function openSlots(){
     SL.spinning = false; SL.bet = 10; SL.lineCount = 3; SL.grid = _slNewGrid(); SL.stopped = [false, false, false, false, false];
     SL.spinsLeft = SL_MAX_SPINS;   // one Wonderland Pass buys 3 spins; "Play Again" buys 3 more
-    var payRows = ['7️⃣', '💎', '👽', '🪐', '⭐', '🚀', '🔔', '🍋', '🍒'].map(function(s){
+    var payRows = ['7️⃣', '💎', '👽', '⭐', '🔔', '🍋', '🍒'].map(function(s){
       return '<span class="wond-chip">' + s + s + s + ' ×<b>' + SL_PAY[s] + '</b></span>';
     }).join('');
     a2Shell('🎰 Star Slots', 'openWonderland()',

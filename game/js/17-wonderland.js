@@ -239,7 +239,7 @@
       '<div class="wond-card">' +
         '<div class="wond-card-icon">🎣</div>' +
         '<div class="wond-card-name">Gone Fishin’</div>' +
-        '<div class="wond-card-desc">Catch only the fish whose number matches the rule!</div>' +
+        '<div class="wond-card-desc">Catch only the fish whose number matches the rule! ' + (typeof FISH_MAX_LEVEL !== 'undefined' ? FISH_MAX_LEVEL : 5) + ' levels.</div>' +
         '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openFishin\')" data-tooltip="Play Gone Fishin — costs 1 Wonderland Pass.">Play! (1 🎟️)</button></div>';
     var locked = carnival;
     return '' +
@@ -269,45 +269,46 @@
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🧩</div>' +
             '<div class="wond-card-name">Quantum Block Forge</div>' +
-            '<div class="wond-card-desc">Drag blocks to fill rows &amp; columns — clear lines for combos!</div>' +
+            '<div class="wond-card-desc">Drag blocks to fill rows &amp; columns — clear lines for combos! ' + QBF_LEVELS.length + ' levels, shrinking board.</div>' +
             '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openBlockForge\')" data-tooltip="An original block-placement puzzle. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🃏</div>' +
             '<div class="wond-card-name">Star Match</div>' +
-            '<div class="wond-card-desc">Memorise the board, then match every cosmic pair!</div>' +
+            '<div class="wond-card-desc">Memorise the board, then match every cosmic pair! ' + MEM_LEVELS.length + ' levels, less preview time each round.</div>' +
             '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openMemory\')" data-tooltip="A memory / concentration game. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🔢</div>' +
             '<div class="wond-card-name">Mini Sudoku</div>' +
-            '<div class="wond-card-desc">Drag 1–4 tiles so every row, column &amp; box has 1–4.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openSudoku\')" data-tooltip="A bite-size 4×4 Sudoku. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+            '<div class="wond-card-desc">Drag numbered tiles so every row, column &amp; box is complete. ' + SUD_LEVELS.length + ' levels — grows from a 4×4 warm-up to a full 9×9!</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openSudoku\')" data-tooltip="Sequential levels, 4x4 up to 9x9. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
-          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — three 7️⃣ pays 50× your bet!', 'openSlots') +
-          _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring — classic warehouse puzzling!', 'openCargo') +
-          _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes!', 'openGlacier') +
-          _wondCard('🏯', 'Forbidden City', 'Push matching mahjong tiles together to cancel them and reach the exit!', 'openShikinjou') +
+          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots') +
+          _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring — classic warehouse puzzling! ' + CARGO_LEVELS.length + ' levels.', 'openCargo') +
+          _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes! 8 fresh levels every run.', 'openGlacier') +
+          _wondCard('🏯', 'Forbidden City', 'Push matching mahjong tiles together to cancel them and reach the exit! ' + SHIK_LEVELS.length + ' levels.', 'openShikinjou') +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🗼</div>' +
             '<div class="wond-card-name">Sky Stacker</div>' +
-            '<div class="wond-card-desc">Stack the swinging blocks! Clear all 5 levels one by one — each tower taller than the last.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openStacker()" data-tooltip="One run through all 5 levels. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+            '<div class="wond-card-desc">Stack the swinging blocks! Clear all ' + STK_LEVELS.length + ' levels one by one — each tower taller than the last.</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openStacker()" data-tooltip="One run through all levels. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🟦</div>' +
             '<div class="wond-card-name">Astro Drop</div>' +
-            '<div class="wond-card-desc">Falling blocks! Fill whole lines to clear them — 5 starting speeds.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="Choose an Astro Drop level. Each play costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
+            '<div class="wond-card-desc">Falling blocks! Fill whole lines to clear them — ' + AD_LEVELS.length + ' levels, rising speed.</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="One run through all levels. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
           '</div>' +
           _wondCard('💊', 'Virus Lab', 'Drop 2-color capsules; match 4 in a line to zap every virus!', 'openVirusLab') +
           _wondCard('🔗', 'Circuit Loop', 'Rotate the wires so the power core lights every bulb!', 'openCircuit') +
           _wondCard('👾', 'Comet Muncher', 'Munch every star in the maze — dodge the UFOs!', 'openComet') +
-          _wondCard('💣', 'Blast Bot', 'Bomb the crates and zap the drones — mind the blast!', 'openBlastBot') +
-          _wondCard('🫧', 'Bubble Blast', 'Trap gremlins in bubbles, then pop them platform-style!', 'openBubble') +
+          _wondCard('💣', 'Blast Bot', 'Bomb the crates and zap the drones — mind the blast! ' + BB_LEVELS.length + ' levels.', 'openBlastBot') +
+          _wondCard('🫧', 'Bubble Blast', 'Trap gremlins in bubbles, then pop them platform-style! ' + BU_LEVELS.length + ' levels.', 'openBubble') +
           _wondCard('🎯', 'Pop-a-Tic-Tac-Toe', 'Roll 4 balls onto the board, FIX the ones you like, reroll the rest — chase the jackpot pattern!', 'openPopTicTacToe') +
           _wondCard('🎳', 'Star Lanes Bowling', 'A full 10-frame game — stop the marker to set your aim, power & spin. Strikes pay +100 Gold!', 'openBowling') +
-          _wondCard('🎵', 'Cosmic Rhythm', 'Hit the falling notes on the beat — 3 difficulties, replay free once you\'re in!', 'openRhythm') +
+          _wondCard('🎵', 'Cosmic Rhythm', 'Hit the falling notes on the beat — ' + RHY_LEVELS.length + ' levels, faster and denser as you climb!', 'openRhythm') +
+          _wondCard('🐍', 'Snake', 'Steer the classic snake — eat food to grow, avoid the walls and your own tail! ' + SN_LEVELS.length + ' levels, faster each time.', 'openSnake') +
           locked +
         '</div>' +
         '<div class="wond-footer">' +
