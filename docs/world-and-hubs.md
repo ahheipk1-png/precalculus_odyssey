@@ -74,12 +74,19 @@ clear of a planet = **5 passes**; perfect replays (0 wrong) pay on a diminishing
 
 **2026-07-15 — Forbidden City (Shikinjou) + Virus Lab preview.**
 - **🏯 Forbidden City** (`openShikinjou` in `39-puzzles.js`, lobby card in `17-wonderland.js`) — a new
-  1-pass Shikinjou/紫禁城 tile-push puzzle built on the shared A2 shell (like the Sokoban games). You
-  walk a 🐼 around the palace and **push spirit tiles** (`SHIK_TILE` colour map); pushing two identical
-  tiles together **cancels both**, pushing into a different tile or a wall is blocked, and you win by
-  reaching the 🚪 exit. 5 hand-authored, verified-solvable chambers (`SHIK_LEVELS`, ASCII
-  `#`/`@`/`E`/`1-6`/`.`), with **Undo** (JSON snapshot stack), **Restart**, arrow/WASD keys + a button
-  pad. Uses `wonderPlay('openShikinjou')` (no self-charging → no double-charge); win pays via `a2Result`.
+  1-pass Shikinjou/紫禁城 tile puzzle built on the shared A2 shell. You walk a 🐼 around the palace and
+  **shove spirit tiles** (`SHIK_TILE` colour map): a pushed tile **SLIDES** across the floor until it
+  hits a wall, the exit, or another tile — and if it slides into a tile of the **same kind, both cancel**
+  (authentic Shikinjou, fixed 2026-07-15 from the earlier push-one-cell version). The exit is a slide
+  stopper so a tile can never cover it. Win by reaching the 🚪 exit. The move logic lives in a pure core
+  `_shikStep(state, dx, dy)` shared by the game and the in-code BFS solver used to verify levels. 5
+  hand-authored chambers (`SHIK_LEVELS`) — **every one BFS-verified solvable AND to genuinely require a
+  match** (not walk-around-able). **Undo** (JSON snapshot stack), **Restart**, arrow/WASD + button pad.
+  `wonderPlay('openShikinjou')` (no self-charging → no double-charge); win pays via `a2Result`.
+- **📦 Cargo Bay difficulty bump (2026-07-15).** `CARGO_LEVELS` went from 3 trivial 1-2-crate boards to
+  an **8-level, 3→5-crate progression** (corners, walled aisles, split top/bottom, a 5-in-a-row, and a
+  mixed-direction depot). All 8 are **BFS-verified solvable** by a normalized Sokoban solver. Glacier
+  Push (the ice-slide variant) is unchanged.
 - **💊 Virus Lab now shows the next two capsules.** Added a look-ahead queue (`VL.queue`, seeded in
   `openVirusLab`, advanced in `_vlSpawn` via `_vlRoll`); `_vlHud` renders a "💊 Next:" preview of the
   upcoming two pills as colour swatches (`_vlPillSwatch`, indexing `VL_COLS`).

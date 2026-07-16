@@ -132,23 +132,68 @@
   //   # wall · o target · $ crate · @ player  (levels are small & hand-checked)
   // ===========================================================================
   var CARGO_LEVELS = [
+    // 1 — three crates, push them down onto the rings.
     ['#######',
-     '#.....#',
-     '#.o$@.#',
+     '#.@...#',
+     '#.$$$.#',
+     '#.ooo.#',
      '#.....#',
      '#######'],
+    // 2 — three crates, push up (reposition between each).
     ['#######',
-     '#o....#',
-     '#.#$..#',
-     '#.#.@.#',
+     '#.ooo.#',
+     '#.$$$.#',
+     '#..@..#',
      '#.....#',
      '#######'],
+    // 3 — four crates at the corners.
     ['########',
-     '#o..o..#',
-     '#.$..$.#',
+     '#o....o#',
+     '#$....$#',
+     '#..@...#',
+     '#$....$#',
+     '#o....o#',
+     '########'],
+    // 4 — three crates up a walled aisle (two pushes each).
+    ['########',
+     '#o.o.o.#',
+     '#.#.#..#',
+     '#$.$.$.#',
      '#..@...#',
      '#......#',
-     '########']
+     '########'],
+    // 5 — five crates, split top-and-bottom.
+    ['########',
+     '#.ooo..#',
+     '#.$$$..#',
+     '#..@...#',
+     '#.$$...#',
+     '#.oo...#',
+     '########'],
+    // 6 — four crates, converge from the corners.
+    ['########',
+     '#.o..o.#',
+     '#.$..$.#',
+     '#......#',
+     '#.$..$.#',
+     '#.o..o.#',
+     '#..@...#',
+     '########'],
+    // 7 — five in a row.
+    ['#########',
+     '#.ooooo.#',
+     '#.$$$$$.#',
+     '#...@...#',
+     '#.......#',
+     '#########'],
+    // 8 — the depot: five crates, mixed directions.
+    ['#########',
+     '#o..o..o#',
+     '#$..$..$#',
+     '#...@...#',
+     '#.$...$.#',
+     '#.o...o.#',
+     '#########']
   ];
   var GLACIER_LEVELS = [
     ['#######',
@@ -285,39 +330,47 @@
 
   // ===========================================================================
   // 🏯 Forbidden City (Shikinjou / 紫禁城) — a 1991 Sunsoft-style tile puzzle.
-  // Walk the palace and PUSH spirit tiles. Shove two IDENTICAL tiles together and
-  // they cancel & vanish, opening a route to the 🚪 exit. You can push, never pull
-  // — a tile jammed into a wall or corner is stuck forever (that's the challenge).
+  // Walk the palace and PUSH a spirit tile: it SLIDES across the floor until it hits
+  // a wall or another tile. If it slides INTO a tile of the same kind, both cancel &
+  // vanish — that's how you open a route to the 🚪 exit. A tile shoved flush against a
+  // wall with no match is stuck, so pick your direction carefully.
   //   #=wall  @=you  E=exit  1-6=matching tile types  .=floor
   // ===========================================================================
   var SHIK_TILE = { '1': '🟥', '2': '🟩', '3': '🟦', '4': '🟨', '5': '🟪', '6': '🟧' };
   var SHIK_LEVELS = [
+    // 1 — slide one tile across the gap into its twin to open the way out.
     ['#######',
      '#@1.1E#',
      '#######'],
+    // 2 — a long slide: shove the tile all the way down the row to clear the exit shaft.
     ['#######',
-     '#@....#',
-     '###1###',
-     '#..1.E#',
+     '#@1..1#',
+     '#####.#',
+     '#....E#',
      '#######'],
+    // 3 — two slides and an S-shaped path.
     ['########',
      '#@.1.1.#',
      '######.#',
      '#E.2.2.#',
      '########'],
-    ['#########',
-     '#@.3.3..#',
-     '#######.#',
-     '#..4.4..#',
-     '#.#######',
-     '#E......#',
-     '#########'],
+    // 4 — a two-gate descent: clear each pair to fall through.
     ['#######',
      '#@....#',
      '###1###',
      '#..1..#',
      '###5###',
      '#..5.E#',
+     '#######'],
+    // 5 — the gauntlet: three gates in a row.
+    ['#######',
+     '#@....#',
+     '###1###',
+     '#..1..#',
+     '###2###',
+     '#..2..#',
+     '###3###',
+     '#..3.E#',
      '#######']
   ];
   var SHIK = { walls: {}, tiles: {}, exit: '', px: 0, py: 0, W: 0, H: 0, moves: 0, idx: 0, done: false, hist: [] };
@@ -363,31 +416,41 @@
       '<span class="wond-chip">🎴 Tiles: <b>' + _shikTileCount() + '</b></span>';
   }
 
+  // Pure move core — shared by the game AND the in-code solver that verifies levels.
+  // st = { walls, tiles, exit, px, py }. Returns a NEW state (with .canceled), or null if the
+  // move is illegal. A pushed tile SLIDES until it meets a wall, the exit, or another tile; a
+  // same-kind tile cancels both. The exit is a stopper, so a tile can never come to rest on it.
+  function _shikStep(st, dx, dy){
+    var nx = st.px + dx, ny = st.py + dy, nk = nx + ',' + ny;
+    if (st.walls[nk]) return null;                       // walk into a wall — no move
+    if (st.tiles[nk]){
+      var type = st.tiles[nk], cx = nx, cy = ny, canceled = false;
+      while (true){                                      // slide the tile until it hits something
+        var tx = cx + dx, ty = cy + dy, tk = tx + ',' + ty;
+        if (st.walls[tk] || tk === st.exit) break;       // wall / exit stops the slide
+        if (st.tiles[tk]){ if (st.tiles[tk] === type) canceled = true; break; }
+        cx = tx; cy = ty;
+      }
+      if (cx === nx && cy === ny && !canceled) return null;   // couldn't budge & no match → illegal
+      var nt = {}; for (var k in st.tiles) nt[k] = st.tiles[k];
+      delete nt[nk];
+      if (canceled) delete nt[(cx + dx) + ',' + (cy + dy)];   // the matching tile it slid into
+      else nt[cx + ',' + cy] = type;                          // it rests here
+      return { walls: st.walls, tiles: nt, exit: st.exit, px: nx, py: ny, canceled: canceled };
+    }
+    return { walls: st.walls, tiles: st.tiles, exit: st.exit, px: nx, py: ny, canceled: false };
+  }
+
   function shikMove(dx, dy){
     if (SHIK.done || !a2Active()) return;
-    var nx = SHIK.px + dx, ny = SHIK.py + dy, nk = nx + ',' + ny;
-    if (SHIK.walls[nk]) return;                          // walk into a wall — no move
-    var snap = { tiles: JSON.stringify(SHIK.tiles), px: SHIK.px, py: SHIK.py, moves: SHIK.moves };
-    if (SHIK.tiles[nk]){
-      var bk = (nx + dx) + ',' + (ny + dy);              // the cell BEHIND the tile
-      if (SHIK.walls[bk]) return;                        // can't push a tile into a wall
-      var behind = SHIK.tiles[bk];
-      if (behind){
-        if (behind === SHIK.tiles[nk]){                  // two identical tiles → both cancel!
-          delete SHIK.tiles[nk]; delete SHIK.tiles[bk];
-          if (typeof playSfx === 'function') playSfx('correct');
-        } else {
-          return;                                        // a different tile behind → can't push two
-        }
-      } else {                                           // empty behind → slide the tile one cell
-        SHIK.tiles[bk] = SHIK.tiles[nk]; delete SHIK.tiles[nk];
-        if (typeof playSfx === 'function') playSfx('click');
-      }
-    } else if (typeof playSfx === 'function') playSfx('click');
-    SHIK.hist.push(snap); if (SHIK.hist.length > 200) SHIK.hist.shift();
-    SHIK.px = nx; SHIK.py = ny; SHIK.moves++;
+    var ns = _shikStep({ walls: SHIK.walls, tiles: SHIK.tiles, exit: SHIK.exit, px: SHIK.px, py: SHIK.py }, dx, dy);
+    if (!ns) return;
+    SHIK.hist.push({ tiles: JSON.stringify(SHIK.tiles), px: SHIK.px, py: SHIK.py, moves: SHIK.moves });
+    if (SHIK.hist.length > 200) SHIK.hist.shift();
+    SHIK.tiles = ns.tiles; SHIK.px = ns.px; SHIK.py = ns.py; SHIK.moves++;
+    if (typeof playSfx === 'function') playSfx(ns.canceled ? 'correct' : 'click');
     _shikRender();
-    if (nk === SHIK.exit){
+    if ((SHIK.px + ',' + SHIK.py) === SHIK.exit){
       SHIK.done = true;
       if (typeof playSfx === 'function') playSfx('victory');
       if (SHIK.idx + 1 < SHIK_LEVELS.length){
@@ -424,7 +487,7 @@
         '<button type="button" class="btn btn-ghost" onclick="shikUndo()">↶ Undo</button>' +
         '<button type="button" class="btn btn-ghost" onclick="shikRestart()">↺ Restart</button>' +
       '</div>',
-      'Push two matching tiles together (🟥+🟥) so they vanish, clearing a path to the 🚪 exit. You can push, never pull — a tile shoved into a corner is stuck, so plan ahead!');
+      'Shove a tile and it SLIDES until it hits something. Slide it into a matching tile (🟥→🟥) to cancel both and clear a path to the 🚪 exit. A tile stuck against a wall with no match is stranded — plan your pushes!');
     if (!v) return;
     _shikRender();
     a2Keys(function(e){
