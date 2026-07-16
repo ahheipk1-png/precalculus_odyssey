@@ -993,7 +993,7 @@
     STK.t = 0; STK.speed = lv.speed; STK.floors = 0; STK.over = false; STK.flash = 0;
     a2Shell('🗼 Sky Stacker — L' + (levelIdx + 1) + ' ' + lv.name, 'openWonderland()',
       '<div class="wond-hud" id="stkHud"></div>' + a2KeyLegend('Space or ⬆️ to drop') +
-      '<div class="wond-canvas-wrap"><canvas id="stkCanvas" class="a2-canvas" width="' + STK.W + '" height="' + STK.H + '"></canvas></div>',
+      '<div class="wond-canvas-wrap"><canvas id="stkCanvas" class="a2-canvas" style="--cw:' + STK.W + ';--ch:' + STK.H + '" width="' + STK.W + '" height="' + STK.H + '"></canvas></div>',
       'Click, tap, or press Space to drop the block. Line it up — the overhang gets sliced off!');
     var cv = document.getElementById('stkCanvas');
     if (cv) cv.addEventListener('pointerdown', function(e){ e.preventDefault(); stkDrop(); });

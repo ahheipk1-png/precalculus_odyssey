@@ -372,7 +372,7 @@
       updatePanelVisibility();
       
       // Show glowing Boss Gate button so user can re-enter any time
-      if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'inline-block';
+      if (typeof setGateButton === 'function') setGateButton(true);
       
       setControlsEnabled(true);
       loadProblem();

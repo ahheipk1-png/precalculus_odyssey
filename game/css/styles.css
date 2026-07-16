@@ -2235,6 +2235,17 @@
   }
   @keyframes gateBtnPulse{ 0%,100%{ box-shadow:0 3px 10px rgba(242,193,78,0.45); } 50%{ box-shadow:0 3px 18px rgba(242,193,78,0.85); } }
   @media (prefers-reduced-motion: reduce){ .gate-enter-btn-top{ animation:none; } }
+  /* Closed state — the button stays visible at all times now (instead of display:none) so
+     players always know the Boss Gate exists; grey/disabled until it's actually earned. */
+  .gate-enter-btn-top.gate-closed{
+    background:rgba(255,255,255,0.06) !important;
+    border-color:rgba(244,241,232,0.16) !important;
+    color:rgba(244,241,232,0.45) !important;
+    font-weight:700 !important;
+    box-shadow:none !important;
+    animation:none !important;
+    cursor:not-allowed;
+  }
   .gameover-text{ font-size:15px; line-height:1.55; color:var(--chalk-dim); margin:0 0 18px; }
 
   .warp-fx{

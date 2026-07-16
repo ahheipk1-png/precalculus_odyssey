@@ -393,6 +393,64 @@ leaderboard; Tile Ball/Astro Drop/Gone Fishin' lose their last remaining pickers
   `wonderPlay(startFn)` charging exactly 1 pass, and a full sweep of all 19 non-gambling entry
   points opening with zero console errors.
 
+**2026-07-16 batch #6 — movement fairness, per-canvas square cells, drag-ghost sizing, one exit
+button, admin-dashboard diagnosis:**
+- **Comet Muncher: UFOs frozen at spawn until the player's first move** (`CM.waiting`, cleared by a
+  new `_cmWant(dx,dy)` used by both the arrow keys and the D-pad buttons) — `_cmLoop` skips the ghost
+  `_cmStep` calls while waiting; the HUD shows a "▶ Move to start!" chip until then. Also converted
+  to **5 sequential levels** (`CM_LEVELS`: 3→5 UFOs, rising per-ghost speed multiplier via
+  `CM_GHOST_BASE_SPD`); the maze itself is reused every level (only UFO count/speed changes), same
+  pattern as Snake's fixed-grid/rising-tick levels. `_cmLevelClear()` advances for free or ends the
+  run on the last level; `CM.totalEaten` accumulates the `wgRecordScore` metric across levels.
+- **Bubble Blast: gremlins frozen at spawn until the player's first move** (`BU.waiting`, cleared by
+  a new `_buWake()` called from `_buJump`/`_buShoot`/the left-right pointerdown handlers) — mirrors
+  the Comet Muncher fix; Bubble Blast already had sequential levels from an earlier batch, so only
+  the freeze was new here.
+- **Snake: obstacle walls that scale with level** (`SN_WALL_POOL`, a fixed hand-placed pool kept
+  clear of the spawn row so a level's layout is always fair; `SN_LEVELS[i].walls` slices more of the
+  same pool per level: 0/6/10/14/20). `_snIsWall(x,y)` is checked both by `_snStep`'s collision
+  (`hitObstacle`) and `_snPlaceFood` (food never spawns on a wall); `_snDraw` renders them as grey
+  blocks.
+- **Fixed a real CSS bug making every `.a2-canvas` game board render as a squashed rectangle, not
+  square cells** (Crystal Cascade, Comet Muncher, Snake, Blast Bot, Bubble Blast, Bowling, Rhythm,
+  Virus Lab, Astro Drop, Sky Stacker). The old rule set `width:100%` (a hard value, driven by the
+  container) AND `max-height:68vh` (a hard, INDEPENDENT cap) at the same time — the browser would
+  stretch width to fill the container, derive height from that width via the canvas's intrinsic
+  ratio, then clamp that height down to fit `max-height` WITHOUT shrinking width back to match,
+  visibly squashing tall boards (worst on Crystal Cascade's 240×520 portrait canvas). Fix: every
+  `.a2-canvas` now sets `--cw`/`--ch` inline (its real pixel width/height) and the CSS computes
+  `width: min(100%, 560px, 68vh * (--cw/--ch))` + `aspect-ratio: var(--ar)` — converting the height
+  cap into an equivalent width cap via the ratio, so whichever constraint binds, the box always keeps
+  the board's true aspect ratio. Verified via `getBoundingClientRect()`: Crystal Cascade's cells are
+  exactly square at both mobile and 1280px-desktop widths.
+- **Fixed Block Forge's and Mini Sudoku's drag-and-drop ghost rendering much smaller than the piece
+  it was dragged from.** Both bugs had the same two causes: (1) the ghost used a hardcoded pixel size
+  (Block Forge: `18px` grid tracks; Sudoku: a fixed `54px` box) instead of the real, measured cell
+  size, and (2) even after switching to the same `var(--qbf-cell)`/`--sud-cell` custom property the
+  tray/grid uses, the property was only set on the tray's own wrapper — but `a2DragStart` (shared
+  drag helper, `39-puzzles.js`) appends its ghost `<div>` straight to `document.body` (so it's never
+  clipped by a scrolling tray), which sits OUTSIDE that wrapper's subtree and so never inherited the
+  property. Fix: both games now also set their `--*-cell` custom property on `document.documentElement`
+  (not just the local wrapper), which the body-appended ghost does inherit. Verified: the ghost now
+  renders at exactly `1.08×` the real cell size (the `.a2-drag-ghost` class's own intentional
+  pick-up-lift `scale(1.08)`), for both a 63px Block Forge cell and a 118px Sudoku cell.
+- **Every Wonderland game's active-play top bar is now the same `agTopBar()` — same "← Back" label,
+  same position.** Block Forge, Gone Fishin', and Tile Ball each had their own hardcoded
+  `.wond-game-top` div with a "✕ Quit" button instead of using the shared helper every other game
+  already used; converted all three to `agTopBar(title, backCall)` calls. (Result/end screens were
+  already uniformly "← Lobby" — no change needed there.)
+- **Admin dashboard**: investigated a report that a player's page showed account info (password,
+  location, last-seen) but not their level/arena/mini-game progress, despite them having played
+  recently. `authPushProgress`/`authStartProgressSync` (`cloud-auth.js`) and the backend
+  (`/api/auth/progress`, `/api/admin/player`) all read correctly in source. The most likely cause:
+  `progress_json`/`progress_at` were added to `cloud_accounts` by migration 0006, applied via the
+  idempotent `/api/admin/bootstrap` endpoint — if that endpoint hasn't been re-run since the columns
+  were added to this deployment, every progress push silently 500s (swallowed client-side) and
+  `/api/admin/player`'s progress `SELECT` silently no-ops (it's wrapped in its own try/catch
+  specifically for this scenario, per its own comment). Not fixed in code — re-running
+  `/api/admin/bootstrap?key=<SEED_KEY or the baked default>` once is the fix, and it also resets the
+  `admin`/`admin` seed account's password, so it needs the site owner's go-ahead before running.
+
 ## Farm — `js/18-farm.js` (`#farmView`)
 
 Crops (apple/orange/rice/wheat/corn/coffee/sugarcane) + animals (chicken/duck/sheep/pig/cow) + houses.

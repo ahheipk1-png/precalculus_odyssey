@@ -448,10 +448,7 @@
   function wondGameHtml(){
     return '' +
       '<div class="wond-board wond-game">' +
-        '<div class="wond-game-top">' +
-          '<h2 class="wond-title wond-title-sm">🧱 Tile Ball — L' + (WOND.levelIdx + 1) + ' ' + (WOND.level ? WOND.level.name : '') + '</h2>' +
-          '<button type="button" class="btn btn-ghost" onclick="wondOpenTileLevels()" data-tooltip="Quit this run. Leaving mid-game skips the prize.">✕ Quit</button>' +
-        '</div>' +
+        (typeof agTopBar === 'function' ? agTopBar('🧱 Tile Ball — L' + (WOND.levelIdx + 1) + ' ' + (WOND.level ? WOND.level.name : ''), 'wondOpenTileLevels()') : '') +
         '<div class="wond-hud" id="wondHud"></div>' +
         '<div class="wond-canvas-wrap">' +
           '<canvas id="wondCanvas" class="wond-canvas" width="' + WOND_W + '" height="' + WOND_H + '" aria-label="Tile Ball game"></canvas>' +

@@ -532,11 +532,7 @@
     // temporary gate access survives reload, but is gone once they leave the boss undefeated
     // (which resets levelSolves to 0). See returnToArenaFromBoss (06-rpg-battle.js).
     var gateEarned = (state.levelSolves >= ARENA_GOAL) && !(state.bossDefeated && state.bossDefeated[state.level]);
-    if (state.gatePending || state.testMode || gateEarned) {
-      if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'inline-block';
-    } else {
-      if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'none';
-    }
+    setGateButton(state.gatePending || state.testMode || gateEarned);
   }
 
   function burst(perPanCount){
@@ -686,6 +682,19 @@
     setTimeout(function(){ fx.remove(); }, 1450);
   }
 
+  // The header Boss Gate button is ALWAYS visible now (never display:none) — closed = grey/disabled,
+  // open = the gold pulsing button. Every call site that used to show/hide it goes through here so
+  // the visual state can never drift out of sync with the actual gate state.
+  function setGateButton(open){
+    var b = el.gateEnterBtn; if (!b) return;
+    b.style.display = 'inline-block';
+    b.classList.toggle('gate-closed', !open);
+    b.disabled = !open;
+    b.textContent = open ? '⚔️ Boss Gate Open!' : '🔒 Boss Gate';
+    b.title = open ? 'Boss Gate is open — challenge the planet boss!'
+                   : 'Solve ' + (typeof ARENA_GOAL !== 'undefined' ? ARENA_GOAL : 10) + ' questions in this arena to open the Boss Gate.';
+  }
+
   // Fires ONCE, the moment ARENA_GOAL is reached: a dismissible modal (not the small inline
   // feedback line) announcing the gate is open, so the player can't miss it. Clicking OK just
   // closes the modal — it does NOT force the player into the boss-choice screen; the persistent
@@ -695,7 +704,7 @@
     if (!ov) { showGateScreen(); return; }   // fallback if the overlay markup is ever missing
     ov.hidden = false;
     if (typeof playSfx === 'function') playSfx('machine');
-    if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'inline-block';   // reveal the top button now
+    setGateButton(true);   // reveal the top button, gold + open, now
   }
   function closeBossGateNotice(){
     var ov = document.getElementById('bossGateOverlay');
@@ -725,7 +734,7 @@
     updatePanelVisibility();
     
     // Show the glowing "Boss Gate Open!" button so user can re-enter any time
-    if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'inline-block';
+    setGateButton(true);
   }
 
   function handleSolved(){

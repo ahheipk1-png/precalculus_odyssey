@@ -312,6 +312,11 @@
       var dz = SUD.given[i] ? '' : ' data-dropzone="1" data-cell="' + i + '"';
       return '<button type="button" class="' + cls + '" onclick="sudTap(' + i + ')"' + (SUD.given[i] ? ' disabled' : '') + dz + '>' + (v || '') + '</button>';
     }).join('');
+    // --sud-cell = the real rendered cell size, set on <html> (not just the grid) because the
+    // drag ghost is appended straight to document.body — without a root-level copy the ghost
+    // would fall back to its default size and look smaller than the cell it came from.
+    var firstSudCell = g.querySelector('.sud-cell');
+    if (firstSudCell) document.documentElement.style.setProperty('--sud-cell', firstSudCell.getBoundingClientRect().width + 'px');
     // Draggable 1-N tiles + eraser (POINTER-based — works on touch too). Click selects
     // (stamp mode); drag drops straight into a cell.
     var tray = document.getElementById('sudTray');

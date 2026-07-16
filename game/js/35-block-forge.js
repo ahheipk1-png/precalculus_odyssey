@@ -108,8 +108,7 @@
     qbfRefillTray();
     view.innerHTML =
       '<div class="wond-board wond-game">' +
-        '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🧩 Quantum Block Forge — Level ' + (QBF.level + 1) + ' / ' + QBF_LEVELS.length + '</h2>' +
-          '<button type="button" class="btn btn-ghost" onclick="openWonderland()" data-tooltip="Quit this run (score is not saved).">✕ Quit</button></div>' +
+        (typeof agTopBar === 'function' ? agTopBar('🧩 Quantum Block Forge — Level ' + (QBF.level + 1) + ' / ' + QBF_LEVELS.length, 'openWonderland()') : '') +
         '<div class="wond-hud" id="qbfHud"></div>' +
         '<div class="qbf-wrap"><div class="qbf-grid" id="qbfGrid"></div><div class="qbf-tray" id="qbfTray"></div></div>' +
         '<p class="wond-tip">DRAG a block onto the grid (or click it, then click the grid). Fill a row or column to clear it — reach the 🎯 goal score to clear this level!</p>' +
@@ -137,8 +136,15 @@
       grid.innerHTML = html;
       // Tray pieces are drawn at this SAME size (--qbf-cell, read by .qbf-mini/.qbf-piece-used in
       // CSS) so a tray block never looks smaller than the board it's about to be dropped onto.
+      // Also set on <html> (not just .qbf-wrap) because the drag ghost is appended straight to
+      // document.body (so it's never clipped by the tray's layout) — without a root-level copy,
+      // the ghost would fall back to --qbf-cell's default and render visibly smaller mid-drag.
       var wrap = grid.closest('.qbf-wrap'), firstCell = grid.querySelector('.qbf-cell');
-      if (wrap && firstCell) wrap.style.setProperty('--qbf-cell', firstCell.getBoundingClientRect().width + 'px');
+      if (wrap && firstCell){
+        var cellPx = firstCell.getBoundingClientRect().width + 'px';
+        wrap.style.setProperty('--qbf-cell', cellPx);
+        document.documentElement.style.setProperty('--qbf-cell', cellPx);
+      }
     }
     var tray = document.getElementById('qbfTray');
     if (tray){
@@ -187,7 +193,7 @@
       var on = p.cells.some(function(o){ return o[0] === rr && o[1] === cc; });
       mini += '<span class="qbf-mini' + (on ? ' on' : '') + '"' + (on ? ' style="background:' + p.color + '"' : '') + '></span>';
     }
-    var ghost = '<div class="qbf-piece qbf-drag-ghost-inner" style="grid-template-columns:repeat(' + (maxC + 1) + ',18px)">' + mini + '</div>';
+    var ghost = '<div class="qbf-piece qbf-drag-ghost-inner" style="grid-template-columns:repeat(' + (maxC + 1) + ',var(--qbf-cell,14px))">' + mini + '</div>';
     a2DragStart(ev, i, ghost, function(dz, idx){
       var r = parseInt(dz.getAttribute('data-r'), 10), c = parseInt(dz.getAttribute('data-c'), 10);
       if (isNaN(r) || isNaN(c) || !QBF.tray[idx]) return;

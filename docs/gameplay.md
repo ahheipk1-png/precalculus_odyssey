@@ -156,6 +156,15 @@ room (`openBattle()`) — it used to disappear "for free" by living inside the e
 deactivated there, which no longer applies now that it's a persistent header element. Leaving the
 boss undefeated (`returnToArenaFromBoss`) still closes the gate and hides the button, same as before.
 
+**2026-07-16 — Boss Gate button: always visible, grey when closed (never `display:none`).** Every
+call site that toggled `#gateEnterBtn`'s `style.display` now goes through one shared
+`setGateButton(open)` (`05-render.js`), which never hides the button — instead it toggles a
+`.gate-closed` CSS class (grey background, no glow/pulse, `disabled=true`, label `🔒 Boss Gate`) vs.
+the open state (gold pulsing `⚔️ Boss Gate Open!`, enabled). `index.html`'s button now starts
+`disabled` + `.gate-closed` by default instead of `style="display:none"`, so there's no flash of the
+gold button before JS runs. A disabled `<button>` doesn't fire click events, so the closed state is
+inert without needing an extra guard in the click handler.
+
 ## Lives, hints & game-over (this session)
 
 - **Hints** (`💡 Hint`) are now available on **every question** via a 6-level progressive ladder

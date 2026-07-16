@@ -377,11 +377,11 @@
     el.equationView.classList.remove('active');
     el.shopView.classList.remove('active');
     el.battleView.classList.add('active');
-    // The gate button now lives in the persistent header (visible across every view), so it must be
-    // hidden explicitly on entry — it used to disappear "for free" when it lived inside the equation
-    // view, which got deactivated here. It reappears via updatePanelVisibility if the player leaves
+    // The gate button now lives in the persistent header (visible across every view), so it's set to
+    // its closed/grey state explicitly on entry — the player is already inside the boss room, so
+    // there's nothing to re-enter. It reappears open via updatePanelVisibility if the player leaves
     // undefeated (gate re-earns) or on the next arena's own gate.
-    if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'none';
+    if (typeof setGateButton === 'function') setGateButton(false);
 
     el.monsterSelectScreen.style.display = 'block';
     el.combatArenaScreen.style.display = 'none';
@@ -1141,7 +1141,7 @@
       state.bossGateUnlocked = false;
       state.bossRoomEntered = false;
       state.levelSolves = 0;
-      if (el.gateEnterBtn) el.gateEnterBtn.style.display = 'none';
+      if (typeof setGateButton === 'function') setGateButton(false);
       if (typeof showToast === 'function') {
         showToast('🚪 You left the boss undefeated — the Boss Gate closed. Answer ' + ARENA_GOAL + ' questions again to reopen it.');
       }

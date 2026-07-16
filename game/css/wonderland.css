@@ -403,8 +403,20 @@ body:has(#wonderlandView.active) .wond-tip{ font-size: 16px; }
 .a2-cell.a2-circ{ width:72px; height:72px; cursor:pointer; background:rgba(244,241,232,0.04); }
 .a2-cell.a2-circ:hover{ border-color:var(--sky,#6ec1e4); }
 .a2-cell.a2-lit{ background:rgba(255,215,94,0.10); border-color:rgba(255,215,94,.45); }
-.a2-canvas{ width:100%; max-width:560px; max-height:68vh; height:auto; border-radius:12px; background:#0b1626; touch-action:none; display:block; margin:0 auto; border:2px solid rgba(102,224,255,.18); }
-body:has(#wonderlandView.active) .a2-canvas{ max-width: min(760px, 92vw); max-height:72vh; }
+/* Each canvas sets --cw/--ch (its real pixel width/height, i.e. true aspect ratio) inline.
+   width:100% + max-height:68vh used to be applied INDEPENDENTLY — width would stretch to
+   fill the container while max-height separately clamped the height, squashing every
+   non-square board into a rectangle. Converting the height cap into an equivalent width
+   cap (via the ratio) and driving height from aspect-ratio keeps every board's cells
+   perfectly square/proportional no matter which cap ends up binding. */
+.a2-canvas{
+  --ar: calc(var(--cw, 1) / var(--ch, 1));
+  width: min(100%, 560px, 68vh * var(--ar));
+  aspect-ratio: var(--ar);
+  height: auto;
+  border-radius:12px; background:#0b1626; touch-action:none; display:block; margin:0 auto; border:2px solid rgba(102,224,255,.18);
+}
+body:has(#wonderlandView.active) .a2-canvas{ width: min(760px, 92vw, 72vh * var(--ar)); }
 .a2-pad{ display:flex; flex-direction:column; align-items:center; gap:8px; margin:12px 0 4px; }
 .a2-pad > div{ display:flex; gap:8px; }
 .a2-pad .btn{ min-width:56px; font-size:20px; padding:10px 14px; }
@@ -484,7 +496,7 @@ body:has(#wonderlandView.active) .board{ max-width:none !important; }
 .a2-drag-ghost{ position:fixed; left:0; top:0; z-index:999; pointer-events:none;
   transform:translate(-50%,-50%) scale(1.08); opacity:0.92; filter:drop-shadow(0 6px 14px rgba(0,0,0,.5)); }
 .qbf-drag-ghost-inner{ background:rgba(20,30,50,.9); border:2px solid var(--yellow,#f2c14e); border-radius:10px; padding:6px; }
-.sud-drag-ghost-inner{ width:54px; height:54px; display:flex; align-items:center; justify-content:center;
+.sud-drag-ghost-inner{ width:var(--sud-cell,54px); height:var(--sud-cell,54px); display:flex; align-items:center; justify-content:center;
   font-family:'Quicksand',sans-serif; font-weight:800; font-size:26px; color:var(--yellow,#f2c14e);
   background:rgba(20,30,50,.92); border:2px solid var(--yellow,#f2c14e); border-radius:12px; }
 [data-dropzone].a2-drop-hover{ outline:3px dashed var(--yellow,#f2c14e); outline-offset:-2px; }

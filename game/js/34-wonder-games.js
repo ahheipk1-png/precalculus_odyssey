@@ -146,8 +146,7 @@
     FISH.best = wgMini('fishin').highScore || 0;
     view.innerHTML =
       '<div class="wond-board wond-game">' +
-        '<div class="wond-game-top"><h2 class="wond-title wond-title-sm">🎣 Gone Fishin’</h2>' +
-          '<button type="button" class="btn btn-ghost" onclick="openFishin()" data-tooltip="Quit this run (progress is not saved).">✕ Quit</button></div>' +
+        (typeof agTopBar === 'function' ? agTopBar('🎣 Gone Fishin’', 'openFishin()') : '') +
         '<div class="wond-hud" id="fishHud"></div>' +
         '<div class="fish-rule" id="fishRule"></div>' +
         '<div class="fish-pond" id="fishPond"></div>' +
