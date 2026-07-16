@@ -304,6 +304,7 @@
     VL.cur = t; return true;
   }
   function _vlDown(){ if (!VL.cur || VL.over) return; if (!_vlTry(0, 1, 0)) _vlLock(); }
+  function _vlHardDrop(){ if (!VL.cur || VL.over) return; while (_vlTry(0, 1, 0)){ /* fall to the floor */ } _vlLock(); }
 
   function openVirusLab(){
     VL.grid = []; for (var r = 0; r < VL.ROWS; r++) VL.grid.push(new Array(VL.COLS).fill(0));
@@ -315,7 +316,7 @@
       if (!VL.grid[vy][vx]){ VL.grid[vy][vx] = { col: rand(1, 3), virus: true }; placed++; }
     }
     a2Shell('💊 Virus Lab', 'openWonderland()',
-      '<div class="wond-hud" id="vlHud"></div>' + a2KeyLegend('← → move · ↑ rotate · ↓ / Space drop') +
+      '<div class="wond-hud" id="vlHud"></div>' + a2KeyLegend('← → move · ↑ rotate · ↓ soft · Space HARD drop') +
       '<div class="wond-canvas-wrap"><canvas id="vlCanvas" class="a2-canvas" width="' + (VL.COLS * VL.CELL) + '" height="' + (VL.ROWS * VL.CELL) + '"></canvas></div>' +
       '<div class="a2-pad"><div>' +
         '<button type="button" class="btn btn-secondary" onclick="_vlTry(-1,0,0)">◀</button>' +
@@ -329,7 +330,8 @@
       if (e.key === 'ArrowLeft'){ e.preventDefault(); _vlTry(-1, 0, 0); }
       else if (e.key === 'ArrowRight'){ e.preventDefault(); _vlTry(1, 0, 0); }
       else if (e.key === 'ArrowUp'){ e.preventDefault(); _vlTry(0, 0, 1); }
-      else if (e.key === 'ArrowDown' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); _vlDown(); }
+      else if (e.key === 'ArrowDown'){ e.preventDefault(); _vlDown(); }
+      else if (e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); _vlHardDrop(); }
     });
     A2.raf = requestAnimationFrame(_vlLoop);
   }
@@ -390,8 +392,13 @@
   function _cmEnt(tx, ty, spd){ return { x: tx * CM.T + CM.T / 2, y: ty * CM.T + CM.T / 2, dir: [0,0], want: [0,0], spd: spd, sx: tx, sy: ty }; }
   function _cmTile(e){ return [Math.floor(e.x / CM.T), Math.floor(e.y / CM.T)]; }
   function _cmAtCenter(e){
+    // Threshold must be < spd, or an entity that just stepped `spd` off centre reads as "still
+    // centred" (float: |spd| < spd is sometimes true), so it re-snaps every frame and never moves.
+    // 0.75·spd is above the worst-case approach (≤ spd/2) yet below a full step, so it detects the
+    // NEXT centre but not the one it just left.
     var cx = Math.floor(e.x / CM.T) * CM.T + CM.T / 2, cy = Math.floor(e.y / CM.T) * CM.T + CM.T / 2;
-    return Math.abs(e.x - cx) < e.spd && Math.abs(e.y - cy) < e.spd;
+    var m = e.spd * 0.75;
+    return Math.abs(e.x - cx) < m && Math.abs(e.y - cy) < m;
   }
 
   function openComet(){

@@ -195,26 +195,70 @@
      '#.o...o.#',
      '#########']
   ];
+  // Ice-slide levels — a crate GLIDES until it hits a wall or another crate, so a target must
+  // sit against a backstop. Every level below is BFS-verified solvable (easy → hard).
   var GLACIER_LEVELS = [
+    // 1 — slide the crate into the far wall so it stops on the ring.
     ['#######',
-     '#o....#',
+     '#.$..o#',
      '#.....#',
-     '#..$..#',
+     '#.....#',
      '#..@..#',
      '#######'],
+    // 2 — bounce it into the corner (two glides).
+    ['#######',
+     '#....o#',
+     '#.....#',
+     '#.$...#',
+     '#.@...#',
+     '#######'],
+    // 3 — two crates, opposite corners.
+    ['#######',
+     '#o...o#',
+     '#.....#',
+     '#.$.$.#',
+     '#..@..#',
+     '#######'],
+    // 4 — two crates, top rings.
     ['########',
-     '#.#....#',
-     '#.o....#',
+     '#o....o#',
+     '#.$..$.#',
      '#......#',
-     '#.$....#',
-     '#.@....#',
+     '#......#',
+     '#..@...#',
      '########'],
+    // 5 — two crates, a wider rink.
     ['########',
-     '#..#...#',
-     '#..o...#',
+     '#o....o#',
      '#......#',
-     '#..$.@.#',
+     '#.$..$.#',
      '#......#',
+     '#..@...#',
+     '########'],
+    // 6 — three crates straight up.
+    ['########',
+     '#o.o.o.#',
+     '#......#',
+     '#$.$.$.#',
+     '#......#',
+     '#..@...#',
+     '########'],
+    // 7 — three crates, staggered rings.
+    ['#########',
+     '#o..o..o#',
+     '#.......#',
+     '#.$.$.$.#',
+     '#.......#',
+     '#...@...#',
+     '#########'],
+    // 8 — the freezer: four crates, four corners.
+    ['########',
+     '#o....o#',
+     '#......#',
+     '#.$..$.#',
+     '#.$..$.#',
+     '#......#',
+     '#o.@..o#',
      '########']
   ];
 
