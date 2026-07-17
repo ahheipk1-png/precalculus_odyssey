@@ -38,10 +38,16 @@ HIT for 24 that rendered correctly), boss healed exactly twice then ran dry (cap
 took formula-exact 18/hit and won at 52/160 HP — precisely the intended "tense but fair" feel;
 (4) Hotel heal (30 Cash) exercised via the real `hotelSleep()`; (5) no console errors.
 
-Notes: shield ladder is non-monotonic (crystal_shield 25 DEF/380 > legendary 8/600 + archive
-20/1400) — the on-curve path skips those two tiers; consider re-statting them later. Wonderland
-reward Cash (flat 20-100/pass) is the remaining un-scaled income source — revisit after the full
-65-arena playthrough.
+**2026-07-17 follow-up fixes:** shield ladder was non-monotonic (crystal_shield 25 DEF/380 >
+legendary 8/600) — `SHIELD_DEF.legendary` raised 8→35 (archive/stellar/rift/odyssey scaled up in
+step to keep the ~2.5x/tier spacing: 90/225/560/1400). Wonderland's `a2Reward` Cash was flat
+20-100/pass regardless of arena — added `BAL.wonderCash(arena, frac)` (same `(3+ceil(r/2))/3.5`
+scale factor as `problemCash`) and wired it in; the per-game `wgPayReward` payouts (memory/sudoku/
+rhythm) already scale with score/level, just not arena, and are lower-priority left-as-is.
+Separately, found the `odyssey` rarity tier was priced in every gear table but backed by zero
+actual items (no odyssey sword/shield/armor/shoes existed anywhere) — added one capstone item per
+category (`gear.config.js`): Infinity Vector, Eternity Bastion, Singularity Plate, Quantum
+Striders. See `balance-design.md`'s content inventory for full details.
 
 ## Hero & stats
 

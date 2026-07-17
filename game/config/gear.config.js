@@ -49,7 +49,9 @@
   // DEF is a FLAT damage-subtraction, so with the ×5 upgrade its bases are anchored deliberately
   // LOW (well under weapon power) — un-upgraded defence still takes real damage, and only heavy
   // investment (+2/+3) makes you tanky (a reward, not a wall). Tiers stay ~2.5× apart.
-  var SHIELD_DEF  = { legendary: 8,   archive: 20,   stellar: 50,   rift: 125,  odyssey: 312 };
+  // legendary must clear crystal_shield's common-tier 25 DEF (380 Cash) or paying more buys less;
+  // 35 keeps the ~2.5x-per-tier spacing used by every other gear ladder (see WEAPON_POWER above).
+  var SHIELD_DEF  = { legendary: 35,  archive: 90,   stellar: 225,  rift: 560,  odyssey: 1400 };
   var SHIELD_COST = { legendary: 600, archive: 1400, stellar: 2800, rift: 5200, odyssey: 8000 };
   var ARMOR_DEF   = { legendary: 5,   archive: 13,   stellar: 32,   rift: 80,   odyssey: 200 };
   var ARMOR_HP    = { legendary: 30,  archive: 60,   stellar: 120,  rift: 240,  odyssey: 480 };
@@ -83,7 +85,9 @@
     _wpn('solar_meridian',     'Solar Meridian',       'sword', 'fire',  'rift'),
     _wpn('tidal_paradox',      'Tidal Paradox',        'sword', 'water', 'stellar'),
     _wpn('verdant_recursion',  'Verdant Recursion',    'sword', 'wood',  'legendary'),
-    _wpn('gravity_keystone',   'Gravity Keystone',     'sword', 'earth', 'archive')
+    _wpn('gravity_keystone',   'Gravity Keystone',     'sword', 'earth', 'archive'),
+    // Odyssey ("unique story weapon") — the one endgame capstone, not a per-element set.
+    _wpn('infinity_vector',    'Infinity Vector',      'sword', 'metal', 'odyssey')
   ];
   var WEAPONS = STARTER_WEAPONS.concat(LEGENDARY_WEAPONS);
 
@@ -101,7 +105,8 @@
     _shoe('cloud_strider_treads','Cloud Strider Treads','wood', 'stellar'),
     _shoe('tidal_surfer_greaves','Tidal Surfer Greaves','water','stellar'),
     _shoe('inferno_dashers',     'Inferno Dashers',     'fire', 'rift'),
-    _shoe('stonewall_stompers',  'Stonewall Stompers',  'earth','archive')
+    _shoe('stonewall_stompers',  'Stonewall Stompers',  'earth','archive'),
+    _shoe('quantum_striders',    'Quantum Striders',    'fire', 'odyssey')
   ];
 
   // ---- Shields: starter + one legendary per element ----
@@ -122,7 +127,8 @@
     _shield('tide_bulwark',   'Tide Bulwark',        'water', 'archive'),
     _shield('grove_rampart',  'Grove Rampart',       'wood',  'legendary'),
     _shield('tectonic_wall',  'Tectonic Wall',       'earth', 'stellar'),
-    _shield('mirror_paradox', 'Mirror Paradox',      'metal', 'rift')
+    _shield('mirror_paradox', 'Mirror Paradox',      'metal', 'rift'),
+    _shield('eternity_bastion', 'Eternity Bastion',  'earth', 'odyssey')
   ];
 
   // ---- Armor (new gear slot): starter + one legendary per element ----
@@ -139,5 +145,6 @@
     _armor('abyssal_plate',  'Abyssal Plate',   'water', 'archive'),
     _armor('bramble_mail',   'Bramble Mail',    'wood',  'legendary'),
     _armor('bedrock_aegis',  'Bedrock Aegis',   'earth', 'stellar'),
-    _armor('chrome_exosuit', 'Chrome Exosuit',  'metal', 'rift')
+    _armor('chrome_exosuit', 'Chrome Exosuit',  'metal', 'rift'),
+    _armor('singularity_plate', 'Singularity Plate', 'water', 'odyssey')
   ];

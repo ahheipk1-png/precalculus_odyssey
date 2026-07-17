@@ -175,8 +175,14 @@ edit files → bump ?v= cache token in game/index.html → git commit → git pu
   the 2026-07-17 full rebalance** (`docs/balance-design.md` = the authoritative design; `BAL` block
   in `config/economy.config.js` = the implementation; verified by r=1..65 simulation + a live
   arena-2 boss fight). When tuning ANY combat/economy number: edit balance-design.md first, then
-  mirror into BAL. Known leftovers: shield ladder non-monotonic (crystal 25 DEF/380 outclasses
-  legendary+archive shields), Wonderland reward Cash still flat 20-100/pass.
+  mirror into BAL. ~~Known leftovers: shield ladder non-monotonic, Wonderland reward Cash flat~~ —
+  **both fixed 2026-07-17**: SHIELD_DEF.legendary 8→35 (was below crystal_shield's 25 DEF/380 Cash;
+  now monotonic, ~2.5x/tier); added `BAL.wonderCash(arena, frac)` (same scale factor as
+  `problemCash`) wired into `a2Reward` in `39-puzzles.js`. Also found and fixed: the `odyssey`
+  gear tier was priced in every table but had ZERO actual items (no odyssey sword/shield/armor/
+  shoes existed — the stated endgame tier was unpurchasable). Added one capstone item per
+  category in `gear.config.js`: Infinity Vector, Eternity Bastion, Singularity Plate, Quantum
+  Striders.
 - **NEW 2026-07-17 — Bible-curriculum (arenas 7-65) question/distractor quality still unverified by
   a human-style pass.** Only arena 1 (hand-authored pre-algebra) was played through this session and
   its distractors are genuinely good; the Bible-template phases' `_perturbDistractors`/

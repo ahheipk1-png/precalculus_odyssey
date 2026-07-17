@@ -102,7 +102,8 @@
     frac = Math.max(0, Math.min(1, frac || 0));
     var loot = { gold: Math.round(1 + 3 * frac), silver: Math.round(2 + 4 * frac),
                  chips: (frac >= 0.99) ? { cpu: 1, energy_core: 2 } : { energy_core: 1 } };
-    var cash = Math.round(20 + 80 * frac);
+    var arena = (typeof state === 'object' && state) ? (state.level || 1) : 1;
+    var cash = (typeof BAL !== 'undefined') ? BAL.wonderCash(arena, frac) : Math.round(20 + 80 * frac);
     if (typeof state === 'object' && state) state.coins = (state.coins || 0) + cash;
     if (typeof addMaterials === 'function') addMaterials(loot);
     if (typeof updateStats === 'function') updateStats();

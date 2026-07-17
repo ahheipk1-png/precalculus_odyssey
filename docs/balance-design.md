@@ -96,13 +96,23 @@ def .80 / cash .50 · **Boss** 1 / 1 / 1 / 1. `requiredHeroLvl = ceil(arena/2) +
 - **65 arenas** / 11 star systems · **195 monster encounters** (65×3; 30 identities cycled with
   era names) · ~650 math problems minimum per run · 21+ Wonderland minigames.
 - **Swords (9)**: wood 2/free · bronze 8/60 · iron 20/220 · legendary 30/700 (×2 element variants)
-  · archive 75/1,600 · stellar 188/3,200 · rift 470/6,000 · odyssey 1,175/10,000.
-- **Shields (10)**: leather 0/free · wood 2/30 · iron 5/80 · aegis 11/180 · crystal 25/380 ·
-  legendary 8/600 · archive 20/1,400 · stellar 50/2,800 · rift 125/5,200 · odyssey 312/8,000.
-- **Armor (6)**: cloth 0/free · 5 DEF+30 HP/650 · 13+60/1,500 · 32+120/3,000 · 80+240/5,600 ·
-  200+480/8,500.
-- **Shoes (6)**: basic 2/free · 8/500 · 14/1,200 · 22/2,400 · 34/4,400 · 52/7,000 — **SPD now
-  drives dodge**, shoes are real combat gear.
+  · archive 75/1,600 · stellar 188/3,200 · rift 470/6,000 · **odyssey 1,175/10,000 (Infinity
+  Vector — added 2026-07-17, see below)**.
+- **Shields (11)**: leather 0/free · wood 2/30 · iron 5/80 · aegis 11/180 · crystal 25/380 ·
+  legendary 35/600 (×2 element variants) · archive 90/1,400 · stellar 225/2,800 · rift 560/5,200 ·
+  odyssey 1,400/8,000 (2026-07-17: legendary bumped 8→35 — it used to be *worse* than the
+  380-Cash crystal_shield; now the ladder is monotonic and keeps the ~2.5x-per-tier spacing).
+- **Armor (7)**: cloth 0/free · 5 DEF+30 HP/650 (×2 element variants) · 13+60/1,500 ·
+  32+120/3,000 · 80+240/5,600 · 200+480/8,500.
+- **Shoes (7)**: basic 2/free · 8/500 · 14/1,200 (×2 element variants) · 22/2,400 · 34/4,400 ·
+  52/7,000 — **SPD now drives dodge**, shoes are real combat gear.
+- **2026-07-17 fix — the odyssey tier didn't exist**: every gear table (`WEAPON_POWER`,
+  `SHIELD_DEF`, `ARMOR_DEF`, `SHOE_SPEED`) priced an `odyssey` rarity, but zero items in
+  `gear.config.js` actually used it — the stated endgame tier was unpurchasable in every category,
+  and the "maxed everything at arena 65" feel-target was unreachable. `GEAR_RARITY.odyssey` is
+  labeled "unique story weapon" (singular), so one capstone item was added per category rather
+  than a five-element set: **Infinity Vector** (sword), **Eternity Bastion** (shield),
+  **Singularity Plate** (armor), **Quantum Striders** (shoes).
 - **Upgrades**: every item ×2/×3/×5 at +1/+2/+3, costing 25/50/100% of item price + chips.
 - **7 chip types** and **all existing spells** unchanged (spells gain the reliability roll).
 
@@ -128,7 +138,10 @@ def .80 / cash .50 · **Boss** 1 / 1 / 1 / 1. `requiredHeroLvl = ceil(arena/2) +
 
 ## Out of scope this pass (follow-ups)
 
-- Wonderland `a2Reward`/`wgPayReward` Cash amounts (flat 20–100) — revisit after the playthrough
-  measures the new economy end-to-end.
+- ~~Wonderland `a2Reward` Cash amounts (flat 20–100)~~ — **fixed 2026-07-17**: added
+  `BAL.wonderCash(arena, frac)`, same `(3+ceil(r/2))/3.5` scale factor as `problemCash` (≈1x at
+  arena 1, ≈10x at arena 65), wired into `a2Reward` in `39-puzzles.js`. The per-game `wgPayReward`
+  payouts (memory/sudoku/rhythm in `36-arcade.js`/`40-action.js`) already scale with in-game score
+  and level, just not arena — left as-is, lower priority.
 - New spells / item special effects (the reliability layer lands first).
 - Elite/Easy respawn or repeatable-XP source if the playthrough shows XP still tight late.

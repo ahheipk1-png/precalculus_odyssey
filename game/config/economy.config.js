@@ -101,6 +101,10 @@
     monsterSpeed: function(r){ return Math.round(2 + 0.6 * r); },
     killXp:   function(r, rank){ return (20 + 8 * r) * rank; },
     problemCash: function(r, rating){ return rating * (3 + Math.ceil(r / 2)); },
+    // Wonderland payout: same (3+ceil(r/2))/3.5 scale factor as problemCash (≈1x at r1, ≈10x at
+    // r65) applied to the old flat 20-80·frac range, so mini-games stay a relevant income source
+    // late-game instead of flatlining while combat/problem Cash grow into the thousands.
+    wonderCash: function(r, frac){ return Math.round((20 + 80 * Math.max(0, Math.min(1, frac || 0))) * (3 + Math.ceil(r / 2)) / 3.5); },
     ENEMY_COEFF: 0.75,        // monsters hit with C=0.75 (impressive stats, controlled damage)
     POWER_HIT_MULT: 1.5,      // "power hit" (crit) damage multiplier
     MONSTER_CRIT_BASE: 4,     // monster power-hit chance = base + 2×rank (%)
