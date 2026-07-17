@@ -26,13 +26,16 @@ issues in casual language; **you** are responsible for engineering rigor.
 2. **`docs/README.md`** — the documentation orchestrator: terminology (star system/planet vs the
    internal "world/room" names), the source-of-truth priority order, and the map of all module docs.
 3. **`docs/process-and-roadmap.md`** — how the user works, verification approach, known gotchas.
-4. The **`docs/*.md` module doc for whatever area you're touching** (architecture, gameplay,
+4. **`docs/playtest-methodology.md`** — if you're asked to evaluate how the game *feels* to play
+   (question difficulty, combat pacing, economy motivation), not just verify code correctness. Has
+   the reusable no-password local session setup and the UI-interaction tricks for this codebase.
+5. The **`docs/*.md` module doc for whatever area you're touching** (architecture, gameplay,
    rpg-combat-economy, world-and-hubs, story-astronomy, save-and-audio). Each ends with dated
    "batch" changelog entries — the most recent entries describe the newest systems in detail.
-5. **`CONFIG_GUIDE.md`** — schema of every `game/config/*.config.js` (all content is config-driven).
-6. When you need history/rationale: `handoff.md` (deep session-by-session archive),
+6. **`CONFIG_GUIDE.md`** — schema of every `game/config/*.config.js` (all content is config-driven).
+7. When you need history/rationale: `handoff.md` (deep session-by-session archive),
    `Precalculus_Odyssey_Master_Plan.md`, `Precalculus_Odyssey_AI_Agent_Instructions.txt`.
-7. For cloud/account work: `CLOUD_SETUP.md` (click-by-click Cloudflare setup) and `AUTH_SETUP.md`
+8. For cloud/account work: `CLOUD_SETUP.md` (click-by-click Cloudflare setup) and `AUTH_SETUP.md`
    (login/approval/admin system + the one-URL bootstrap).
 
 > ⚠️ `ROOMS_AND_CODES.md` is **stale** (describes an old 133-planet map). The live curriculum is
@@ -141,30 +144,52 @@ edit files → bump ?v= cache token in game/index.html → git commit → git pu
     user, and flag that the next session should run the real stress test. Never claim something was
     "verified" when it was only reasoned about — see the batch #12 entry in world-and-hubs.md for the
     template.
+12. **You CAN play the game like a human**, not just call functions from the console — see
+    `docs/playtest-methodology.md`. A local, no-password, no-network session (`activeProfileName`
+    set to anything except "admin") is reachable in one console call; from there `read_page` +
+    `get_page_text` + real clicks drive actual gameplay. Use this when asked to evaluate how
+    something *feels* (question difficulty, combat pacing), not just whether the code runs.
 
 ---
 
-## 5. Current state (as of 2026-07-16, commit `3a00f0f`)
+## 5. Current state (as of 2026-07-17)
 
-**Recently shipped** (details in `docs/world-and-hubs.md` batches #8–#10):
+**Recently shipped** (details in `docs/world-and-hubs.md` batches #8–#12):
 - The 3 tile puzzles (Cargo Bay, Glacier Push, Forbidden City) are solver-backed procedural
-  generators with ramping difficulty; Glacier's reverse-construction backstop bug fixed.
+  generators with ramping difficulty; Glacier's reverse-construction backstop bug fixed; walls now
+  cluster into contiguous barriers instead of scattering as singletons (batch #12).
 - Virus Lab: 10 sequential labs, 12→62 viruses (55% of the bottle at the top), anti-prematch
   seeding. Cosmic Rhythm: 5-tier judgment (PERFECT/EXCELLENT/GOOD/POOR/MISSED) with floating
   side comments.
-- Multiplicative gear economy + combat rescale; All-Chips modal; boss-gate fixes; LaTeX-style
-  superscript exponents; admin monster unlock.
+- Multiplicative gear economy + combat rescale; All-Chips modal; boss-gate fixes (now a confirm
+  popup, `docs/gameplay.md`); LaTeX-style superscript exponents; admin monster unlock.
+- **First real human-style playtest done** (2026-07-17, `docs/playtest-methodology.md` +
+  `docs/gameplay.md` + `docs/rpg-combat-economy.md` same-day entries) — see the two open findings
+  below, both need a follow-up tuning session.
 
 **Known open items / bugs (not yet fixed):**
-- **Bible curriculum style-rotation bug (CONFIRMED)**: 65 arenas/registries exist, but questions
-  only ever render Direct-MC style — the authored modeling/reverse/graph fields are never read.
-  A fix has not been attempted yet.
+- **Bible curriculum style-rotation bug (CONFIRMED, re-confirmed 2026-07-17)**: 65 arenas/registries
+  exist, but questions only ever render Direct-MC style — the authored modeling/reverse/graph fields
+  are never read. A fix has not been attempted yet.
+- **NEW 2026-07-17 — arena-1 boss is a binary wall, not a "slightly hard" nudge toward Wonderland.**
+  Real playtest (not modeled): 0 gear purchases = the boss is unwinnable (35 hits needed vs. dying in
+  28); the single cheapest weapon+shield combo (90 of the 150 Cash earned from just the 10
+  arena-1 problems, zero Wonderland income) = a comfortable win at 70% HP remaining. There's no
+  "slightly not enough" middle state at arena 1 right now — full details + candidate fixes in
+  `docs/rpg-combat-economy.md`'s 2026-07-17 entry. **Not yet re-tuned.**
+- **NEW 2026-07-17 — Bible-curriculum (arenas 7-65) question/distractor quality still unverified by
+  a human-style pass.** Only arena 1 (hand-authored pre-algebra) was played through this session and
+  its distractors are genuinely good; the Bible-template phases' `_perturbDistractors`/
+  `_exprVariants`/`_siblingDistractors` fallback machinery (the patch layer over the old
+  generic-placeholder bug) has never been checked by actually reading rendered questions. Use
+  `docs/playtest-methodology.md` to sample arenas 7-15 / the ~P021-P054 risk zone / 50-65 next.
 - `ROOMS_AND_CODES.md` is stale (see §1 note).
 - `game/assets/bodies/ArtistImpession/` is **untracked**: 27 unique AI-rendered body images, only
   8 match in-game bodies; 34 bodies still lack photos (list in `BODIES_LIST.md`); the images are
   NOT wired into the game (`BODY_PHOTOS` in `js/25-nav.js` only maps 23 Sol-system jpgs).
-- No automated test suite. `tools/validate-arenas.js` exists for curriculum checks; everything
-  else is verified through in-browser simulation (rule #3).
+- No automated test suite. `tools/validate-arenas.js` exists for curriculum checks (but only loops
+  arenas 1-187, predating the 65-arena rebuild — needs updating before reuse); everything else is
+  verified through in-browser simulation (rule #3) or the human-style playtest (rule #12).
 
 ---
 

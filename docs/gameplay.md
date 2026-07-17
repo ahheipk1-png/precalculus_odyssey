@@ -189,6 +189,33 @@ now never shown — the markup + listeners stay because many code paths still ca
 removing the node would null those refs and break init. Verified in-browser: overlay pops on click,
 No closes it with no state change, Yes fires `openBattle` (spy) with `#equationView` active.
 
+**2026-07-17 — Real human-style playtest of arena-1 question quality (`docs/playtest-methodology.md`
+has the reusable how-to).** Answered 10 real arena-1 questions through the actual UI (not the
+console) as a fresh local profile, judging each MC choice the way a student would read it.
+- **The hand-authored pre-algebra distractors (`ARENA_GENS`, arena 1) are genuinely well-designed** —
+  every wrong choice traced to a plausible real mistake: sign errors on negative×negative (`(−1)×(−4)`
+  offered `-4` — the classic "forgot two negatives make a positive"), doubling instead of multiplying
+  (`8` for `4×1`), off-by-one arithmetic slips (`3` for `4×1`), squaring instead of multiplying two
+  different numbers (`25` for `5×5`, i.e. `5²` used instead of the actual product). One softer example:
+  `(−2)×(−5)=10` offered `15` as a distractor with no obvious derivation from 2 and 5 — not wrong or
+  confusing, just less sharply "a real mistake" than its siblings. Minor, not a defect.
+  **This was only arena 1** (pre-algebra, hand-authored) — the Bible-template phases (7-65, the
+  `_perturbDistractors`/`_exprVariants`/`_siblingDistractors` fallback machinery documented in
+  `04-logic.js`) were NOT sampled this session; that curriculum's question quality is still unverified
+  by a human-style pass — see the open item this leaves in `AiAgentReadMe.md`.
+- **The 3-strikes-then-reveal flow works correctly**: deliberately failed one question 3× — chances
+  correctly counted down (`3 tries left` → `2 chances left` → reveal), the reveal-then-advance loaded
+  a fresh question WITHOUT crediting arena progress (stayed at `8/10` through the failure, only moved
+  forward once actually answered correctly) — so a player cannot brute-force through a question by
+  losing on purpose. `state.streak` (labeled "🔥 solved" in the HUD) did **not** visibly drop during
+  the deliberate-fail sequence — it tracked in lockstep with Arena Progress throughout (8→8→8→10 across
+  both correct and failed attempts, same as Arena Progress), suggesting the HUD "Streak" label may
+  really be a per-arena solve counter rather than a true consecutive-no-miss streak despite the name;
+  not confirmed against source this session (only observed via play) — worth a source check.
+- **Correct-answer rewards matched the documented formula exactly**: every fast correct solve paid
+  `+15 Cash / +30 XP` (rating-3, `movesTaken <= par`), consistent with `05-render.js`'s
+  `handleSolved` formula the whole run.
+
 **2026-07-16 — Exponent placeholder `2^?` renders as a superscript.** The `mathPrettyBasic` superscript
 regex (`04-logic.js`) matched `^` only before a digit, an ASCII-signed digit, or a single letter — so
 in "2⁸ ÷ 2² = 2^?" the first two became superscripts but the `?` placeholder stayed a raw caret. The

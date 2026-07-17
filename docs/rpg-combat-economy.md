@@ -182,6 +182,46 @@ read `item.power`. It is now **category-aware** — it pulls the label + current
 passes the real `type` instead of the collapsed `g.up`. `getUpgradeGain` is hardened to coerce the base
 stat to a number so it can never emit `NaN`.
 
+## 2026-07-17 — Real human-style playtest: arena-1 boss is a binary wall, not a "slightly hard" nudge
+
+The player asked whether the boss/weapon/item settings genuinely motivate Wonderland visits — the
+intended feel being "slightly not enough to beat the monster without going to Wonderland for money
+and items." This was tested for real (see `docs/playtest-methodology.md` for how), not just modeled:
+a fresh local profile solved exactly the `ARENA_GOAL=10` arena-1 problems through the actual UI,
+reached the real Boss Gate, and fought the real Blackboard Behemoth (rank-3, room 1: 70 HP / 7 ATK /
+4 DEF) via the real combat buttons.
+
+**Two real data points, same profile:**
+- **Zero gear purchases** (`wood_sword` AP=2, but Hero reached **Lv.3 for free** from XP along the
+  way — `heroStatBonus` adds +2 AP/+1 DP per level past 1 — so live AP=6, DP=2, not the naive
+  level-1 numbers a static calculation would assume): `dmg = max(1, round(6-4)) = 2`/hit → **35 hits
+  to kill** the boss, while taking `max(1, round(7-2)) = 5`/hit → **dies in 28 hits.** A clean, total
+  loss — this is not "slightly hard," it's a hard wall with zero real gear.
+- **The single cheapest possible purchase** — `bronze_dagger` (60 Cash, 8 AP) + `wood_shield` (30
+  Cash, 2 DP), **90 of the 150 Cash earned from the 10 problems alone, zero Wonderland income
+  touched**: live AP=12, DP=4. A Metal-weapon-vs-Water-boss elemental bonus (`☯️ 金 feeds 水`, the
+  Wu Xing "generating" 1.15× multiplier) pushed real damage to **9/hit** (not the flat 8 the raw
+  formula alone predicts) vs **3/hit** taken. The boss's self-heal (`+25 HP` below 35% HP while it
+  has ≥20 MP, `06-rpg-battle.js:660-678`) fired **4 times**, stretching the fight to 14 rounds before
+  its MP ran dry — but the outcome was never in doubt: **victory at 98/140 HP (70% remaining)**,
+  rewards `+140 Cash, +4 Gold, +7 Silver, +100 XP`, first trophy.
+
+**The finding**: there is currently no "slightly not enough" zone at arena 1. It's binary — broke
+(0 Cash spent) = cannot win at all; the single cheapest weapon+shield combo (90 Cash, fully covered
+by normal problem-solving income with zero Wonderland involvement) = a comfortable win with 70% HP
+to spare, no real risk despite the boss's sustain mechanic. A player never needs to visit Wonderland
+to clear arena 1 — the "motivating nudge" the player wants isn't there yet. **Not yet re-tuned** —
+this batch is the playtest finding only; see the same-day gameplay.md entry for the question-quality
+half of this playtest, and treat the options below as candidates for a follow-up session:
+- Lower normal-problem Cash income (currently 5-15/problem, flat regardless of arena) so 10 problems
+  don't cover even the cheapest weapon+shield combo.
+- Raise `bronze_dagger`/`wood_shield`'s Cash cost, or lower their AP/DP, so the "cheap starter combo"
+  isn't already sufficient — while keeping `iron_broadsword` (220 Cash, clearly Wonderland-gated
+  right now) as the natural next tier.
+- Or accept zero-gear-loss as the intended tension and instead soften it (some non-zero, still-losing
+  middle state) so the player experiences "close but not quite" before finding a cheap fix, rather
+  than "impossible" flipping straight to "trivial" with one purchase.
+
 ## 2026-07-16 batch — MULTIPLICATIVE gear upgrades + combat rescale (supersedes the additive notes above)
 
 **Upgrades now MULTIPLY, not add.** An upgrade multiplies the item's base stat by `UPGRADE_MULT`

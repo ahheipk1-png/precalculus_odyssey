@@ -45,6 +45,7 @@ them risks breaking the working game); when a doc names one, read "room" as "pla
 | [story-astronomy.md](story-astronomy.md) | Story/narration/tagline, Star Log (Story + Star Atlas), planets/astronomy, boss memory fragments | You touch story text, the codex, or astronomy |
 | [save-and-audio.md](save-and-audio.md) | Save/profiles, the 4-place persistence rule, save migration, the audio module | You add a saved `state` field or touch audio |
 | [process-and-roadmap.md](process-and-roadmap.md) | How the user works, verification approach, backups, **known gotchas** (Bash-blind FS, UTF-8), phase status, superseded requirements | Any session — read before starting; update the phase status as phases land |
+| [playtest-methodology.md](playtest-methodology.md) | **Reusable how-to for playing the game as a human** (not calling functions) — local no-password session setup, reading/clicking the equation screen, the JS-handler fallback for non-accessible shop/hub/battle buttons, known tool limitations | You're asked to playtest/evaluate feel (question difficulty, combat pacing, economy motivation) rather than verify generator correctness |
 
 ## 🚦 Build status (high level; details in [process-and-roadmap.md](process-and-roadmap.md))
 
