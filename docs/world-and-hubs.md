@@ -545,6 +545,38 @@ same-colour decoy tiles at the gates (Forbidden City).
   Forbidden City: 0 fallbacks, ≤3ms/level. No console errors; render path (`_glToRows`/`_skParse`/
   `_skGridHtml`/`_shikToRows`) unchanged.
 
+**2026-07-17 batch #13 — CRITICAL HOTFIX: batch #12's wall-clustering change crashed `_glCarveRegion`
+on every single call, taking Cargo Bay and Glacier Push completely offline in production.** Found
+during a real human-style playthrough (not simulation) — every "Play!" click silently burned a
+Wonderland Pass and rendered nothing.
+- **Root cause**: `_glCarveRegion`'s grid-building loop at the top (`for (var y=0;y<H;y++) for (var
+  x=0;x<W;x++)`) and the clustering while-loop's fallback-assignment logic both used the SAME
+  variable names `x`/`y`. `var` is function-scoped, not block-scoped, so `var x, y;` inside the while
+  loop (added in batch #12) was a no-op redeclaration, NOT a reset — on the very first while-loop
+  iteration, `x`/`y` still held their post-grid-loop values (`x=W, y=H`, the values that made the
+  `for` condition false), which are one past the valid range. `if (x === undefined)` was therefore
+  always false on iteration 1, both assignment branches were skipped, and `grid[H][W]` threw
+  immediately — **100% reproducible, every call, both Cargo Bay and Glacier Push** (they share this
+  function). This directly contradicts batch #12's safety argument ("the only change is WHICH
+  candidate cell gets tried, never whether a placement is accepted") — that reasoning covered the
+  wall-selection logic but missed that the reset itself was broken, and batch #12 shipped without any
+  live/simulated verification because tool access was down for that whole turn — exactly the gap the
+  "never claim verified when only reasoned about" rule (`AiAgentReadMe.md` rule 11) exists to flag,
+  and this is the cost of not being able to follow through on it with a real test once tools recovered.
+- **Fix**: one line — `var x, y;` → `var x = undefined, y = undefined;` (explicit reset every
+  iteration, not a bare declaration). No other logic changed.
+- **Verified**: reproduced the crash deterministically (100/100 direct calls, then live in-browser:
+  `_cargoStartRun()` threw `TypeError: Cannot read properties of undefined (reading '8')` at
+  `_glCarveRegion` every time pre-fix). Post-fix: 0 crashes across 300 direct calls at all board sizes
+  (8×8 up to 11×11) plus the full 20-level stress test (10 Cargo + 10 Glacier, `_skGenerateOne`)
+  against the actual reloaded, cache-busted served file — all 20 generate successfully, Cargo ≤85ms,
+  Glacier ≤1.4s (lazy-generated, masked by the inter-level toast).
+- **Lesson for future sessions**: a `var` name reused across two loops in the same function is exactly
+  the class of bug that hand-tracing (batch #12's approach, forced by a tool outage) cannot reliably
+  catch — it requires actually running the code. When tools come back online, going back to actually
+  verify a batch that shipped "reasoned about only" should happen immediately, not whenever the next
+  unrelated task happens to touch the same file. Cache token bumped to `20260717o`.
+
 **2026-07-17 batch #12 — Cargo Bay & Glacier Push: walls now CLUSTER into contiguous barriers
 instead of scattering as isolated single-cell pillars.** Player feedback: "if blocks are put next to
 each other, the game is harder" — correct, and the old `_glCarveRegion` picked every new wall cell

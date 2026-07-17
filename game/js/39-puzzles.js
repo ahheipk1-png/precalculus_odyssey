@@ -385,7 +385,11 @@
     // (which a crate/tile just slides around). ~78% of picks extend a cluster; the rest seed a fresh
     // one elsewhere, so a board still ends up with a handful of distinct clusters, not one blob.
     while (made < carves && attempts-- > 0){
-      var x, y;
+      // Explicit reset, NOT just `var x, y;` — the grid-building loop above also used `x`/`y` (var is
+      // function-scoped, not block-scoped), so a bare declaration here is a no-op and leaves x/y at
+      // their post-loop values (W, H) on the very first iteration: an out-of-bounds grid[H][W] read,
+      // 100% reproducible, every call. This one-line reset is the actual fix.
+      var x = undefined, y = undefined;
       if (made > 0 && Math.random() < 0.78){
         var cand = _glWallAdjacentFloor(grid, W, H);
         if (cand.length){ var pick = cand[rand(0, cand.length - 1)]; x = pick[0]; y = pick[1]; }
