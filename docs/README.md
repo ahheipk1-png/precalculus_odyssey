@@ -1,5 +1,9 @@
 # 🎼 Precalculus Odyssey — Documentation Orchestra
 
+> **New AI agent taking over?** Read **[`AiAgentReadMe.md`](../AiAgentReadMe.md)** (repo root)
+> FIRST — it has the deploy pipeline (GitHub → Cloudflare Pages), connection details, the
+> non-negotiable workflow rules, and the current-state summary. Then come back here.
+
 This is the **orchestrator**: start here, then jump to the module doc you need. Documentation is
 split by area so each stays small and current. **When you change code, update the matching module
 doc (and this file's status table) in the same turn** — the long-standing project rule.
