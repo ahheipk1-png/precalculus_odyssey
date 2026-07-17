@@ -308,6 +308,9 @@
   .cur-chip b{ color:var(--chalk); font-weight:800; font-variant-numeric:tabular-nums; }
   .cur-chip.cur-cash{ background:rgba(242,193,78,0.14); border-color:rgba(242,193,78,0.4); }
   .cur-chip.cur-cash b{ color:var(--yellow); }
+  /* "🔍 view" button next to the All Chips tile — a clickable pill (inherits .cur-chip look). */
+  .cur-chip-view{ cursor:pointer; font-family:'Quicksand', sans-serif; color:var(--sky); border-color:rgba(110,193,228,0.4); }
+  .cur-chip-view:hover{ background:rgba(110,193,228,0.14); }
 
   /* ---- Rarity frame colors (weapon catalogue) ---- */
   .rar-common   { --rar:#9fb0c0; }

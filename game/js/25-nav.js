@@ -48,8 +48,10 @@
       var unlocked = s.unlocked || testUnlockAll;
       var star = (typeof starSVG === 'function' && s.id === 'sol') ? starSVG('atlas-' + s.id) : '<div class="atlas-star-dot" style="background:radial-gradient(circle,#fff,#ffb347)"></div>';
       // Maths topic (world title) + arena range for this system, e.g. "Numbers · Arena 1–24".
-      var world = (typeof MATH_WORLDS !== 'undefined') ? MATH_WORLDS.filter(function(w){ return w.id === s.worldId; })[0] : null;
-      var topic = world ? world.title : '';
+      // Math theme for this system, from `chapters` (worlds.config.js) — the old MATH_WORLDS global
+      // this referenced never existed, so the topic label was always empty.
+      var world = (typeof chapters !== 'undefined') ? chapters.filter(function(c){ return c.worldId === s.worldId; })[0] : null;
+      var topic = world ? world.subtitle : '';
       var range = (s.arenaStart != null) ? ('Arena ' + s.arenaStart + '–' + s.arenaEnd) : '';
       return '<div class="atlas-sys ' + (unlocked ? 'unlocked' : 'locked') + (here ? ' here' : '') + '"' +
         (unlocked ? ' onclick="atlasOpenSystem(\'' + s.id + '\')"' : '') + '>' +

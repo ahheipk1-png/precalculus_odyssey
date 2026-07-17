@@ -105,15 +105,17 @@
   function findGear(arr, id){ for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i]; return null; }
   function getEquippedArmor(){ return findGear(state.armor || [], state.equippedArmor); }
   function getEquippedShoes(){ return findGear(state.shoes || [], state.equippedShoes); }
+  // Shoes SPD, armor DEF and armor HP-bonus all use the shared ×2/×3/×5 upgrade multiplier
+  // (effectiveGearStat), so shop display and combat always agree.
   function getPlayerSpeed(){
     var s = getEquippedShoes();
-    var base = s ? (s.speed + s.upgradeLvl * 2) : 0;
+    var base = s ? effectiveGearStat(s.speed, s.upgradeLvl) : 0;
     var w = findGear(state.weapons || [], state.equippedWeapon);
     var hero = (typeof heroStatBonus === 'function') ? heroStatBonus('speed') : 0;
     return base + hero + (w && w.speed ? Math.round(w.speed / 2) : 0) + socketBonusTotal('speed');
   }
-  function getArmorDefense(){ var a = getEquippedArmor(); return a ? (a.defense + a.upgradeLvl * 2) : 0; }
-  function getArmorHpBonus(){ var a = getEquippedArmor(); return a ? (a.hp || 0) : 0; }
+  function getArmorDefense(){ var a = getEquippedArmor(); return a ? effectiveGearStat(a.defense, a.upgradeLvl) : 0; }
+  function getArmorHpBonus(){ var a = getEquippedArmor(); return a ? effectiveGearStat(a.hp || 0, a.upgradeLvl) : 0; }
 
   // Sum a stat across all chips socketed into the equipped weapon (Phase 4 socketing).
   function socketBonusTotal(stat){

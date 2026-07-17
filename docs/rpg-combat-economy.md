@@ -5,8 +5,9 @@
 ## Hero & stats
 
 `state.heroLvl / heroXp / playerHp / playerMaxHp / playerMp / playerMaxMp`. XP curve
-`heroLvl * 100` (cumulative-quadratic). AP = equipped weapon power + upgrades; DP = equipped shield
-defense + upgrades (`getPlayerAp`/`getPlayerDp`).
+`heroLvl * 100` (cumulative-quadratic). AP = equipped weapon's **effective power** (`effectiveGearStat`
+= base × the ×2/×3/×5 upgrade multiplier) + hero + sockets; DP = shield + armor effective defense +
+hero + sockets (`getPlayerAp`/`getPlayerDp`). See the **2026-07-16 multiplicative-upgrade** section below.
 
 ## Monsters (deterministic — same for every player)
 
@@ -180,3 +181,40 @@ read `item.power`. It is now **category-aware** — it pulls the label + current
 (so shoes read `SPD`, shields `DP`, armor `DEF`), with shoes using a flat +2/level gain; the call site
 passes the real `type` instead of the collapsed `g.up`. `getUpgradeGain` is hardened to coerce the base
 stat to a number so it can never emit `NaN`.
+
+## 2026-07-16 batch — MULTIPLICATIVE gear upgrades + combat rescale (supersedes the additive notes above)
+
+**Upgrades now MULTIPLY, not add.** An upgrade multiplies the item's base stat by `UPGRADE_MULT`
+(`[1,2,3,5]` in `economy.config.js`) → **×2 / ×3 / ×5** at +1 / +2 / +3. One new helper,
+`effectiveGearStat(baseStat, upgradeLvl)` (`05-render.js`), is the single source every stat flows
+through: `getPlayerAp` (weapon power), `getPlayerDp` (shield defence), `getArmorDefense`,
+`getArmorHpBonus`, `getPlayerSpeed`, and all four `gearGroup(type).stat` display functions. This also
+**fixes a pre-existing bug** where armor showed `+25%/level` in the shop but combat added only a flat
+`+2/level` — display and combat can no longer diverge because both call `effectiveGearStat`.
+
+**Tiers spaced ≈2.5× (weapons/DEF).** `WEAPON_POWER` (`gear.config.js`) is now
+`legendary 30 · archive 75 · stellar 188 · rift 470` (≈2.5× per tier). With the ×5 ceiling this makes
+the intended incentive exact: a fully-upgraded item (×5) = **2× the next tier's base** (2.5×) but stays
+**under the tier-after-that** (6.25×) — so upgrading beats buying one tier up, yet buying up two tiers
+still matters. Bases are anchored LOW on purpose: a freshly-bought higher tier is *weaker* than your
+maxed current weapon until you re-upgrade it (accepted trade-off — the ×5 ceiling does the work).
+
+**DEF anchored lower than weapons.** Because DEF is a flat damage-subtraction, big multipliers on big
+bases would make players invincible mid-game. So `SHIELD_DEF`/`ARMOR_DEF` bases are small
+(`shield 8/20/50/125`, `armor 5/13/32/80`): un-upgraded defence still takes real damage, and only heavy
+investment (+2/+3) makes you tanky (a reward, not a wall). `SHOE_SPEED` is **cosmetic** (shown in the
+profile only — combat never reads `getPlayerSpeed`), so its ladder is small; the ×5 upgrade still shows.
+
+**Upgrade cost curve** = item price × `UPGRADE_COST_FRAC` (`[0.25,0.5,1.0]`, indexed by current level) →
+**1.75× the item's price** for a full +3 — steep enough that ×5 is a real investment, still cheaper than
+buying the next tier (~2× the price for only 2.5× power). Chips are additionally required per
+`UPGRADE_CHIP_RECIPES`. (`getUpgradeCostForLevel` in `05-render.js`.)
+
+**Monster stats rescaled** (`monsterRanks` in `06-rpg-battle.js`): the OLD boss DEF of `arena×9`
+out-scaled weapon power — even a *maxed* weapon did 1 damage to a late boss (a pre-existing softlock).
+New per-arena coefficients: **Easy `hp10/atk2/def0.6` · Elite `hp32/atk4/def2` · Boss `hp70/atk7/def3.5`**
+(`buildMonster` = arena × coeff). Verified by simulation across arenas 3–65: a tier-appropriate weapon
+at **+2 clears a boss in ~4–10 hits**, **maxed in 2–5** (never a one-shot), an **un-upgraded** one is a
+deliberate slog (upgrade incentive); an under-geared player dies in ~4–10 boss hits, a well-geared one
+tanks it. The `renderMonsterChoicesLegacy` dead function (its old `state.level×15/35/75` monster block,
+unreachable after a `return`) was deleted in the same pass.

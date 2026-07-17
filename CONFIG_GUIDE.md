@@ -31,15 +31,15 @@ changes. This guide documents every config's shape with copy-paste "how to add X
 
 | File | Global(s) | Holds |
 |---|---|---|
-| `worlds.config.js` | `chapters` (6 math worlds), `STAR_SYSTEMS` (24 real systems) | World registry + real-star-system atlas metadata (arena ranges stamped by `curriculum.config`) |
-| `curriculum.config.js` | `MATH_WORLDS` (11), `CURRICULUM` (187 arenas), `getArena`/`arenasForSystem`/`arenaByCode` | **Single source of truth**: every planet's topic, question style (`mechanic`), region (`systemId`), Worm Hole code, and real body. Systems are grouped into ONE region per world (`systemId` = worldId; the real star each body belongs to is kept in `origSystem`). |
+| `worlds.config.js` | `chapters` (11 star systems, each `worldId`/`title`/`subtitle`), `STAR_SYSTEMS` (11 systems) | Chapter/star-system registry + atlas metadata (arena ranges stamped by `curriculum.config`). `chapters` also backs the in-game tagline + Star Atlas topic labels (there is NO `MATH_WORLDS` global — it was a phantom that always fell back; the two features now read `chapters`). |
+| `curriculum.config.js` | `CURRICULUM` (65 arenas), `getArena`/`arenasForSystem`/`arenaByCode`/`CURRICULUM_MAX` | **Single source of truth**: every planet's topic, question style (`mechanic`), region (`systemId`), Worm Hole code, and real body. Systems are grouped into ONE region per world (`systemId` = worldId; the real star each body belongs to is kept in `origSystem`). |
 | `tutorials.config.js` | `TUTORIALS` (n → explain string) | Per-planet "how to play" text shown by the tutorial overlay (`js/29-tutorial.js`); live worked examples come from re-running the planet's generator |
 | `rooms.config.js` | `levelCodes`, `levelTitles`, `formulaBank`, `sceneCaptions` | Legacy per-planet content (formula bank still used; codes/titles now come from `curriculum.config`) |
 | `planets.config.js` | `BODIES`, `BODY_ORDER` | Rich hand-drawn art for the 10 original Sol bodies (astro card falls back to a generic disc for others) |
 | `story.config.js` | `STORY`, `CHAPTER_LORE` | Opening narration, ending, per-chapter intro + boss memory fragments |
 
-| `gear.config.js` | `WEAPONS`, `SHIELDS`, `ARMOR`, `SHOES`, `GEAR_RARITY`, `WEAPON_CATS` | The full catalogue — 5 starter + 25 legendary weapons (from the image) + shields/armor/shoes. Add a weapon = one `_wpn(id,name,category,element,rarity)` line |
-| `economy.config.js` | `CURRENCIES`, `CHIPS`, `CHIP_ORDER`, `UPGRADE_CHIP_RECIPES`, `CHIP_BONUS`, `TRADING` | Cash/Gold/Silver + the 7 AI chips (upgrade materials), upgrade recipes, socket bonuses, trading prices |
+| `gear.config.js` | `WEAPONS`, `SHIELDS`, `ARMOR`, `SHOES`, `GEAR_RARITY`, `WEAPON_CATS`, per-rarity `WEAPON_POWER`/`SHIELD_DEF`/`ARMOR_DEF`/`ARMOR_HP`/`SHOE_SPEED` + `*_COST` tables | The full catalogue — 3 starter swords + 5 legendary swords + shields/armor/shoes. Tiers spaced ≈2.5× apart so a fully-upgraded item (×5) beats the next tier's base. Add a weapon = one `_wpn(id,name,category,element,rarity)` line |
+| `economy.config.js` | `CURRENCIES`, `CHIPS`, `CHIP_ORDER`, `UPGRADE_CHIP_RECIPES`, **`UPGRADE_MULT`** (`[1,2,3,5]` = ×2/×3/×5 gear-upgrade ladder), **`UPGRADE_COST_FRAC`** (`[0.25,0.5,1.0]`), `GEAR_UPGRADE_MAX`, `CHIP_BONUS`, `TRADING` | Cash/Gold/Silver + the 7 AI chips, the multiplicative upgrade ladder + cost curve, socket bonuses, trading prices |
 | `elements.config.js` | `ELEMENTS`, `ELEMENT_ORDER`, `WUXING_GENERATES`, `WUXING_OVERCOMES`, `WUXING_MULT` | Wu Xing five elements + both cycles + damage multipliers |
 | `spells.config.js` | `SPELLS` | 14 spells (element, manaCost, targetType, power, statusEffect, duration, desc). Add a spell = append an entry |
 

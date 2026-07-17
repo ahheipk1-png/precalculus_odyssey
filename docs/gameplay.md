@@ -165,6 +165,21 @@ the open state (gold pulsing `⚔️ Boss Gate Open!`, enabled). `index.html`'s 
 gold button before JS runs. A disabled `<button>` doesn't fire click events, so the closed state is
 inert without needing an extra guard in the click handler.
 
+**2026-07-16 — Boss Gate click now works from any screen.** Because the button lives in the always-
+visible header, it can be clicked from Earth Hub / Space Atlas / shop / Wonderland / profile — but
+`showGateScreen()` reveals `#levelGateActions`, which is nested inside `#equationView` (a
+`.view-container` that is `display:none` unless active). Clicking off the practice screen therefore
+toggled panels inside a hidden container and "nothing happened". Fix (`showGateScreen`, `05-render.js`):
+first activate `#equationView` (mirrors `returnToArenaFromBoss`), then reveal the boss-choice, then
+`scrollIntoView({block:'center'})` the actions (they render well below the fold on a tall page).
+
+**2026-07-16 — Exponent placeholder `2^?` renders as a superscript.** The `mathPrettyBasic` superscript
+regex (`04-logic.js`) matched `^` only before a digit, an ASCII-signed digit, or a single letter — so
+in "2⁸ ÷ 2² = 2^?" the first two became superscripts but the `?` placeholder stayed a raw caret. The
+regex now also accepts `?` and the Unicode minus (`^−4`), so laws-of-indices "find the power" prompts
+render `2` with a raised `?` (equivalent to `$2^{?}$`). It's display-only — the answer comparison never
+sees the rendered HTML — and fixes every generator/MC-choice/hint that flows through `mathPretty` at once.
+
 ## Lives, hints & game-over (this session)
 
 - **Hints** (`💡 Hint`) are now available on **every question** via a 6-level progressive ladder

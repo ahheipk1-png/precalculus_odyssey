@@ -42,6 +42,5 @@
 
   function getArena(n){ return CURRICULUM[n-1] || null; }
   function arenasForSystem(id){ return CURRICULUM.filter(function(a){ return a.systemId===id; }); }
-  function arenasForWorld(id){ return CURRICULUM.filter(function(a){ return a.worldId===id; }); }
   function arenaByCode(code){ var up=(code||'').toUpperCase(); for(var i=0;i<CURRICULUM.length;i++) if(CURRICULUM[i].code===up) return CURRICULUM[i]; return null; }
   var CURRICULUM_MAX = CURRICULUM.length;

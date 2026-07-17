@@ -34,8 +34,8 @@ them risks breaking the working game); when a doc names one, read "room" as "pla
 |---|---|---|
 | [architecture.md](architecture.md) | Module system, load order, classic-script rules, **config-driven architecture**, file/module map | You add/rename a module or config, or change load order |
 | [config.md → CONFIG_GUIDE.md](../CONFIG_GUIDE.md) | Every `game/config/*.config.js` schema + "how to add a world/room/planet/story" recipes | You add or change a config file/field |
-| [gameplay.md](gameplay.md) | Equation-solving core, the **5 question styles**, the **133-planet curriculum** (`curriculum.config.js`), scoring, lives/hints/game-over, warp, reward scenes | You touch problem generation, solving, planets, or the planet UX |
-| [../ROOMS_AND_CODES.md](../ROOMS_AND_CODES.md) | The full 133-planet curriculum: topic · question style · real star system · real body · Worm Hole code | You want the human-readable per-system topic list |
+| [gameplay.md](gameplay.md) | Equation-solving core, the question styles, the **65-arena curriculum** across 11 real star systems (`curriculum.config.js`), scoring, lives/hints/game-over, warp, reward scenes | You touch problem generation, solving, planets, or the planet UX |
+| [../ROOMS_AND_CODES.md](../ROOMS_AND_CODES.md) | ⚠️ STALE (still describes an old 133-planet map) — the live curriculum is 65 arenas / 11 systems in `curriculum.config.js`; regenerate or retire | You want the human-readable per-system topic list |
 | [rpg-combat-economy.md](rpg-combat-economy.md) | Monsters, combat loop, spells/poison, victory chest, trophies, shop, upgrades, cash/materials economy | You touch battle, the shop, drops, or upgrades |
 | [world-and-hubs.md](world-and-hubs.md) | Map/Earth hub, hotel, Wonderland (+Tile Ball, passes), Farm, Alchemy Lab, Item Store | You touch any hub destination module |
 | [story-astronomy.md](story-astronomy.md) | Story/narration/tagline, Star Log (Story + Star Atlas), planets/astronomy, boss memory fragments | You touch story text, the codex, or astronomy |

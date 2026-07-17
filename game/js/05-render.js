@@ -7,13 +7,32 @@
   // gain scales with the item's own stat (25% of base per level), cost is cheap (15% of
   // item.cost + a small flat step per level, floor 8). Fully maxing an item (+3) lands its
   // stat close to the next tier's base for well under the price of buying that tier outright.
-  function getUpgradeGain(item, type) {
-    var base = Number(type === 'weapon' ? item.power : item.defense) || 0;   // never NaN for statless gear
-    return Math.max(1, Math.round(base * 0.25));
+  // Effective gear stat = base × the ×2/×3/×5 upgrade multiplier for its level (UPGRADE_MULT in
+  // economy.config.js). ONE helper for every gear family (weapon power, shield/armor DEF, armor HP,
+  // shoe SPD) so the shop display and combat can NEVER diverge — a past bug had armor showing
+  // +25%/level in the shop but combat adding only a flat +2/level.
+  var _GEAR_MULT = (typeof UPGRADE_MULT !== 'undefined') ? UPGRADE_MULT : [1, 2, 3, 5];
+  function effectiveGearStat(baseStat, upgradeLvl) {
+    var i = upgradeLvl || 0;
+    var m = (_GEAR_MULT[i] != null) ? _GEAR_MULT[i] : _GEAR_MULT[_GEAR_MULT.length - 1];
+    return Math.round((Number(baseStat) || 0) * m);
   }
 
+  // The stat INCREASE the NEXT upgrade would grant (for the shop "+X" hint). `type` picks the item's
+  // primary stat: weapon→power, shoes→speed, shield/armor→defense.
+  function getUpgradeGain(item, type) {
+    var base = Number(type === 'weapon' ? item.power : (type === 'shoes' ? item.speed : item.defense)) || 0;
+    var lvl = item.upgradeLvl || 0;
+    return Math.max(0, effectiveGearStat(base, lvl + 1) - effectiveGearStat(base, lvl));
+  }
+
+  // Cash cost of the NEXT upgrade = item price × UPGRADE_COST_FRAC[currentLevel] (0.25/0.5/1.0 →
+  // 1.75× the item's price for a full +3). Steep enough that ×5 is a real investment, yet cheaper
+  // than buying the next tier (~2× the price for only 2.5× power). `upgradeLevel` = the CURRENT level.
+  var _UPGRADE_COST_FRAC = (typeof UPGRADE_COST_FRAC !== 'undefined') ? UPGRADE_COST_FRAC : [0.25, 0.5, 1.0];
   function getUpgradeCostForLevel(item, upgradeLevel) {
-    return Math.max(8, Math.round(item.cost * 0.15) + upgradeLevel * 8);
+    var frac = (_UPGRADE_COST_FRAC[upgradeLevel] != null) ? _UPGRADE_COST_FRAC[upgradeLevel] : _UPGRADE_COST_FRAC[_UPGRADE_COST_FRAC.length - 1];
+    return Math.max(8, Math.round((item.cost || 0) * frac));
   }
 
   function getItemSellValue(item, upgradeLevel) {
@@ -109,7 +128,10 @@
       // Header tagline reflects the current maths WORLD (not a hardcoded "Balance Quest").
       var _tag = document.getElementById('gameTagline');
       if (_tag && _ar){
-        var _w = (typeof MATH_WORLDS !== 'undefined') ? MATH_WORLDS.filter(function(w){ return w.id === _ar.worldId; })[0] : null;
+        // Star-system title for the current arena (from `chapters` in worlds.config.js — the old
+        // MATH_WORLDS global this referenced never existed, so the tagline always fell back to the
+        // generic line; `chapters` carries the same worldId→title data).
+        var _w = (typeof chapters !== 'undefined') ? chapters.filter(function(c){ return c.worldId === _ar.worldId; })[0] : null;
         _tag.innerHTML = _w
           ? '🌌 <span class="x-emph">' + _w.title + '</span> · Arena ' + state.level + ' of ' + (state.maxLevel || (typeof CURRICULUM_MAX === 'number' ? CURRICULUM_MAX : 65))
           : 'A maths voyage across the galaxy — solve planets to explore the stars.';
@@ -137,8 +159,42 @@
       '<span class="cur-chip cur-cash" title="Cash — earned by solving arenas, spent in shops">💵 <b>' + state.coins + '</b> Cash</span>' +
       '<span class="cur-chip" title="Gold — premium currency from bosses and trading">🥇 <b>' + (c.gold || 0) + '</b> Gold</span>' +
       '<span class="cur-chip" title="Silver — mid-tier currency from bosses and trading">🥈 <b>' + (c.silver || 0) + '</b> Silver</span>' +
-      '<span class="cur-chip" title="AI chips — spend them to upgrade gear">🧩 <b>' + chips + '</b> Chips</span>';
+      '<span class="cur-chip" title="AI chips — spend them to upgrade gear. Click “view” to see each type you own.">🧩 <b>' + chips + '</b> All Chips</span>' +
+      '<button type="button" class="cur-chip cur-chip-view" title="See a breakdown of every AI-chip type you own" onclick="viewChips()">🔍 view</button>';
   }
+
+  // "All Chips" HUD tile is a rollup of 7 different AI-chip types — this modal breaks it down so the
+  // player can see exactly what they own (and what's still collectable). Reuses CHIPS/CHIP_ORDER from
+  // economy.config.js and chipTotal() from 09-items.js. Injected into <body> so it overlays every view.
+  window.viewChips = function viewChips(){
+    closeViewChips();
+    var order = (typeof CHIP_ORDER !== 'undefined') ? CHIP_ORDER : Object.keys(state.chips || {});
+    var total = (typeof chipTotal === 'function') ? chipTotal() : 0;
+    var rows = order.map(function(id){
+      var meta = (typeof CHIPS === 'object' && CHIPS[id]) ? CHIPS[id] : { icon: '🧩', name: id };
+      var n = (state.chips && state.chips[id]) || 0;
+      return '<div class="chipv-row' + (n > 0 ? '' : ' chipv-empty') + '">' +
+        '<span class="chipv-icon">' + meta.icon + '</span>' +
+        '<span class="chipv-name">' + meta.name + '</span>' +
+        '<span class="chipv-count">×' + n + '</span></div>';
+    }).join('');
+    var ov = document.createElement('div');
+    ov.id = 'chipsViewOverlay';
+    ov.className = 'gameover-overlay chipv-overlay';
+    ov.innerHTML =
+      '<div class="gameover-card chipv-card">' +
+        '<h2 class="gameover-title chipv-title">🧩 Your AI Chips</h2>' +
+        '<p class="chipv-sub"><b>' + total + '</b> chips in total — spend them to upgrade your gear.</p>' +
+        '<div class="chipv-list">' + rows + '</div>' +
+        '<button class="btn btn-primary" type="button" onclick="closeViewChips()">Close</button>' +
+      '</div>';
+    ov.addEventListener('click', function(e){ if (e.target === ov) closeViewChips(); });
+    document.body.appendChild(ov);
+  };
+  window.closeViewChips = function closeViewChips(){
+    var o = document.getElementById('chipsViewOverlay');
+    if (o && o.parentNode) o.parentNode.removeChild(o);
+  };
 
   function updateLevelProgress(forceFilled){
     var filled = (typeof forceFilled === 'number') ? forceFilled : Math.min(ARENA_GOAL, state.levelSolves);
@@ -712,6 +768,17 @@
   }
 
   function showGateScreen() {
+    // The Boss Gate button lives in the always-visible header, so it can be clicked from ANY view
+    // (Earth Hub, Space Atlas, shop, Wonderland, profile…). But #levelGateActions lives inside
+    // #equationView — a .view-container that is display:none unless it's the active view. Without
+    // this, clicking the gold button off the practice screen toggled panels inside a hidden
+    // container and "nothing happened". So first make the equation view active (mirrors
+    // returnToArenaFromBoss), then reveal the boss-choice buttons, then scroll them into view
+    // (they render well below the fold on a tall page).
+    if (el.equationView && !el.equationView.classList.contains('active')) {
+      document.querySelectorAll('.view-container.active').forEach(function(v){ v.classList.remove('active'); });
+      el.equationView.classList.add('active');
+    }
     el.levelGateActions.style.display = 'flex';
     el.eqActions.style.display = 'none';
     el.moveLabel.style.display = 'none';
@@ -721,6 +788,9 @@
     if (el.directAnswerPanel) el.directAnswerPanel.style.display = 'none';
     if (el.mcChoices) el.mcChoices.style.display = 'none';
     if (el.questionPrompt) el.questionPrompt.style.display = 'none';
+    if (el.levelGateActions.scrollIntoView) {
+      try { el.levelGateActions.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { el.levelGateActions.scrollIntoView(); }
+    }
   }
 
   function hideGateScreen() {

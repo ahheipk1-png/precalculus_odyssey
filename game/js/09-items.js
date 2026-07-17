@@ -111,7 +111,6 @@
   // --- Back-compat shims: old material calls now route to chips/currency ---
   function hasMaterials(recipe){ return hasChips(recipe); }
   function spendMaterials(recipe){ spendChips(recipe); }
-  function materialsSummary(map){ return chipsSummary(map); }
   function addMaterials(loot){ // used to take {essence,silver,gold,gem}; now {chips,gold,silver}
     if (loot.chips) addChips(loot.chips);
     if (loot.gold || loot.silver) addCurrency(loot.gold, loot.silver);

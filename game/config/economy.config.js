@@ -32,6 +32,21 @@
     3: { neural_chip: 2, quantum_chip: 1 }
   };
 
+  // Gear upgrades MULTIPLY the item's base stat rather than adding a flat amount:
+  //   +1 → ×2, +2 → ×3, +3 → ×5 the base (indexed by upgradeLvl; 0 = un-upgraded).
+  // ONE ladder for every gear family (weapon power, shield/armor DEF, armor HP, shoe SPD) so a
+  // fully-upgraded item is 5× its base. With gear tiers spaced ~2.5× apart (gear.config.js), a
+  // maxed item (5×) beats the NEXT tier's base (2.5×) but stays under the tier-after-that (6.25×):
+  // upgrading what you own is the smart mid-game play, yet buying up two tiers still matters.
+  var UPGRADE_MULT = [1, 2, 3, 5];
+  var GEAR_UPGRADE_MAX = 3;
+
+  // Cash cost of each upgrade as a fraction of the item's own price, indexed by the CURRENT level
+  // (0→reach +1, 1→reach +2, 2→reach +3). Totals 1.75× the item price for a full +3 — steep enough
+  // that ×5 is a real investment, yet still cheaper than buying the next tier (≈2× the price, but
+  // only 2.5× power un-upgraded). Chips are additionally required per UPGRADE_CHIP_RECIPES.
+  var UPGRADE_COST_FRAC = [0.25, 0.5, 1.0];
+
   // Chip installed in a gear socket → flat stat bonus (Phase 4 socketing).
   var CHIP_BONUS = {
     energy_core:     { hp: 15 },

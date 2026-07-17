@@ -9,12 +9,12 @@
   }
   function getPlayerAp() {
     var w = state.weapons.find(function(x){ return x.id === state.equippedWeapon; }) || state.weapons[0];
-    var base = w.power + w.upgradeLvl * getUpgradeGain(w, 'weapon');
+    var base = effectiveGearStat(w.power, w.upgradeLvl);   // base × ×2/×3/×5 upgrade multiplier
     return base + heroStatBonus('power') + (typeof socketBonusTotal === 'function' ? socketBonusTotal('power') : 0);
   }
   function getPlayerDp() {
     var s = state.shields.find(function(x){ return x.id === state.equippedShield; }) || state.shields[0];
-    var base = s.defense + s.upgradeLvl * getUpgradeGain(s, 'shield');
+    var base = effectiveGearStat(s.defense, s.upgradeLvl);
     var armor = (typeof getArmorDefense === 'function') ? getArmorDefense() : 0;
     return base + armor + heroStatBonus('defense') + (typeof socketBonusTotal === 'function' ? socketBonusTotal('defense') : 0);
   }
@@ -57,9 +57,12 @@
     // Category-aware: read the label + current stat from the gear group itself so shoes
     // show "SPD: 2 → 4", shields "DP", armor "DEF" — instead of the old "AP: NaN → NaN".
     var g = gearGroup(type) || gearGroup('weapon');
-    var gain = (type === 'shoes') ? 2 : getUpgradeGain(item, g.up);   // shoes gain a flat +2 SPD/level
+    // Multiplicative upgrades: the next-level gain is just next-level effective stat minus current
+    // (works for every family). g.stat reads the item's primary stat × its upgrade multiplier.
     var curStat = g.stat(item);
-    var nextStat = curStat + gain;
+    var clone = {}; for (var _k in item) clone[_k] = item[_k]; clone.upgradeLvl = item.upgradeLvl + 1;
+    var nextStat = g.stat(clone);
+    var gain = nextStat - curStat;
     var afterUpgradeLvl = item.upgradeLvl + 1;
     var recipe = getUpgradeRecipe(afterUpgradeLvl, item);
     var need = hasMaterials(recipe);
@@ -70,10 +73,10 @@
 
   // Gear "type" descriptor — one place that maps the 4 gear kinds to their state.
   function gearGroup(type){
-    if (type === 'weapon') return { arr: state.weapons, eq: 'equippedWeapon', def: 'wood_sword',      label: 'AP',  up: 'weapon', stat: function(it){ return it.power + it.upgradeLvl * getUpgradeGain(it, 'weapon'); } };
-    if (type === 'shield') return { arr: state.shields, eq: 'equippedShield', def: 'leather_buckler', label: 'DP',  up: 'shield', stat: function(it){ return it.defense + it.upgradeLvl * getUpgradeGain(it, 'shield'); } };
-    if (type === 'armor')  return { arr: state.armor,   eq: 'equippedArmor',  def: 'cloth_tunic',     label: 'DEF', up: 'shield', stat: function(it){ return (it.defense || 0) + it.upgradeLvl * getUpgradeGain(it, 'shield'); } };
-    if (type === 'shoes')  return { arr: state.shoes,   eq: 'equippedShoes',  def: 'basic_boots',     label: 'SPD', up: 'weapon', stat: function(it){ return (it.speed || 0) + it.upgradeLvl * 2; } };
+    if (type === 'weapon') return { arr: state.weapons, eq: 'equippedWeapon', def: 'wood_sword',      label: 'AP',  up: 'weapon', stat: function(it){ return effectiveGearStat(it.power, it.upgradeLvl); } };
+    if (type === 'shield') return { arr: state.shields, eq: 'equippedShield', def: 'leather_buckler', label: 'DP',  up: 'shield', stat: function(it){ return effectiveGearStat(it.defense, it.upgradeLvl); } };
+    if (type === 'armor')  return { arr: state.armor,   eq: 'equippedArmor',  def: 'cloth_tunic',     label: 'DEF', up: 'shield', stat: function(it){ return effectiveGearStat(it.defense || 0, it.upgradeLvl); } };
+    if (type === 'shoes')  return { arr: state.shoes,   eq: 'equippedShoes',  def: 'basic_boots',     label: 'SPD', up: 'shoes',  stat: function(it){ return effectiveGearStat(it.speed || 0, it.upgradeLvl); } };
     return null;
   }
 
@@ -277,10 +280,16 @@
   // 3 monsters per room (Easy / Elite / Boss) — trimmed down from an earlier 6-tier roster
   // so a room's roster is a quick clear, not a grind, and content stays sustainable as more
   // rooms/topics get added.
+  // Per-arena stat COEFFICIENTS (buildMonster multiplies each by the arena number). Retuned for the
+  // multiplicative-gear economy (2026-07-16): the old boss DEF of arena×9 out-scaled weapon power so
+  // even a maxed weapon did 1 damage to a late boss — a pre-existing softlock. DEF now scales gently
+  // (boss arena×3.5) so a tier-appropriate weapon at +2 clears a boss in ~4-10 hits, an un-upgraded
+  // one is a slog (upgrade incentive), and a maxed one is quick but never a one-shot. Verified by
+  // simulation across arenas 3-65 (see rpg-combat-economy.md).
   var monsterRanks = [
-    { difficulty: 'Easy', hp: 15, mp: 20, attack: 2, defense: 1, reward: 20 },
-    { difficulty: 'Elite', hp: 55, mp: 50, attack: 6, defense: 5, reward: 75 },
-    { difficulty: 'Boss', hp: 110, mp: 80, attack: 11, defense: 9, reward: 140 }
+    { difficulty: 'Easy',  hp: 10, mp: 20, attack: 2, defense: 0.6, reward: 20 },
+    { difficulty: 'Elite', hp: 32, mp: 50, attack: 4, defense: 2,   reward: 75 },
+    { difficulty: 'Boss',  hp: 70, mp: 80, attack: 7, defense: 3.5, reward: 140 }
   ];
 
   var monsterCatalog = [
@@ -365,9 +374,17 @@
   }
 
   function getMonsterLockReason(monster) {
+    if (state.testMode) return '';   // admin/test account: every monster is unlocked (non-persistent, re-derived each session)
     if (monster.room > state.level) return 'Reach Arena ' + monster.room;
     if (state.heroLvl < monster.requiredHeroLvl) return 'Hero Lv. ' + monster.requiredHeroLvl;
     return '';
+  }
+  // The admin/test account can also RE-FIGHT any monster (the normal "defeated = gone forever" rule
+  // is a per-save progression gate; for testing we ignore it). Pure read of state.testMode + the
+  // defeated map — never persists anything, always false for real players.
+  function isMonsterDefeated(key) {
+    if (state.testMode) return false;
+    return !!(state.defeatedMonsters && state.defeatedMonsters[key]);
   }
 
   function openBattle() {
@@ -391,89 +408,6 @@
     if (typeof playMusic === 'function') playMusic('arena');
   }
 
-  function renderMonsterChoicesLegacy() {
-    return renderMonsterChoices();
-    el.monsterChoices.innerHTML = '';
-    if (el.bountyLvlText) el.bountyLvlText.textContent = state.level;
-    
-    var m1 = {
-      name: pool[0],
-      maxHp: state.level * 15,
-      maxMp: 20,
-      attack: state.level * 2,
-      defense: Math.round(state.level * 1),
-      reward: state.level * 20,
-      difficulty: 'Easy',
-      sprite: '🟢'
-    };
-    var m2 = {
-      name: pool[1],
-      maxHp: state.level * 35,
-      maxMp: 40,
-      attack: state.level * 4,
-      defense: Math.round(state.level * 3.5),
-      reward: state.level * 50,
-      difficulty: 'Medium',
-      sprite: '👺'
-    };
-    var m3 = {
-      name: pool[2],
-      maxHp: state.level * 75,
-      maxMp: 60,
-      attack: state.level * 8,
-      defense: Math.round(state.level * 7),
-      reward: state.level * 100,
-      difficulty: 'Hard',
-      sprite: '🐉'
-    };
-
-    if (el.bountyChecklist) {
-      var bHTML = '';
-      [m1, m2, m3].forEach(function(m) {
-        var isDefeated = state.defeatedMonsters[state.level + '_' + m.difficulty];
-        var checkSymbol = isDefeated ? '☑️' : '⬜';
-        var textColor = isDefeated ? 'var(--chalk-dim)' : 'var(--chalk)';
-        var textStyle = isDefeated ? 'text-decoration: line-through; opacity: 0.65;' : '';
-        bHTML += `<div style="display:flex; align-items:center; gap:6px; color:${textColor}; ${textStyle}">${checkSymbol} <strong>${m.name}</strong> (${m.difficulty})</div>`;
-      });
-      el.bountyChecklist.innerHTML = bHTML;
-    }
-
-    [m1, m2, m3].forEach(function(m){
-      var isDefeated = state.defeatedMonsters[state.level + '_' + m.difficulty];
-      var card = document.createElement('div');
-      card.className = 'monster-card-select' + (isDefeated ? ' defeated' : '');
-      if (isDefeated) {
-        card.style.opacity = '0.4';
-        card.style.pointerEvents = 'none';
-        card.style.borderStyle = 'dotted';
-      }
-      card.innerHTML = `
-        <div class="monster-card-art">${getMonsterArtMarkup(m)}</div>
-        <div class="monster-select-name">${m.name} ${isDefeated ? '💀' : ''}</div>
-        <div class="monster-select-stat" style="color:var(--yellow)">${m.difficulty}</div>
-        <div class="monster-select-stat">${isDefeated ? '☠️ DEFEATED (Gone Forever)' : ('HP: ' + m.maxHp)}</div>
-        <div class="monster-select-stat">ATK: ${m.attack} &nbsp;|&nbsp; DEF: ${m.defense}</div>
-        <div class="monster-select-reward">Reward: ${m.reward} 💵</div>
-      `;
-      if (!isDefeated) {
-        card.addEventListener('click', function(){
-          startCombat(m);
-        });
-      }
-      el.monsterChoices.appendChild(card);
-    });
-
-    // Check if the level is clear (Hard boss defeated)
-    var isLevelClear = false;
-    if (isLevelClear && state.level < state.maxLevel) {
-      if (el.arenaAdvanceRow) el.arenaAdvanceRow.style.display = 'block';
-      if (el.advanceLvlText) el.advanceLvlText.textContent = state.level + 1;
-    } else {
-      if (el.arenaAdvanceRow) el.arenaAdvanceRow.style.display = 'none';
-    }
-  }
-
   function renderMonsterChoices() {
     el.monsterChoices.innerHTML = '';
     if (el.bountyLvlText) el.bountyLvlText.textContent = state.level;
@@ -486,7 +420,7 @@
       var bHTML = '';
       currentRoomMonsters.forEach(function(m) {
         var lockReason = getMonsterLockReason(m);
-        var isDefeated = state.defeatedMonsters[monsterKey(m)];
+        var isDefeated = isMonsterDefeated(monsterKey(m));
         var checkSymbol = isDefeated ? '☑️' : (lockReason ? '🔒' : '⬜');
         var textColor = isDefeated ? 'var(--chalk-dim)' : 'var(--chalk)';
         var textStyle = isDefeated ? 'text-decoration: line-through; opacity: 0.65;' : '';
@@ -498,7 +432,7 @@
     allMonsters.forEach(function(m){
       var lockReason = getMonsterLockReason(m);
       var isLocked = !!lockReason;
-      var isDefeated = state.defeatedMonsters[monsterKey(m)];
+      var isDefeated = isMonsterDefeated(monsterKey(m));
       var card = document.createElement('div');
       card.className = 'monster-card-select' + (isDefeated ? ' defeated' : '') + (isLocked ? ' locked' : '');
       if (isDefeated) {

@@ -23,31 +23,36 @@
     sword: { atk: 42, spd: 5, icon: '⚔️' }
   };
 
-  // Sword prices per rarity. The gaps WIDEN sharply at each tier (≈ doubling) so that
-  // fully UPGRADING your current sword (cheap — ~15% of its price per +1, ~45% for a full +3)
-  // is the sensible bridge while you save for the next, far pricier tier. The old formula
-  // (650×rarity-mult) clustered the five legendaries at ~1000-1820 — gaps of only ~260 —
-  // so buying up always beat upgrading, making upgrades pointless.
+  // Sword prices per rarity. The gaps WIDEN ≈2× at each tier so that fully UPGRADING your current
+  // sword (see UPGRADE_COST_FRAC in economy.config.js — ~1.75× the item's price for a full ×5) is
+  // the sensible, cheaper bridge while you save for the next, far pricier tier. Buying the next
+  // tier costs ~2× MORE than your current item yet only grants 2.5× power un-upgraded, whereas
+  // maxing your current item grants 5× — so upgrading is the mid-game value play.
   var WEAPON_COST = { common: 150, legendary: 700, archive: 1600, stellar: 3200, rift: 6000, odyssey: 10000 };
 
-  // Sword ATTACK POWER per rarity — its own table (not GEAR_RARITY.mult, which is shared with
-  // shields/armor/shoes) so the AP gaps between swords WIDEN sharply to match the price ladder.
-  // The old 42×rarity-mult bunched the four legendaries at 65/82/99/118 (gaps ~17); these spread
-  // them out (55 → 95 → 150 → 230) so each tier is a real power jump, and upgrading (+25%/level)
-  // lifts a sword to about the next tier's base while the next tier keeps a far higher ceiling.
-  var WEAPON_POWER = { common: 42, legendary: 55, archive: 95, stellar: 150, rift: 230, odyssey: 320 };
+  // Sword ATTACK POWER per rarity — its own table (not GEAR_RARITY.mult), tiers spaced ≈2.5× apart.
+  // Upgrades MULTIPLY this base (×2/×3/×5 at +1/+2/+3, see economy.config.js UPGRADE_MULT), so a
+  // fully-upgraded sword (×5) lands at 2× the NEXT tier's base but stays under the tier-after-that:
+  // upgrading beats buying one tier up, yet buying up two tiers still matters. Bases are anchored
+  // low (legendary 30) BECAUSE the ×5 ceiling does the heavy lifting; a freshly-bought higher tier
+  // is intentionally weaker than your maxed current sword until you re-upgrade it.
+  var WEAPON_POWER = { common: 12, legendary: 30, archive: 75, stellar: 188, rift: 470, odyssey: 1175 };
 
-  // Defensive / utility gear widened the SAME way as swords — each family gets its own per-rarity
-  // primary-stat + cost tables so the gaps between items widen tier-to-tier (instead of the old
-  // shared BASE×rarity-mult, which clustered them). At every tier a full +3 upgrade stays cheaper
-  // than the price gap to the next item, and a maxed item lands ≈ the next tier's base while the
-  // next tier keeps a higher ceiling. Shields/armor upgrade DEF +25%/level; shoes +2 SPD/level.
-  var SHOE_SPEED  = { legendary: 10,  archive: 18,   stellar: 28,   rift: 42,   odyssey: 60 };
+  // Defensive / utility gear uses the SAME ×2/×3/×5 multiplicative upgrade and the SAME ~2.5×
+  // tier spacing for its PRIMARY stat (shield DEF, armor DEF). Secondary pools grow gentler so
+  // they don't balloon: armor's HP bonus steps ~2×, shoe SPEED ~1.5× (speed is a minor turn-order
+  // stat). Every stat still multiplies by UPGRADE_MULT on upgrade, unifying shop display & combat.
+  // Speed is a COSMETIC stat (shown in the profile only — combat never reads it), so its ladder is
+  // kept small; the ×2/×3/×5 upgrade still applies for display consistency.
+  var SHOE_SPEED  = { legendary: 8,   archive: 14,   stellar: 22,   rift: 34,   odyssey: 52 };
   var SHOE_COST   = { legendary: 500, archive: 1200, stellar: 2400, rift: 4400, odyssey: 7000 };
-  var SHIELD_DEF  = { legendary: 40,  archive: 70,   stellar: 110,  rift: 165,  odyssey: 230 };
+  // DEF is a FLAT damage-subtraction, so with the ×5 upgrade its bases are anchored deliberately
+  // LOW (well under weapon power) — un-upgraded defence still takes real damage, and only heavy
+  // investment (+2/+3) makes you tanky (a reward, not a wall). Tiers stay ~2.5× apart.
+  var SHIELD_DEF  = { legendary: 8,   archive: 20,   stellar: 50,   rift: 125,  odyssey: 312 };
   var SHIELD_COST = { legendary: 600, archive: 1400, stellar: 2800, rift: 5200, odyssey: 8000 };
-  var ARMOR_DEF   = { legendary: 26,  archive: 46,   stellar: 74,   rift: 112,  odyssey: 160 };
-  var ARMOR_HP    = { legendary: 50,  archive: 95,   stellar: 155,  rift: 240,  odyssey: 340 };
+  var ARMOR_DEF   = { legendary: 5,   archive: 13,   stellar: 32,   rift: 80,   odyssey: 200 };
+  var ARMOR_HP    = { legendary: 30,  archive: 60,   stellar: 120,  rift: 240,  odyssey: 480 };
   var ARMOR_COST  = { legendary: 650, archive: 1500, stellar: 3000, rift: 5600, odyssey: 8500 };
 
   // Compact weapon builder → full def (pure data assembly at load).

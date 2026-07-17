@@ -451,6 +451,38 @@ button, admin-dashboard diagnosis:**
   `/api/admin/bootstrap?key=<SEED_KEY or the baked default>` once is the fix, and it also resets the
   `admin`/`admin` seed account's password, so it needs the site owner's go-ahead before running.
 
+**2026-07-16 batch #7 — multiplicative gear economy, superscript fix, All-Chips modal, boss-gate
+click, admin monster unlock, housekeeping:**
+- **Gear economy → multiplicative upgrades + combat rescale.** Full write-up in
+  [rpg-combat-economy.md](rpg-combat-economy.md) (2026-07-16 section). Upgrades now ×2/×3/×5 via
+  `UPGRADE_MULT`, tiers ≈2.5× apart, one `effectiveGearStat` helper for all four gear families (fixes
+  the armor display/combat mismatch), monster stats retuned (fixes a late-boss softlock). Verified by
+  in-browser combat simulation across arenas 3–65.
+- **"All Chips" HUD tile + 🔍 view modal.** `updateCurrencyBar` (`05-render.js`) relabels the chip
+  tile "All Chips" and adds a `🔍 view` button → `viewChips()` — a sky-blue overlay listing all 7
+  AI-chip types (icon · name · count) from `CHIP_ORDER`/`CHIPS`, so the player can break down the
+  rollup total. `closeViewChips()` dismisses it; CSS `.chipv-*` in `styles.css`, `.cur-chip-view` in
+  `systems.css`.
+- **Exponent `2^?` now renders as a superscript.** The `mathPretty` superscript regex
+  (`04-logic.js`) only matched `^<digit/letter>`; it now also accepts `^?` and the Unicode minus
+  (`10^−4`), so "2⁸ ÷ 2² = 2^?" reads correctly (like `$2^{?}$`). Display-only — never affects answer
+  checking — and covers every laws-of-indices generator + MC choices + hints in one place.
+- **Boss Gate button now works from any screen.** `showGateScreen` revealed `#levelGateActions`
+  which lives inside `#equationView`; clicking the header button off the practice screen toggled
+  panels inside a `display:none` view. It now activates the equation view first, then scrolls the
+  boss-choice into view (it renders below the fold). See gameplay.md.
+- **Admin/test account: all monsters unlocked + re-fightable.** `getMonsterLockReason` returns `''`
+  and new `isMonsterDefeated` returns `false` when `state.testMode` — non-persistent, re-derived each
+  session, always off for real players.
+- **Forbidden City** HUD tile icon 🎴 (read as mahjong) → 🧩.
+- **Housekeeping:** removed the phantom `MATH_WORLDS` global (the tagline + Star-Atlas topic labels
+  now read `chapters` from `worlds.config.js`, restoring both features + fixing a broken `</span>`);
+  deleted verified-dead functions (`_isPrime`, `_hcf`, `formatBracket`, `formatFormulaSide` in
+  `04-logic.js`; the 82-line dead `renderMonsterChoicesLegacy` in `06-rpg-battle.js`;
+  `materialsSummary` in `09-items.js`; `arenasForWorld` in `curriculum.config.js`); refreshed stale
+  docs (README/CONFIG_GUIDE 133/187 → 65). NOTE: the 18 NUL bytes in `04-logic.js` are **intentional**
+  token delimiters in the math-tokenizer (`\x00SQ0\x00`), NOT corruption — left untouched.
+
 ## Farm — `js/18-farm.js` (`#farmView`)
 
 Crops (apple/orange/rice/wheat/corn/coffee/sugarcane) + animals (chicken/duck/sheep/pig/cow) + houses.

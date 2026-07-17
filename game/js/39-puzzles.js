@@ -740,7 +740,7 @@
     var hud = document.getElementById('shikHud');
     if (hud) hud.innerHTML = '<span class="wond-chip">🏯 Chamber <b>' + (SHIK.idx + 1) + ' / ' + SHIK_LEVELS.length + '</b></span>' +
       '<span class="wond-chip">👣 Moves: <b>' + SHIK.moves + '</b></span>' +
-      '<span class="wond-chip">🎴 Tiles: <b>' + _shikTileCount() + '</b></span>';
+      '<span class="wond-chip">🧩 Tiles: <b>' + _shikTileCount() + '</b></span>';
   }
 
   // Pure move core — shared by the game AND the in-code solver that verifies levels.

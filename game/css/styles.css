@@ -2225,6 +2225,19 @@
     background:linear-gradient(165deg, rgba(242,193,78,0.16), rgba(244,241,232,0.04));
   }
   .bossgate-title{ color:var(--yellow); }
+  /* 🧩 "All Chips" breakdown modal — reuses the gameover-overlay shell but fixed to the viewport
+     (like the boss-gate notice) with a sky-blue theme to distinguish it from the coral game-over. */
+  .chipv-overlay{ position:fixed; inset:0; z-index:200; }
+  .chipv-card{ border-color:var(--sky); background:linear-gradient(165deg, rgba(110,193,228,0.16), rgba(244,241,232,0.04)); max-width:420px; }
+  .chipv-title{ color:var(--sky); }
+  .chipv-sub{ color:var(--chalk-dim); font-size:14px; margin:0 0 14px; }
+  .chipv-sub b{ color:var(--chalk); }
+  .chipv-list{ display:flex; flex-direction:column; gap:8px; margin:0 0 18px; text-align:left; max-height:52vh; overflow-y:auto; }
+  .chipv-row{ display:flex; align-items:center; gap:10px; padding:8px 12px; background:rgba(244,241,232,0.05); border:1px solid rgba(244,241,232,0.10); border-radius:12px; }
+  .chipv-row.chipv-empty{ opacity:.4; }
+  .chipv-icon{ font-size:24px; line-height:1; }
+  .chipv-name{ flex:1; font-weight:700; color:var(--chalk); font-size:15px; }
+  .chipv-count{ font-weight:800; color:var(--yellow); font-variant-numeric:tabular-nums; }
   /* Persistent header button (top of every screen once the gate is earned) — was a small button
      buried in the practice screen's action row; now unmissable and clearly gold, not orange. */
   .gate-enter-btn-top{
