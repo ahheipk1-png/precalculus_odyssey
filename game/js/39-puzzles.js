@@ -283,15 +283,34 @@
   // rate — an aggressively-carved maze with 3-4 crates is often unsolvable by pure random
   // placement, which meant those slots kept exhausting their attempt budget and silently
   // falling back to the plain rectangular hand-authored level (defeating the point).
+  // 10-tier difficulty ramp (was 8, gentler). Slide levels are BFS-verified at generation time, and
+  // 4-crate ice states blow up fast, so crates are capped at 4 and scramble at 12 to keep generation
+  // snappy (a rejected candidate must bail quickly); the ramp grows board size + scramble depth.
   var GLACIER_DIFFS = [
-    { W: 7,  H: 6, carves: 2, crates: 1, scramble: 2 },
-    { W: 7,  H: 6, carves: 3, crates: 2, scramble: 3 },
-    { W: 8,  H: 7, carves: 3, crates: 2, scramble: 4 },
-    { W: 8,  H: 7, carves: 4, crates: 2, scramble: 5 },
-    { W: 9,  H: 7, carves: 4, crates: 3, scramble: 5 },
-    { W: 9,  H: 7, carves: 5, crates: 3, scramble: 6 },
-    { W: 9,  H: 8, carves: 5, crates: 3, scramble: 7 },
-    { W: 10, H: 8, carves: 5, crates: 4, scramble: 8 }
+    { W: 7,  H: 6,  carves: 2, crates: 2, scramble: 3 },
+    { W: 7,  H: 7,  carves: 3, crates: 2, scramble: 4 },
+    { W: 8,  H: 7,  carves: 3, crates: 2, scramble: 6 },
+    { W: 8,  H: 8,  carves: 3, crates: 3, scramble: 6 },
+    { W: 9,  H: 8,  carves: 4, crates: 3, scramble: 8 },
+    { W: 9,  H: 8,  carves: 4, crates: 3, scramble: 9 },
+    { W: 9,  H: 9,  carves: 5, crates: 3, scramble: 10 },
+    { W: 10, H: 9,  carves: 5, crates: 3, scramble: 11 },
+    { W: 10, H: 9,  carves: 6, crates: 3, scramble: 12 },
+    { W: 10, H: 10, carves: 6, crates: 3, scramble: 13 }
+  ];
+  // Classic PUSH Sokoban (Cargo Bay) difficulty ramp — deeper reverse-pull scrambles than Glacier
+  // (push demands exact positioning, so depth is the main lever) and up to 6 crates on the big boards.
+  var CARGO_DIFFS = [
+    { W: 7,  H: 6,  carves: 1, crates: 2, scramble: 5 },
+    { W: 7,  H: 7,  carves: 2, crates: 2, scramble: 7 },
+    { W: 8,  H: 7,  carves: 2, crates: 3, scramble: 9 },
+    { W: 8,  H: 8,  carves: 3, crates: 3, scramble: 12 },
+    { W: 9,  H: 8,  carves: 3, crates: 4, scramble: 15 },
+    { W: 9,  H: 8,  carves: 4, crates: 4, scramble: 18 },
+    { W: 10, H: 9,  carves: 4, crates: 5, scramble: 21 },
+    { W: 10, H: 9,  carves: 5, crates: 5, scramble: 24 },
+    { W: 11, H: 9,  carves: 5, crates: 6, scramble: 28 },
+    { W: 11, H: 10, carves: 6, crates: 6, scramble: 32 }
   ];
 
   function _glFloorCount(grid, W, H){ var n = 0; for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) if (grid[y][x]) n++; return n; }
@@ -342,19 +361,22 @@
   // usually impossible to slide onto, which is why naive fully-random placement barely ever
   // produced a solvable level. Restricting targets to wall-adjacent cells at least gives every
   // target ONE legal backstop direction to be pushed into.
-  function _glPickTargets(grid, W, H, numCrates){
+  // requireBackstop=true (slide/ice): targets MUST be wall-adjacent so a sliding crate has a
+  // backstop to rest against. requireBackstop=false (classic push): any interior floor cell works.
+  function _glPickTargets(grid, W, H, numCrates, requireBackstop){
     var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
-    var wallAdjacent = [];
+    var pool = [];
     for (var y = 0; y < H; y++) for (var x = 0; x < W; x++){
       if (!grid[y][x]) continue;
+      if (!requireBackstop){ pool.push([x, y]); continue; }
       for (var d = 0; d < 4; d++){
         var nx = x + dirs[d][0], ny = y + dirs[d][1];
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H || !grid[ny][nx]){ wallAdjacent.push([x, y]); break; }
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || !grid[ny][nx]){ pool.push([x, y]); break; }
       }
     }
-    if (wallAdjacent.length < numCrates) return null;
-    for (var i = wallAdjacent.length - 1; i > 0; i--){ var j = rand(0, i); var t = wallAdjacent[i]; wallAdjacent[i] = wallAdjacent[j]; wallAdjacent[j] = t; }
-    return wallAdjacent.slice(0, numCrates);
+    if (pool.length < numCrates) return null;
+    for (var i = pool.length - 1; i > 0; i--){ var j = rand(0, i); var t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+    return pool.slice(0, numCrates);
   }
 
   // REVERSE CONSTRUCTION: places crates ON their targets (the solved state), then plays K random
@@ -426,7 +448,8 @@
   // where the crate STARTED (not where it slid to). States are normalized by (sorted crate set +
   // the player's reachable-region's lexicographically-smallest cell) so pushes that only differ by
   // idle player wandering collapse to the same state. Small grids/crate counts here keep this fast.
-  function _glSolvable(rows){
+  // slide=true → ice glide (Glacier); slide=false → classic one-cell push (Cargo Bay).
+  function _glSolvable(rows, slide){
     var W = rows[0].length, H = rows.length, walls = {}, targets = [], crates = [], px = 0, py = 0;
     for (var y = 0; y < H; y++) for (var x = 0; x < W; x++){
       var c = rows[y].charAt(x), k = x + ',' + y;
@@ -453,20 +476,32 @@
     function goal(a){ for (var i = 0; i < targets.length; i++) if (a.indexOf(targets[i]) === -1) return false; return true; }
     var r0 = reach(setOf(crates), px, py);
     var visited = {}; visited[crates.join('|') + '#' + r0.min] = 1;
-    var q = [{ crates: crates, norm: r0.min }], iter = 0, CAP = 120000;
+    // State cap kept low so a hard/unsolvable candidate is rejected FAST (generation stays snappy) —
+    // legit reverse-constructed levels solve in well under this; deeper ones fall back to a preset.
+    // Levels are generated LAZILY (one at a time, see _skLevel), so this cost is spread out and never
+    // freezes the game at run-start.
+    // We only need to know IF the level is solvable (not the shortest path), so this is a DFS with a
+    // visited-set: q.pop() dequeues in O(1). (A BFS with q.shift() is O(n) per dequeue → O(states²)
+    // overall, which froze generation on the harder profiles.)
+    var q = [{ crates: crates, norm: r0.min }], iter = 0, CAP = 5000;
     while (q.length){
       if (iter++ > CAP) return false;
-      var cur = q.shift();
+      var cur = q.pop();
       if (goal(cur.crates)) return true;
       var cs = setOf(cur.crates), np = cur.norm.split(','), rr = reach(cs, +np[0], +np[1]);
       for (var ci = 0; ci < cur.crates.length; ci++){
         var cc = cur.crates[ci].split(','), cx = +cc[0], cy = +cc[1];
         for (var di = 0; di < 4; di++){
           var d = dirs[di], gx = cx, gy = cy;
-          while (true){
-            var tx = gx + d[0], ty = gy + d[1], tk = tx + ',' + ty;
-            if (walls[tk] || cs[tk]) break;
-            gx = tx; gy = ty;
+          if (slide){
+            while (true){
+              var tx = gx + d[0], ty = gy + d[1], tk = tx + ',' + ty;
+              if (walls[tk] || cs[tk]) break;
+              gx = tx; gy = ty;
+            }
+          } else {                                   // classic push: crate advances exactly one cell
+            var tx1 = cx + d[0], ty1 = cy + d[1], tk1 = tx1 + ',' + ty1;
+            if (!walls[tk1] && !cs[tk1]){ gx = tx1; gy = ty1; }
           }
           if (gx === cx && gy === cy) continue;
           var pushFrom = (cx - d[0]) + ',' + (cy - d[1]);
@@ -499,37 +534,122 @@
     return true;
   }
 
-  // Generates ONE level for a difficulty tier via reverse-construction (guaranteed-by-design
-  // solvable — see _glReversePlace), with the BFS solve kept only as a cheap safety-net check
-  // (small scramble depths solve almost instantly). Retries with fresh randomization on the rare
-  // skipped-scramble/sanity-check miss; falls back to a hand-authored level if that still somehow
-  // never succeeds, so the player is never handed a broken puzzle.
-  function _glGenerateOne(diff, fallback){
-    for (var attempt = 0; attempt < 25; attempt++){
+  var _SK_DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+  var _SK_DIRCH = ['r','l','d','u'], _SK_OPP = ['l','r','u','d'];   // by index into _SK_DIRS
+
+  // PUSH-mode reverse-scramble (Cargo Bay): start crates ON the targets (the solved state), then
+  // PULL them backwards K times — a pull = the player, standing next to a crate with an open cell
+  // behind, drags it one step (crate follows into the player's old cell; the player steps back).
+  // It also RECORDS the exact forward solution (reverse each step: a reverse-pull in dir d → a
+  // forward PUSH in dir d [uppercase]; a reverse-walk → a walk the opposite way; then reverse the
+  // whole list). `_skGenerateOne` replays that solution to PROVE each shipped level is solvable —
+  // the same "replay the supplied solution" guarantee the reference uses.
+  function _skReversePull(grid, W, H, targets, steps){
+    function fl(x, y){ return x >= 0 && y >= 0 && x < W && y < H && grid[y][x]; }
+    var crateSet = {}; targets.forEach(function(t){ crateSet[t[0] + ',' + t[1]] = 1; });
+    var free = [];
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) if (grid[y][x] && !crateSet[x + ',' + y]) free.push([x, y]);
+    if (!free.length) return null;
+    var player = free[rand(0, free.length - 1)], pulls = 0, tries = 0, maxTries = steps * 30 + 80;
+    var rev = [];   // reverse-time forward actions (see comment); solution = reverse(rev)
+    while (pulls < steps && tries++ < maxTries){
+      var pullOpts = [], walkOpts = [];
+      for (var i = 0; i < 4; i++){
+        var d = _SK_DIRS[i];
+        var ax = player[0] + d[0], ay = player[1] + d[1], ak = ax + ',' + ay;   // cell ahead (a crate?)
+        var bx = player[0] - d[0], by = player[1] - d[1], bk = bx + ',' + by;   // cell behind (drag into?)
+        if (crateSet[ak] && fl(bx, by) && !crateSet[bk]) pullOpts.push({ i: i, crate: ax + ',' + ay, np: [bx, by] });
+        if (fl(ax, ay) && !crateSet[ak]) walkOpts.push({ i: i, np: [ax, ay] });
+      }
+      var doPull = pullOpts.length && (Math.random() < 0.72 || !walkOpts.length);
+      if (doPull){
+        var o = pullOpts[rand(0, pullOpts.length - 1)];
+        delete crateSet[o.crate];
+        crateSet[player[0] + ',' + player[1]] = 1;       // crate follows into the player's old cell
+        player = o.np;
+        rev.push(_SK_DIRCH[o.i].toUpperCase());          // forward: a PUSH in this direction
+        pulls++;
+      } else if (walkOpts.length){
+        var w = walkOpts[rand(0, walkOpts.length - 1)];
+        player = w.np;
+        rev.push(_SK_OPP[w.i]);                          // forward: walk the opposite way
+      } else break;
+    }
+    if (pulls < Math.max(1, Math.floor(steps / 2))) return null;
+    var crates = Object.keys(crateSet).map(function(k){ var p = k.split(','); return [+p[0], +p[1]]; });
+    var solution = rev.reverse().join('');
+    return { player: player, crates: crates, targets: targets, solution: solution };
+  }
+
+  // Replay a push solution ("R"/"L"/"U"/"D" push, "r"/"l"/"u"/"d" walk — case ignored on replay)
+  // on a rendered level and return true iff every target ends covered. Proves a Cargo level solvable.
+  function _skReplayPush(rows, sol){
+    var W = rows[0].length, H = rows.length, walls = {}, targets = [], crates = {}, px = 0, py = 0;
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++){
+      var c = rows[y].charAt(x), k = x + ',' + y;
+      if (c === '#') walls[k] = 1;
+      if (c === 'o' || c === '*' || c === '+') targets.push(k);
+      if (c === '$' || c === '*') crates[k] = 1;
+      if (c === '@' || c === '+'){ px = x; py = y; }
+    }
+    var DMAP = { u: [0,-1], d: [0,1], l: [-1,0], r: [1,0] };
+    for (var i = 0; i < sol.length; i++){
+      var d = DMAP[sol.charAt(i).toLowerCase()];
+      if (!d) return false;
+      var nx = px + d[0], ny = py + d[1], nk = nx + ',' + ny;
+      if (walls[nk]) return false;
+      if (crates[nk]){
+        var bx = nx + d[0], by = ny + d[1], bk = bx + ',' + by;
+        if (walls[bk] || crates[bk]) return false;
+        delete crates[nk]; crates[bk] = 1;
+      }
+      px = nx; py = ny;
+    }
+    for (var t = 0; t < targets.length; t++) if (!crates[targets[t]]) return false;
+    return true;
+  }
+
+  // Generates ONE level for a difficulty tier via reverse-construction. SLIDE (Glacier): multi-crate
+  // solvability isn't guaranteed by construction, so BFS-verify each candidate. PUSH (Cargo): the
+  // reverse-pull's forward replay is a guaranteed solution, so ship it directly (no BFS → no freeze
+  // risk on big boards). Retries on a skipped/degenerate scramble; falls back to a hand-authored
+  // level only if generation somehow never succeeds, so the player is never handed a broken puzzle.
+  function _skGenerateOne(diff, slide, fallback){
+    for (var attempt = 0; attempt < 10; attempt++){
       var grid = _glCarveRegion(diff.W, diff.H, diff.carves);
-      var targets = _glPickTargets(grid, diff.W, diff.H, diff.crates);
+      var targets = _glPickTargets(grid, diff.W, diff.H, diff.crates, slide);
       if (!targets) continue;
-      var ent = _glReversePlace(grid, diff.W, diff.H, targets, diff.scramble);
+      var ent = slide ? _glReversePlace(grid, diff.W, diff.H, targets, diff.scramble)
+                      : _skReversePull(grid, diff.W, diff.H, targets, diff.scramble);
       if (!ent || !_glLooksSane(grid, diff.W, diff.H, ent)) continue;
-      // Already-solved (every TARGET already has a crate on it — crates are interchangeable, so
-      // this must compare the two SETS of positions, not same-index pairs) isn't a real puzzle.
+      // Already-solved (every TARGET already covered — crates are interchangeable, so compare SETS,
+      // not same-index pairs) isn't a real puzzle.
       var crateSet = {}; ent.crates.forEach(function(c){ crateSet[c[0] + ',' + c[1]] = 1; });
       var moved = targets.some(function(t){ return !crateSet[t[0] + ',' + t[1]]; });
       if (!moved) continue;
       var rows = _glToRows(grid, diff.W, diff.H, ent);
-      if (_glSolvable(rows)) return rows;
+      // Slide: BFS-verify (multi-crate ice isn't guaranteed solvable by construction). Push: replay
+      // the reverse-pull's OWN recorded solution — an actual proof this exact level is solvable.
+      if (slide ? _glSolvable(rows, true) : _skReplayPush(rows, ent.solution)) return rows;
     }
     return fallback;
   }
 
-  function _glGenerateLevels(){
-    return GLACIER_DIFFS.map(function(diff, i){
-      return _glGenerateOne(diff, GLACIER_FALLBACK_LEVELS[i] || GLACIER_FALLBACK_LEVELS[GLACIER_FALLBACK_LEVELS.length - 1]);
-    });
-  }
 
-  var SOKO = { title: '', replay: '', gameId: '', slide: false, levels: [], idx: 0,
+  var SOKO = { title: '', replay: '', gameId: '', slide: false, levels: [], idx: 0, total: 0,
+    diffs: null, fallbacks: null,
     walls: {}, targets: {}, crates: {}, px: 0, py: 0, W: 0, H: 0, moves: 0, totalMoves: 0, done: false };
+
+  // Lazily generate + cache the level for the given index (one at a time — see the comment in
+  // _skGenerateOne). Cargo/Glacier both set SOKO.diffs + SOKO.fallbacks in their start functions.
+  function _skEnsureLevel(idx){
+    if (!SOKO.levels[idx]){
+      var diff = SOKO.diffs[Math.min(idx, SOKO.diffs.length - 1)];
+      var fb = SOKO.fallbacks[Math.min(idx, SOKO.fallbacks.length - 1)];
+      SOKO.levels[idx] = _skGenerateOne(diff, SOKO.slide, fb);
+    }
+    return SOKO.levels[idx];
+  }
 
   function _skParse(rows){
     SOKO.walls = {}; SOKO.targets = {}; SOKO.crates = {};
@@ -566,7 +686,7 @@
     var g = document.getElementById('skWrap'); if (!g) return;
     g.innerHTML = _skGridHtml();
     var hud = document.getElementById('skHud');
-    if (hud) hud.innerHTML = '<span class="wond-chip">🗺️ Level <b>' + (SOKO.idx + 1) + ' / ' + SOKO.levels.length + '</b></span>' +
+    if (hud) hud.innerHTML = '<span class="wond-chip">🗺️ Level <b>' + (SOKO.idx + 1) + ' / ' + SOKO.total + '</b></span>' +
       '<span class="wond-chip">👣 Moves: <b>' + SOKO.moves + '</b></span>';
   }
 
@@ -598,12 +718,12 @@
       SOKO.done = true;
       SOKO.totalMoves += SOKO.moves;
       if (typeof playSfx === 'function') playSfx('correct');
-      if (SOKO.idx + 1 < SOKO.levels.length){
+      if (SOKO.idx + 1 < SOKO.total){
         if (typeof showToast === 'function') showToast('✅ Level ' + (SOKO.idx + 1) + ' clear!');
         a2Later(function(){ SOKO.idx++; _skLevel(); }, 800);
       } else {
         var score = Math.max(100, 3000 - SOKO.totalMoves * 10);
-        var newHigh = (typeof wgRecordScore === 'function' && SOKO.gameId) ? wgRecordScore(SOKO.gameId, score, SOKO.levels.length) : false;
+        var newHigh = (typeof wgRecordScore === 'function' && SOKO.gameId) ? wgRecordScore(SOKO.gameId, score, SOKO.total) : false;
         a2Later(function(){
           a2Result(SOKO.title, '🌟 ALL LEVELS CLEAR! 🌟' + (newHigh ? ' 🏆' : ''),
             'You solved every puzzle in ' + SOKO.totalMoves + ' total moves. Brilliant pushing!',
@@ -612,10 +732,10 @@
       }
     }
   }
-  function sokoRestart(){ _skParse(SOKO.levels[SOKO.idx]); _skRender(); }
+  function sokoRestart(){ _skParse(_skEnsureLevel(SOKO.idx)); _skRender(); }
 
   function _skLevel(){
-    _skParse(SOKO.levels[SOKO.idx]);
+    _skParse(_skEnsureLevel(SOKO.idx));
     var v = a2Shell(SOKO.title, 'openWonderland()',
       '<div class="wond-hud" id="skHud"></div>' + a2KeyLegend('Arrow keys or WASD move · R restart') +
       '<div class="a2-center" id="skWrap"></div>' +
@@ -642,18 +762,18 @@
   // level-1 start.
   function openCargo(){
     gameWelcome('cargo', '📦', 'Cargo Bay',
-      'Push every crate onto its ring — classic warehouse puzzling! ' + CARGO_LEVELS.length + ' levels.',
+      'Push every crate onto its ring — classic warehouse puzzling! ' + CARGO_DIFFS.length + ' freshly-generated levels that get harder and harder.',
       '_cargoStartRun');
   }
-  function _cargoStartRun(){ SOKO.title = '📦 Cargo Bay'; SOKO.replay = 'openCargo'; SOKO.gameId = 'cargo'; SOKO.slide = false; SOKO.levels = CARGO_LEVELS; SOKO.idx = 0; SOKO.totalMoves = 0; _skLevel(); }
+  function _cargoStartRun(){ SOKO.title = '📦 Cargo Bay'; SOKO.replay = 'openCargo'; SOKO.gameId = 'cargo'; SOKO.slide = false; SOKO.diffs = CARGO_DIFFS; SOKO.fallbacks = CARGO_LEVELS; SOKO.total = CARGO_DIFFS.length; SOKO.levels = []; SOKO.idx = 0; SOKO.totalMoves = 0; _skLevel(); }
 
   // A freshly generated (BFS-verified) set of 8 levels every time — see _glGenerateLevels above.
   function openGlacier(){
     gameWelcome('glacier', '❄️', 'Glacier Push',
-      'Ice blocks SLIDE until they hit something. Plan your pushes! 8 fresh levels every run.',
+      'Ice blocks SLIDE until they hit something. Plan your pushes! ' + GLACIER_DIFFS.length + ' fresh levels every run, harder and harder.',
       '_glacierStartRun');
   }
-  function _glacierStartRun(){ SOKO.title = '❄️ Glacier Push'; SOKO.replay = 'openGlacier'; SOKO.gameId = 'glacier'; SOKO.slide = true; SOKO.levels = _glGenerateLevels(); SOKO.idx = 0; SOKO.totalMoves = 0; _skLevel(); }
+  function _glacierStartRun(){ SOKO.title = '❄️ Glacier Push'; SOKO.replay = 'openGlacier'; SOKO.gameId = 'glacier'; SOKO.slide = true; SOKO.diffs = GLACIER_DIFFS; SOKO.fallbacks = GLACIER_FALLBACK_LEVELS; SOKO.total = GLACIER_DIFFS.length; SOKO.levels = []; SOKO.idx = 0; SOKO.totalMoves = 0; _skLevel(); }
 
   // ===========================================================================
   // 🏯 Forbidden City (Shikinjou / 紫禁城) — a 1991 Sunsoft-style tile puzzle.
@@ -663,7 +783,27 @@
   // wall with no match is stuck, so pick your direction carefully.
   //   #=wall  @=you  E=exit  1-6=matching tile types  .=floor
   // ===========================================================================
-  var SHIK_TILE = { '1': '🟥', '2': '🟩', '3': '🟦', '4': '🟨', '5': '🟪', '6': '🟧' };
+  // Enough distinct tile types that every matching pair (and every unmatched decoy) at the hardest
+  // difficulty gets its OWN type — so tiles only ever cancel with their intended partner.
+  var SHIK_TILE = { '1': '🟥', '2': '🟩', '3': '🟦', '4': '🟨', '5': '🟪', '6': '🟧',
+                    '7': '🟫', '8': '🔴', '9': '🔵', 'A': '🟢', 'B': '🟠', 'C': '🟣', 'D': '🔶' };
+  var _SHIK_LABELS = ['1','2','3','4','5','6','7','8','9','A','B','C','D'];   // keys of SHIK_TILE
+
+  // 10-tier difficulty ramp — `barriers` (mandatory gate pairs the panda must clear to reach the
+  // exit) is the main lever, so each run gets steadily harder; board width = 3*barriers+4 (rendered
+  // with responsive cells so wide boards still fit). optional pairs + decoys add red herrings.
+  var SHIK_DIFFS = [
+    { barriers: 1, H: 7,  optional: 0, decoys: 0 },
+    { barriers: 1, H: 7,  optional: 0, decoys: 1 },
+    { barriers: 2, H: 7,  optional: 0, decoys: 1 },
+    { barriers: 2, H: 8,  optional: 1, decoys: 1 },
+    { barriers: 3, H: 8,  optional: 1, decoys: 2 },
+    { barriers: 3, H: 8,  optional: 1, decoys: 2 },
+    { barriers: 4, H: 9,  optional: 1, decoys: 2 },
+    { barriers: 4, H: 9,  optional: 2, decoys: 3 },
+    { barriers: 5, H: 9,  optional: 2, decoys: 3 },
+    { barriers: 6, H: 10, optional: 2, decoys: 3 }
+  ];
   var SHIK_LEVELS = [
     // 1 — slide one tile across the gap into its twin to open the way out.
     ['#######',
@@ -700,7 +840,18 @@
      '#..3.E#',
      '#######']
   ];
-  var SHIK = { walls: {}, tiles: {}, exit: '', px: 0, py: 0, W: 0, H: 0, moves: 0, totalMoves: 0, idx: 0, done: false, hist: [] };
+  var SHIK = { walls: {}, tiles: {}, exit: '', px: 0, py: 0, W: 0, H: 0, moves: 0, totalMoves: 0, idx: 0,
+    total: 0, diffs: null, fallbacks: null, levels: [], done: false, hist: [] };
+
+  // Lazily generate + cache the chamber for the given index (one at a time, so no run-start freeze).
+  function _shikEnsureLevel(idx){
+    if (!SHIK.levels[idx]){
+      var diff = SHIK.diffs[Math.min(idx, SHIK.diffs.length - 1)];
+      var fb = SHIK.fallbacks[Math.min(idx, SHIK.fallbacks.length - 1)];
+      SHIK.levels[idx] = _shikGenerateOne(diff, fb);
+    }
+    return SHIK.levels[idx];
+  }
 
   function _shikParse(rows){
     SHIK.walls = {}; SHIK.tiles = {}; SHIK.exit = '';
@@ -718,17 +869,163 @@
 
   function _shikTileCount(){ var n = 0; for (var k in SHIK.tiles) n++; return n; }
 
+  // ===== Forbidden City procedural generator (chamber-gate reverse-construction, solver-verified) =====
+  // Ported from the user's solver-backed reference: a chain of chambers separated by 1-cell gates,
+  // exit in the leftmost chamber, panda in the rightmost. Each divider gets one MANDATORY matching
+  // pair placed by REVERSING a known solution — so a forward solution is guaranteed, and every gate is
+  // a real route constraint. The recorded solution is then REPLAYED through _shikStep to prove the
+  // exact level is solvable before it ships (rejecting the rare bad decoy placement).
+  var _SHIK_DIRCH = { r: [1,0], l: [-1,0], d: [0,1], u: [0,-1] };
+  var _SHIK_OPP = { r: 'l', l: 'r', u: 'd', d: 'u' };
+
+  function _shikMakeBoard(H, barriers){
+    var W = 3 * barriers + 4, walls = {};
+    for (var x = 0; x < W; x++){ walls[x + ',0'] = 1; walls[x + ',' + (H - 1)] = 1; }
+    for (var y = 0; y < H; y++){ walls['0,' + y] = 1; walls[(W - 1) + ',' + y] = 1; }
+    var gates = [];
+    for (var i = 0; i < barriers; i++){
+      var dx = 3 + 3 * i, gy = rand(2, H - 3);
+      for (var yy = 1; yy < H - 1; yy++) if (yy !== gy) walls[dx + ',' + yy] = 1;
+      gates.push([dx, gy]);
+    }
+    var exitRows = [];
+    for (var y2 = 1; y2 < H - 1; y2++) if (y2 !== gates[0][1]) exitRows.push(y2);
+    var exit = [1, exitRows.length ? exitRows[rand(0, exitRows.length - 1)] : 1];
+    return { W: W, H: H, walls: walls, exit: exit, gates: gates };
+  }
+
+  // BFS shortest walk (avoiding walls + tiles), returns a lowercase move string or null.
+  function _shikWalk(W, H, walls, tiles, from, to){
+    var fk = from[0] + ',' + from[1], tgt = to[0] + ',' + to[1];
+    if (fk === tgt) return '';
+    var q = [from], seen = {}, par = {}; seen[fk] = 1;
+    var dirs = [['r',1,0],['l',-1,0],['d',0,1],['u',0,-1]];
+    while (q.length){
+      var c = q.shift();
+      for (var i = 0; i < 4; i++){
+        var nx = c[0] + dirs[i][1], ny = c[1] + dirs[i][2], k = nx + ',' + ny;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[k] || walls[k] || tiles[k]) continue;
+        seen[k] = 1; par[k] = { p: c[0] + ',' + c[1], ch: dirs[i][0] };
+        if (k === tgt){ var out = [], cur = k; while (cur !== fk){ var e = par[cur]; out.push(e.ch); cur = e.p; } return out.reverse().join(''); }
+        q.push([nx, ny]);
+      }
+    }
+    return null;
+  }
+  function _shikReachSet(W, H, walls, tiles, from){
+    var q = [from], seen = {}; seen[from[0] + ',' + from[1]] = 1;
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    while (q.length){ var c = q.shift(); for (var i = 0; i < 4; i++){ var nx = c[0]+dirs[i][0], ny = c[1]+dirs[i][1], k = nx+','+ny; if (nx<0||ny<0||nx>=W||ny>=H||seen[k]||walls[k]||tiles[k]) continue; seen[k]=1; q.push([nx,ny]); } }
+    return seen;
+  }
+
+  function _shikConstruct(board, decoys){
+    var W = board.W, H = board.H, walls = board.walls, exit = board.exit, gates = board.gates;
+    var tiles = {}, rev = [], player = exit.slice(), li = 0;
+    function key(p){ return p[0] + ',' + p[1]; }
+    function open(x, y){ return !walls[x + ',' + y]; }
+    function walkTo(target){
+      var path = _shikWalk(W, H, walls, tiles, player, target);
+      if (path === null) return false;
+      for (var i = 0; i < path.length; i++) rev.push(_SHIK_OPP[path[i]]);   // forward = walk back
+      player = target.slice();
+      return true;
+    }
+    for (var g = 0; g < gates.length; g++){
+      var gate = gates[g];
+      if (!walkTo(gate)) return null;
+      var label = _SHIK_LABELS[li++]; if (!label) return null;
+      var stationary = [gate[0] - 2, gate[1]], behind = [gate[0] + 1, gate[1]];
+      if (!open(stationary[0], stationary[1]) || !open(behind[0], behind[1]) ||
+          tiles[key(stationary)] || tiles[key(gate)] ||
+          (stationary[0] === exit[0] && stationary[1] === exit[1])) return null;
+      tiles[key(gate)] = label; tiles[key(stationary)] = label;
+      player = behind.slice();
+      rev.push('L');                                       // forward: push the gate tile LEFT into its twin
+    }
+    // Reposition the panda deeper into the rightmost chamber so it doesn't start on a gate.
+    var finalGateX = gates[gates.length - 1][0], reach = _shikReachSet(W, H, walls, tiles, player), far = [];
+    for (var rk in reach){ var rp = rk.split(','); if (+rp[0] > finalGateX) far.push([+rp[0], +rp[1]]); }
+    if (far.length) walkTo(far[rand(0, far.length - 1)]);
+    // Unmatched DECOY tiles (each its own unused type → they never cancel; a bad placement that blocks
+    // the solution is caught by the replay check in _shikGenerateOne).
+    var occ = {}; for (var tkk in tiles) occ[tkk] = 1; occ[key(player)] = 1; occ[key(exit)] = 1;
+    var cells = [];
+    for (var y = 1; y < H - 1; y++) for (var x = 1; x < W - 1; x++){ var ck = x + ',' + y; if (!walls[ck] && !occ[ck]) cells.push([x, y]); }
+    for (var s = cells.length - 1; s > 0; s--){ var j = rand(0, s); var t = cells[s]; cells[s] = cells[j]; cells[j] = t; }
+    for (var d = 0; d < decoys && li < _SHIK_LABELS.length && d < cells.length; d++) tiles[key(cells[d])] = _SHIK_LABELS[li++];
+    return { player: player, tiles: tiles, solution: rev.slice().reverse().join('') };
+  }
+
+  function _shikToRows(board, ent){
+    var rows = [];
+    for (var y = 0; y < board.H; y++){
+      var row = '';
+      for (var x = 0; x < board.W; x++){
+        var k = x + ',' + y;
+        if (board.walls[k]) row += '#';
+        else if (ent.player[0] === x && ent.player[1] === y) row += '@';
+        else if (ent.tiles[k]) row += ent.tiles[k];
+        else if (board.exit[0] === x && board.exit[1] === y) row += 'E';
+        else row += ' ';
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  // Replay a solution through the REAL move core (_shikStep) and return true iff the panda reaches E.
+  function _shikReplay(rows, sol){
+    var W = rows[0].length, H = rows.length, st = { walls: {}, tiles: {}, exit: '', px: 0, py: 0 };
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++){
+      var c = rows[y].charAt(x), k = x + ',' + y;
+      if (c === '#') st.walls[k] = 1;
+      else if (c === '@'){ st.px = x; st.py = y; }
+      else if (c === 'E') st.exit = k;
+      else if (SHIK_TILE[c]) st.tiles[k] = c;
+    }
+    for (var i = 0; i < sol.length; i++){
+      var d = _SHIK_DIRCH[sol.charAt(i).toLowerCase()];
+      if (!d) return false;
+      var ns = _shikStep(st, d[0], d[1]);
+      if (!ns) return false;
+      st.tiles = ns.tiles; st.px = ns.px; st.py = ns.py;
+      if ((st.px + ',' + st.py) === st.exit) return true;
+    }
+    return (st.px + ',' + st.py) === st.exit;
+  }
+
+  function _shikGenerateOne(diff, fallback){
+    for (var attempt = 0; attempt < 25; attempt++){
+      var board = _shikMakeBoard(diff.H, diff.barriers);
+      var ent = _shikConstruct(board, diff.decoys || 0);
+      if (!ent) continue;
+      // Reject a trivial level (panda can already WALK to the exit without clearing any gate).
+      var reach = _shikReachSet(board.W, board.H, board.walls, ent.tiles, ent.player);
+      if (reach[board.exit[0] + ',' + board.exit[1]]) continue;
+      var rows = _shikToRows(board, ent);
+      if (_shikReplay(rows, ent.solution)) return rows;    // proven solvable — ship it
+    }
+    return fallback;
+  }
+
   function _shikGridHtml(){
-    var h = '<div class="a2-grid" style="grid-template-columns:repeat(' + SHIK.W + ',56px)">';
+    // Responsive cell + gap size — wide chamber boards (up to 22 cols) shrink to fit the viewport
+    // width (accounting for the inter-cell gap) so they never overflow off-screen.
+    var gap = SHIK.W > 12 ? 2 : 4;
+    var avail = Math.min(560, ((typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 420) * 0.94);
+    var cell = Math.max(14, Math.min(56, Math.floor((avail - (SHIK.W - 1) * gap) / SHIK.W)));
+    var h = '<div class="a2-grid" style="gap:' + gap + 'px;grid-template-columns:repeat(' + SHIK.W + ',' + cell + 'px)">';
+    var fs = ' style="font-size:' + Math.floor(cell * 0.62) + 'px"';
     for (var y = 0; y < SHIK.H; y++){
       for (var x = 0; x < SHIK.W; x++){
         var k = x + ',' + y, cls = 'a2-cell', body = '';
         if (SHIK.walls[k]) cls += ' a2-wall';
         else if (SHIK.exit === k) cls += ' a2-target';
-        if (SHIK.tiles[k]) body = '<span class="a2-emoji">' + SHIK_TILE[SHIK.tiles[k]] + '</span>';
-        else if (SHIK.exit === k && !(x === SHIK.px && y === SHIK.py)) body = '<span class="a2-emoji">🚪</span>';
-        if (x === SHIK.px && y === SHIK.py) body = '<span class="a2-emoji">🐼</span>';
-        h += '<div class="' + cls + '">' + body + '</div>';
+        if (SHIK.tiles[k]) body = '<span class="a2-emoji"' + fs + '>' + SHIK_TILE[SHIK.tiles[k]] + '</span>';
+        else if (SHIK.exit === k && !(x === SHIK.px && y === SHIK.py)) body = '<span class="a2-emoji"' + fs + '>🚪</span>';
+        if (x === SHIK.px && y === SHIK.py) body = '<span class="a2-emoji"' + fs + '>🐼</span>';
+        h += '<div class="' + cls + '" style="width:' + cell + 'px;height:' + cell + 'px">' + body + '</div>';
       }
     }
     return h + '</div>';
@@ -738,27 +1035,33 @@
     var g = document.getElementById('shikWrap'); if (!g) return;
     g.innerHTML = _shikGridHtml();
     var hud = document.getElementById('shikHud');
-    if (hud) hud.innerHTML = '<span class="wond-chip">🏯 Chamber <b>' + (SHIK.idx + 1) + ' / ' + SHIK_LEVELS.length + '</b></span>' +
+    if (hud) hud.innerHTML = '<span class="wond-chip">🏯 Chamber <b>' + (SHIK.idx + 1) + ' / ' + SHIK.total + '</b></span>' +
       '<span class="wond-chip">👣 Moves: <b>' + SHIK.moves + '</b></span>' +
       '<span class="wond-chip">🧩 Tiles: <b>' + _shikTileCount() + '</b></span>';
   }
 
-  // Pure move core — shared by the game AND the in-code solver that verifies levels.
-  // st = { walls, tiles, exit, px, py }. Returns a NEW state (with .canceled), or null if the
-  // move is illegal. A pushed tile SLIDES until it meets a wall, the exit, or another tile; a
-  // same-kind tile cancels both. The exit is a stopper, so a tile can never come to rest on it.
+  // Pure move core — shared by the game AND the in-code solver/generator that verify levels.
+  // st = { walls, tiles, exit, px, py }. Returns a NEW state (with .canceled), or null if the move
+  // is illegal. Authentic Shikinjou rules (matched to the solver-backed reference generator):
+  //   • A pushed tile SLIDES until it meets a wall or another tile.
+  //   • ZERO-DISTANCE pushes are ILLEGAL — the cell directly ahead of the tile must be open floor,
+  //     so a tile must travel ≥1 cell (you can't cancel two *touching* tiles by nudging them).
+  //   • Hitting a same-kind tile cancels BOTH; a different tile stops it one cell before.
+  //   • The exit is ordinary floor: tiles slide over it, and the player wins by stepping onto it.
   function _shikStep(st, dx, dy){
     var nx = st.px + dx, ny = st.py + dy, nk = nx + ',' + ny;
     if (st.walls[nk]) return null;                       // walk into a wall — no move
     if (st.tiles[nk]){
-      var type = st.tiles[nk], cx = nx, cy = ny, canceled = false;
+      var type = st.tiles[nk];
+      var fx = nx + dx, fy = ny + dy, fk = fx + ',' + fy;
+      if (st.walls[fk] || st.tiles[fk]) return null;     // zero-distance push — illegal
+      var cx = nx, cy = ny, canceled = false;
       while (true){                                      // slide the tile until it hits something
         var tx = cx + dx, ty = cy + dy, tk = tx + ',' + ty;
-        if (st.walls[tk] || tk === st.exit) break;       // wall / exit stops the slide
+        if (st.walls[tk]) break;                         // wall stops the slide (rest at cx,cy)
         if (st.tiles[tk]){ if (st.tiles[tk] === type) canceled = true; break; }
         cx = tx; cy = ty;
       }
-      if (cx === nx && cy === ny && !canceled) return null;   // couldn't budge & no match → illegal
       var nt = {}; for (var k in st.tiles) nt[k] = st.tiles[k];
       delete nt[nk];
       if (canceled) delete nt[(cx + dx) + ',' + (cy + dy)];   // the matching tile it slid into
@@ -781,12 +1084,12 @@
       SHIK.done = true;
       SHIK.totalMoves += SHIK.moves;
       if (typeof playSfx === 'function') playSfx('victory');
-      if (SHIK.idx + 1 < SHIK_LEVELS.length){
+      if (SHIK.idx + 1 < SHIK.total){
         if (typeof showToast === 'function') showToast('✅ Chamber ' + (SHIK.idx + 1) + ' cleared!');
         a2Later(function(){ SHIK.idx++; _shikLevel(); }, 800);
       } else {
         var score = Math.max(100, 3000 - SHIK.totalMoves * 10);
-        var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('shikinjou', score, SHIK_LEVELS.length) : false;
+        var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('shikinjou', score, SHIK.total) : false;
         a2Later(function(){
           a2Result('🏯 Forbidden City', '🌟 EVERY CHAMBER CLEARED! 🌟' + (newHigh ? ' 🏆' : ''),
             'You matched the spirit tiles and escaped the palace in ' + SHIK.totalMoves + ' total moves. Masterful!',
@@ -802,13 +1105,13 @@
     SHIK.tiles = JSON.parse(s.tiles); SHIK.px = s.px; SHIK.py = s.py; SHIK.moves = s.moves;
     _shikRender();
   }
-  function shikRestart(){ _shikParse(SHIK_LEVELS[SHIK.idx]); _shikRender(); }
+  function shikRestart(){ _shikParse(_shikEnsureLevel(SHIK.idx)); _shikRender(); }
 
   function _shikLevel(){
-    _shikParse(SHIK_LEVELS[SHIK.idx]);
+    _shikParse(_shikEnsureLevel(SHIK.idx));
     var v = a2Shell('🏯 Forbidden City', 'openWonderland()',
       '<div class="wond-hud" id="shikHud"></div>' + a2KeyLegend('Arrows / WASD move · Z undo · R restart') +
-      '<div class="a2-center" id="shikWrap"></div>' +
+      '<div class="a2-center" id="shikWrap" style="overflow-x:auto;max-width:100%"></div>' +
       '<div class="a2-pad">' +
         '<button type="button" class="btn btn-secondary" onclick="shikMove(0,-1)">▲</button>' +
         '<div><button type="button" class="btn btn-secondary" onclick="shikMove(-1,0)">◀</button>' +
@@ -833,10 +1136,10 @@
   // wonderPlay('_shikStartRun').
   function openShikinjou(){
     gameWelcome('shikinjou', '🏯', 'Forbidden City',
-      'Push matching mahjong tiles together to cancel them and reach the exit! ' + SHIK_LEVELS.length + ' levels.',
+      'Slide a spirit tile — it glides until it hits a wall or tile. Slide one into its matching twin to cancel both and open the gate to the 🚪 exit! ' + SHIK_DIFFS.length + ' freshly-generated chambers, harder and harder.',
       '_shikStartRun');
   }
-  function _shikStartRun(){ SHIK.idx = 0; SHIK.totalMoves = 0; _shikLevel(); }
+  function _shikStartRun(){ SHIK.title = '🏯 Forbidden City'; SHIK.diffs = SHIK_DIFFS; SHIK.fallbacks = SHIK_LEVELS; SHIK.total = SHIK_DIFFS.length; SHIK.levels = []; SHIK.idx = 0; SHIK.totalMoves = 0; _shikLevel(); }
 
   // ===========================================================================
   // 🔗 Circuit Loop — rotate wire tiles until the ⚡ core lights every 💡 bulb.

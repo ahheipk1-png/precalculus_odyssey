@@ -483,6 +483,34 @@ click, admin monster unlock, housekeeping:**
   docs (README/CONFIG_GUIDE 133/187 → 65). NOTE: the 18 NUL bytes in `04-logic.js` are **intentional**
   token delimiters in the math-tokenizer (`\x00SQ0\x00`), NOT corruption — left untouched.
 
+**2026-07-16 batch #8 — the three tile-puzzle games are now SOLVER-BACKED PROCEDURAL generators
+(`js/39-puzzles.js`), ported from a reference the user supplied.** All three generate fresh, harder-
+and-harder levels every run, each proven solvable before it ships, and generate LAZILY (one level at
+a time as the player advances — masked by the inter-level toast — so there's never a run-start freeze).
+- **Shared Sokoban core (Cargo Bay + Glacier Push).** `_skGenerateOne(diff, slide, fallback)` reverse-
+  constructs from the SOLVED state: crates start on the goals, then a random legal scramble runs
+  BACKWARDS (guaranteeing a forward solution exists). `slide=false` = classic one-cell PUSH (Cargo,
+  `_skReversePull` — pulls crates back and RECORDS the forward solution, which `_skReplayPush` then
+  replays to PROVE the exact level solvable — the same "replay the supplied solution" guarantee as the
+  reference; a forward BFS would false-negative on the long 6-crate solutions). `slide=true` = ice
+  GLIDE (Glacier, existing `_glReversePlace`, still BFS-verified by `_glSolvable` since multi-crate ice
+  isn't guaranteed solvable by construction). The BFS solver was switched from `q.shift()` (O(n) → the
+  whole search O(states²), which froze the harder profiles) to `q.pop()` (DFS, O(1) dequeue — we only
+  need to know IF it's solvable), with a low state CAP so bad candidates bail fast. `CARGO_DIFFS`
+  (10 tiers, 2→6 crates, deep pull-scrambles) and `GLACIER_DIFFS` (10 tiers, ≤3-crate ice) drive the
+  ramp; the SOKO engine gained `diffs`/`fallbacks`/`total` + `_skEnsureLevel(idx)` for lazy generation.
+- **Forbidden City (Shikinjou) — RULE FIXED + procedural chamber-gate generator.** The move core
+  `_shikStep` now matches authentic Shikinjou / the reference: **zero-distance pushes are illegal** (a
+  tile must slide ≥1 open cell — you can't cancel two *touching* tiles by nudging), and the **exit is
+  ordinary floor** (tiles slide over it), not a stopper. `_shikGenerateOne` reverse-constructs a chain
+  of chambers separated by 1-cell gates (exit leftmost, panda rightmost); each divider gets one
+  MANDATORY matching pair placed by reversing a known solution, so every gate is a real constraint and
+  a solution is guaranteed — then the recorded solution is REPLAYED through `_shikStep` to prove the
+  level before shipping. `SHIK_DIFFS` ramps barriers 1→6 (board width 3·barriers+4, up to 22 cols, drawn
+  with **responsive cell + gap sizing** so wide boards fit the viewport); `SHIK_TILE` expanded to 13
+  types so every pair/decoy is unique. `SHIK_LEVELS` (the old hand-authored levels) is kept only as the
+  fallback. Verified: all 10 tiers generate in ≤1ms, 0 fallbacks, every level replay-proven solvable.
+
 ## Farm — `js/18-farm.js` (`#farmView`)
 
 Crops (apple/orange/rice/wheat/corn/coffee/sugarcane) + animals (chicken/duck/sheep/pig/cow) + houses.
