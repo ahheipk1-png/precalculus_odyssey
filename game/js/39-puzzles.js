@@ -354,6 +354,20 @@
   // — a "carve" — keeping the change ONLY if the region stays a single connected blob with enough
   // floor left. Repeating this a random number of times produces an irregular, non-rectangular
   // silhouette instead of an open box every time.
+  // Floor cells that touch at least one wall cell — the growth frontier for clustering new walls
+  // onto existing ones instead of scattering them as isolated singletons.
+  function _glWallAdjacentFloor(grid, W, H){
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]], cand = [];
+    for (var y = 1; y < H - 1; y++) for (var x = 1; x < W - 1; x++){
+      if (!grid[y][x]) continue;
+      for (var d = 0; d < 4; d++){
+        var nx = x + dirs[d][0], ny = y + dirs[d][1];
+        if (nx >= 0 && ny >= 0 && nx < W && ny < H && !grid[ny][nx]){ cand.push([x, y]); break; }
+      }
+    }
+    return cand;
+  }
+
   function _glCarveRegion(W, H, carves, minFloorFrac){
     var grid = [];
     for (var y = 0; y < H; y++){
@@ -365,9 +379,18 @@
     // ICE (Glacier) does NOT — sliding crates need open lanes to reach a backstop, so a dense board
     // is usually unsolvable AND makes the verifying BFS crawl. Caller passes the right fraction.
     var minFloor = Math.max(9, Math.floor((W - 2) * (H - 2) * (minFloorFrac || 0.46)));
-    var made = 0, attempts = carves * 10;
+    var made = 0, attempts = carves * 12;
+    // Player-requested: cluster new wall cells onto EXISTING wall cells most of the time, so carves
+    // form short contiguous barriers/mazes (real detours) instead of scattered single-cell pillars
+    // (which a crate/tile just slides around). ~78% of picks extend a cluster; the rest seed a fresh
+    // one elsewhere, so a board still ends up with a handful of distinct clusters, not one blob.
     while (made < carves && attempts-- > 0){
-      var x = rand(1, W - 2), y = rand(1, H - 2);
+      var x, y;
+      if (made > 0 && Math.random() < 0.78){
+        var cand = _glWallAdjacentFloor(grid, W, H);
+        if (cand.length){ var pick = cand[rand(0, cand.length - 1)]; x = pick[0]; y = pick[1]; }
+      }
+      if (x === undefined){ x = rand(1, W - 2); y = rand(1, H - 2); }
       if (!grid[y][x]) continue;
       grid[y][x] = false;
       if (_glFloorCount(grid, W, H) < minFloor || !_glConnected(grid, W, H)) grid[y][x] = true;
