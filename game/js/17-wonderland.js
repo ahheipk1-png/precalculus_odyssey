@@ -308,7 +308,7 @@
             '<div class="wond-card-desc">Falling blocks! Fill whole lines to clear them — speed rises every 10 lines. An endless run — how far can you push it?</div>' +
             '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
           '</div>' +
-          _wondCard('💊', 'Virus Lab', 'Drop 2-color capsules; match 4 in a line to zap every virus!', 'openVirusLab') +
+          _wondCard('💊', 'Virus Lab', 'Drop 2-color capsules; match 4 in a line to zap every virus! ' + VL_LEVELS.length + ' labs, more infected each time.', 'openVirusLab') +
           _wondCard('🔗', 'Circuit Loop', 'Rotate the wires so the power core lights every bulb!', 'openCircuit') +
           _wondCard('👾', 'Comet Muncher', 'Munch every star in the maze — dodge the UFOs!', 'openComet') +
           _wondCard('💣', 'Blast Bot', 'Bomb the crates and zap the drones — mind the blast! ' + BB_LEVELS.length + ' levels.', 'openBlastBot') +

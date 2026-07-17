@@ -175,8 +175,25 @@
   // 💊 Virus Lab — drop 2-color capsules; 4-in-a-row clears; zap every virus!
   // ===========================================================================
   var VL = { COLS: 8, ROWS: 14, CELL: 32, grid: [], cur: null, acc: 0, last: 0,
-             virusTotal: 8, over: false, won: false, queue: [] };
+             virusTotal: 8, over: false, won: false, queue: [],
+             levelIdx: 0, totalKilled: 0, interval: 850 };
   var VL_COLS = ['', '#f0705e', '#f2c14e', '#66e0ff'];
+  // Sequential labs (the old game was ONE 8-virus board — too easy). viruses = how many to seed,
+  // topRow = highest row viruses may spawn in (everything above stays clear so capsules have room
+  // to maneuver), interval = fall-speed ms. The final labs seed 58-62 viruses ≈ 52-55% of the whole
+  // 8×14 bottle — Dr-Mario-level-20 territory, as requested ("50-60% full at the end").
+  var VL_LEVELS = [
+    { viruses: 12, topRow: 8, interval: 850 },
+    { viruses: 18, topRow: 8, interval: 810 },
+    { viruses: 24, topRow: 7, interval: 770 },
+    { viruses: 30, topRow: 6, interval: 730 },
+    { viruses: 36, topRow: 6, interval: 690 },
+    { viruses: 42, topRow: 5, interval: 650 },
+    { viruses: 48, topRow: 4, interval: 610 },
+    { viruses: 53, topRow: 4, interval: 570 },
+    { viruses: 58, topRow: 3, interval: 535 },
+    { viruses: 62, topRow: 3, interval: 500 }
+  ];
 
   // A capsule is a pair of colours. We keep a small look-ahead QUEUE so the player
   // can see the next two medicines (like Dr. Mario's "NEXT" box).
@@ -211,18 +228,23 @@
     if (_vlBlocked(VL.cur)){
       VL.over = true;
       var killed = VL.virusTotal - _vlVirusLeft();
-      var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('virusLab', killed * 100, killed) : false;
+      VL.totalKilled += killed;
+      var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('virusLab', VL.totalKilled * 100, VL.levelIdx + 1) : false;
+      // Reward frac = progress through the WHOLE run (labs cleared + partial credit on this one).
+      var frac = Math.min(0.95, (VL.levelIdx + killed / Math.max(1, VL.virusTotal)) / VL_LEVELS.length);
       a2Later(function(){
         a2Result('💊 Virus Lab', '🦠 The lab is overrun!' + (newHigh ? ' 🏆' : ''),
-          'You zapped <b>' + killed + ' / ' + VL.virusTotal + '</b> viruses. So close!',
-          killed / VL.virusTotal * 0.8, 'openVirusLab');
+          'Lab <b>' + (VL.levelIdx + 1) + ' / ' + VL_LEVELS.length + '</b> — <b>' + VL.totalKilled +
+          '</b> viruses zapped this run. So close!',
+          frac, 'openVirusLab');
       }, 500);
     }
   }
   function _vlVirusLeft(){ var n = 0; for (var y = 0; y < VL.ROWS; y++) for (var x = 0; x < VL.COLS; x++){ if (VL.grid[y][x] && VL.grid[y][x].virus) n++; } return n; }
   function _vlHud(){
     var hud = document.getElementById('vlHud');
-    if (hud) hud.innerHTML = '<span class="wond-chip">🦠 Viruses left: <b>' + _vlVirusLeft() + '</b></span>' +
+    if (hud) hud.innerHTML = '<span class="wond-chip">🧪 Lab <b>' + (VL.levelIdx + 1) + ' / ' + VL_LEVELS.length + '</b></span>' +
+      '<span class="wond-chip">🦠 Viruses left: <b>' + _vlVirusLeft() + '</b></span>' +
       '<span class="wond-chip">💊 Next: ' + _vlPillSwatch(VL.queue[0]) + _vlPillSwatch(VL.queue[1]) + '</span>';
   }
   function _vlResolve(){
@@ -271,11 +293,20 @@
     _vlHud();
     if (_vlVirusLeft() === 0 && !VL.won){
       VL.won = true; VL.over = true;
-      var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('virusLab', VL.virusTotal * 100, VL.virusTotal) : false;
-      a2Later(function(){
-        a2Result('💊 Virus Lab', '🌟 LAB STERILIZED! 🌟' + (newHigh ? ' 🏆' : ''),
-          'Every virus zapped — Dr. You saves the day!', 1, 'openVirusLab');
-      }, 600);
+      VL.totalKilled += VL.virusTotal;
+      if (VL.levelIdx + 1 < VL_LEVELS.length){
+        // Lab cleared — advance for FREE (no pass re-charge), matching the other sequential games.
+        if (typeof playSfx === 'function') playSfx('victory');
+        if (typeof showToast === 'function') showToast('🧪 Lab ' + (VL.levelIdx + 1) + ' sterilized! The next lab is more infected…');
+        a2Later(function(){ VL.levelIdx++; _vlLevel(); }, 900);
+      } else {
+        var newHigh = (typeof wgRecordScore === 'function') ? wgRecordScore('virusLab', VL.totalKilled * 100, VL_LEVELS.length) : false;
+        a2Later(function(){
+          a2Result('💊 Virus Lab', '🌟 LAB STERILIZED! 🌟' + (newHigh ? ' 🏆' : ''),
+            'All <b>' + VL_LEVELS.length + '</b> labs cleansed · <b>' + VL.totalKilled +
+            '</b> viruses zapped — Dr. You saves the day!', 1, 'openVirusLab');
+        }, 600);
+      }
     }
   }
   function _vlLock(){
@@ -299,19 +330,50 @@
   // wonderPlay('_vlStartRun').
   function openVirusLab(){
     gameWelcome('virusLab', '💊', 'Virus Lab',
-      'Drop 2-color capsules; match 4 in a line to zap every virus!',
+      'Drop 2-color capsules; match 4 in a line to zap every virus! ' + VL_LEVELS.length +
+      ' labs — each one more infected than the last!',
       '_vlStartRun');
   }
 
-  function _vlStartRun(){
+  // TRUE if putting colour `col` at (x,y) would line up 3+ same-coloured cells with what's already
+  // on the grid — used at seeding time so a fresh board never contains a nearly-made (or, worse, an
+  // already-made) match that would self-clear on the first resolve pass and look like a bug.
+  function _vlMakes3(x, y, col){
+    var run = 1, i;
+    for (i = x - 1; i >= 0 && VL.grid[y][i] && VL.grid[y][i].col === col; i--) run++;
+    for (i = x + 1; i < VL.COLS && VL.grid[y][i] && VL.grid[y][i].col === col; i++) run++;
+    if (run >= 3) return true;
+    run = 1;
+    for (i = y - 1; i >= 0 && VL.grid[i][x] && VL.grid[i][x].col === col; i--) run++;
+    for (i = y + 1; i < VL.ROWS && VL.grid[i][x] && VL.grid[i][x].col === col; i++) run++;
+    return run >= 3;
+  }
+
+  function _vlStartRun(){ VL.levelIdx = 0; VL.totalKilled = 0; _vlLevel(); }
+
+  function _vlLevel(){
+    var cfg = VL_LEVELS[Math.min(VL.levelIdx, VL_LEVELS.length - 1)];
+    VL.interval = cfg.interval;
     VL.grid = []; for (var r = 0; r < VL.ROWS; r++) VL.grid.push(new Array(VL.COLS).fill(0));
-    VL.over = false; VL.won = false; VL.acc = 0; VL.last = 0; VL.virusTotal = 8;
+    VL.over = false; VL.won = false; VL.acc = 0; VL.last = 0;
     VL.queue = [_vlRoll(), _vlRoll()];                     // seed the NEXT preview
+    // Seed viruses through the spawn zone in random order; each cell takes the first of a shuffled
+    // colour trio that doesn't line up 3-in-a-row. At the densest labs the odd cell can refuse all
+    // three colours — it's skipped, so the REAL count is whatever actually landed.
+    var cells = [];
+    for (var vy = cfg.topRow; vy < VL.ROWS; vy++) for (var vx = 0; vx < VL.COLS; vx++) cells.push([vx, vy]);
+    for (var s = cells.length - 1; s > 0; s--){ var j = rand(0, s); var t = cells[s]; cells[s] = cells[j]; cells[j] = t; }
     var placed = 0;
-    while (placed < VL.virusTotal){
-      var vy = rand(7, VL.ROWS - 1), vx = rand(0, VL.COLS - 1);
-      if (!VL.grid[vy][vx]){ VL.grid[vy][vx] = { col: rand(1, 3), virus: true }; placed++; }
+    for (var i = 0; i < cells.length && placed < cfg.viruses; i++){
+      var cols = [1, 2, 3];
+      for (var s2 = 2; s2 > 0; s2--){ var j2 = rand(0, s2); var t2 = cols[s2]; cols[s2] = cols[j2]; cols[j2] = t2; }
+      for (var ci = 0; ci < 3; ci++){
+        if (!_vlMakes3(cells[i][0], cells[i][1], cols[ci])){
+          VL.grid[cells[i][1]][cells[i][0]] = { col: cols[ci], virus: true }; placed++; break;
+        }
+      }
     }
+    VL.virusTotal = placed;
     a2Shell('💊 Virus Lab', 'openWonderland()',
       '<div class="wond-hud" id="vlHud"></div>' + a2KeyLegend('← → move · ↑ rotate · ↓ soft · Space HARD drop') +
       '<div class="wond-canvas-wrap"><canvas id="vlCanvas" class="a2-canvas" style="--cw:' + (VL.COLS * VL.CELL) + ';--ch:' + (VL.ROWS * VL.CELL) + '" width="' + (VL.COLS * VL.CELL) + '" height="' + (VL.ROWS * VL.CELL) + '"></canvas></div>' +
@@ -338,7 +400,7 @@
     if (!VL.over){
       if (!VL.last) VL.last = ts;
       VL.acc += ts - VL.last; VL.last = ts;
-      if (VL.acc > 850){ VL.acc = 0; _vlDown(); }
+      if (VL.acc > (VL.interval || 850)){ VL.acc = 0; _vlDown(); }
     }
     var cv = document.getElementById('vlCanvas'); if (!cv) return;
     var c = cv.getContext('2d'), CL = VL.CELL;
@@ -1279,7 +1341,16 @@
   var RHY_LANE_COL = ['#f0705e', '#f2c14e', '#7bd88f', '#5aa9ff'];
   var RHY_BEAT_MS = 500;          // 120 BPM
   var RHY_LEAD_MS = 2000;         // ms a note takes to fall from spawn to the hit line
-  var RHY_PERFECT_MS = 90, RHY_GOOD_MS = 180;
+  // Five judgment tiers by timing error. The overall hit window is unchanged (±180ms) — the old
+  // 2-tier perfect/good split is just sliced finer so the side comments have real meaning.
+  var RHY_PERFECT_MS = 45, RHY_EXCELLENT_MS = 90, RHY_GOOD_MS = 135, RHY_POOR_MS = 180;
+  var RHY_JUDGE_STYLE = {
+    perfect:   { text: 'PERFECT!!',  col: '#f2c14e' },
+    excellent: { text: 'EXCELLENT!', col: '#66e0ff' },
+    good:      { text: 'GOOD',       col: '#7bd88f' },
+    poor:      { text: 'POOR…',      col: '#ffb45e' },
+    miss:      { text: 'MISSED',     col: '#f0705e' }
+  };
   // Sequential levels (no difficulty picker) — everyone starts at level 1; each song gets longer,
   // denser and chordier. RHY_CLEAR_ACC% accuracy on a level advances to the next for free; falling
   // short (or finishing the last level) ends the run.
@@ -1292,7 +1363,9 @@
   ];
   var RHY_CLEAR_ACC = 50;
   var RHY = { active: false, level: 0, chart: [], t: 0, lastTs: 0, ended: false,
-              score: 0, totalScore: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, laneFlash: [0, 0, 0, 0] };
+              score: 0, totalScore: 0, combo: 0, maxCombo: 0,
+              perfect: 0, excellent: 0, good: 0, poor: 0, miss: 0,
+              judge: null, laneFlash: [0, 0, 0, 0] };
 
   // PURE: builds a beatmap for a level config. Every note is { t (ms), lane (0-3), judged }.
   // A "double" occasionally adds a 2nd note on the SAME beat in a different lane (a chord).
@@ -1330,8 +1403,9 @@
     var cfg = RHY_LEVELS[RHY.level] || RHY_LEVELS[RHY_LEVELS.length - 1];
     RHY.active = true; RHY.chart = rhyGenChart(cfg);
     RHY.t = 0; RHY.lastTs = 0; RHY.ended = false;
-    RHY.score = 0; RHY.combo = 0; RHY.maxCombo = 0; RHY.perfect = 0; RHY.good = 0; RHY.miss = 0;
-    RHY.laneFlash = [0, 0, 0, 0];
+    RHY.score = 0; RHY.combo = 0; RHY.maxCombo = 0;
+    RHY.perfect = 0; RHY.excellent = 0; RHY.good = 0; RHY.poor = 0; RHY.miss = 0;
+    RHY.judge = null; RHY.laneFlash = [0, 0, 0, 0];
     var W = 320, H = 460;
     v.innerHTML = '<div class="wond-board wond-game">' +
       (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm — Level ' + (RHY.level + 1) + ' / ' + RHY_LEVELS.length, 'openWonderland()') : '') +
@@ -1357,7 +1431,9 @@
       '<span class="wond-chip">⭐ Score: <b>' + RHY.score + '</b></span>' +
       '<span class="wond-chip">🔥 Combo: <b>' + RHY.combo + '</b></span>' +
       '<span class="wond-chip">🎯 Perfect: <b>' + RHY.perfect + '</b></span>' +
+      '<span class="wond-chip">✨ Excellent: <b>' + RHY.excellent + '</b></span>' +
       '<span class="wond-chip">👍 Good: <b>' + RHY.good + '</b></span>' +
+      '<span class="wond-chip">😬 Poor: <b>' + RHY.poor + '</b></span>' +
       '<span class="wond-chip">💢 Miss: <b>' + RHY.miss + '</b></span>';
   }
 
@@ -1373,17 +1449,22 @@
       var d = Math.abs(RHY.t - n.t);
       if (d < bestDiff){ bestDiff = d; best = n; }
     }
-    if (best && bestDiff <= RHY_GOOD_MS){
+    if (best && bestDiff <= RHY_POOR_MS){
       best.judged = true;
-      _rhyJudge(bestDiff <= RHY_PERFECT_MS ? 'perfect' : 'good');
+      _rhyJudge(bestDiff <= RHY_PERFECT_MS ? 'perfect' :
+                bestDiff <= RHY_EXCELLENT_MS ? 'excellent' :
+                bestDiff <= RHY_GOOD_MS ? 'good' : 'poor');
     }
   }
 
   function _rhyJudge(kind){
     if (kind === 'perfect'){ RHY.perfect++; RHY.combo++; RHY.score += 100 + Math.min(RHY.combo, 20) * 5; if (typeof playSfx === 'function') playSfx('solve-correct'); }
+    else if (kind === 'excellent'){ RHY.excellent++; RHY.combo++; RHY.score += 75 + Math.min(RHY.combo, 20) * 4; if (typeof playSfx === 'function') playSfx('solve-correct'); }
     else if (kind === 'good'){ RHY.good++; RHY.combo++; RHY.score += 50 + Math.min(RHY.combo, 20) * 2; if (typeof playSfx === 'function') playSfx('ui-click'); }
+    else if (kind === 'poor'){ RHY.poor++; RHY.combo = 0; RHY.score += 15; if (typeof playSfx === 'function') playSfx('ui-click'); }
     else { RHY.miss++; RHY.combo = 0; if (typeof playSfx === 'function') playSfx('wrong'); }
     if (RHY.combo > RHY.maxCombo) RHY.maxCombo = RHY.combo;
+    RHY.judge = { kind: kind, born: RHY.t };    // floating side comment, drawn by _rhyDraw
     _rhyHud();
   }
 
@@ -1394,11 +1475,11 @@
     RHY.t += ts - RHY.lastTs; RHY.lastTs = ts;
     for (var i = 0; i < RHY.chart.length; i++){
       var n = RHY.chart[i];
-      if (!n.judged && RHY.t > n.t + RHY_GOOD_MS){ n.judged = true; _rhyJudge('miss'); }
+      if (!n.judged && RHY.t > n.t + RHY_POOR_MS){ n.judged = true; _rhyJudge('miss'); }
     }
     for (var L = 0; L < RHY_LANES; L++){ if (RHY.laneFlash[L] > 0) RHY.laneFlash[L] -= (ts - RHY.lastTs) || 16; }
     var lastT = RHY.chart.length ? RHY.chart[RHY.chart.length - 1].t : 0;
-    if (!RHY.ended && RHY.t > lastT + RHY_GOOD_MS + 500){
+    if (!RHY.ended && RHY.t > lastT + RHY_POOR_MS + 500){
       RHY.ended = true; RHY.active = false;
       a2Later(_rhyEnd, 200);
     }
@@ -1428,12 +1509,33 @@
       c.beginPath(); c.arc(cx, y, 15, 0, 7); c.fill();
       c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; c.stroke();
     }
+    // Floating judgment comment at the right side, above the hit line — pops big, drifts up and
+    // fades over ~700ms of GAME time (RHY.t), so it freezes cleanly if the run ends.
+    if (RHY.judge){
+      var age = RHY.t - RHY.judge.born;
+      if (age > 700 || age < 0){ RHY.judge = null; }
+      else {
+        var st = RHY_JUDGE_STYLE[RHY.judge.kind];
+        c.save();
+        c.globalAlpha = age < 100 ? 1 : Math.max(0, 1 - (age - 100) / 600);
+        c.font = 'bold ' + (age < 80 ? 26 : 22) + 'px sans-serif';
+        c.textAlign = 'right';
+        c.lineJoin = 'round'; c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.6)';
+        var jy = hitY - 70 - age * 0.05;
+        c.strokeText(st.text, W - 8, jy);
+        c.fillStyle = st.col;
+        c.fillText(st.text, W - 8, jy);
+        c.restore();
+      }
+    }
   }
 
   function _rhyEnd(){
     a2StopAll();
-    var total = RHY.perfect + RHY.good + RHY.miss;
-    var acc = total > 0 ? Math.round(((RHY.perfect + RHY.good * 0.5) / total) * 100) : 0;
+    // Weighted accuracy across the 5 tiers — roughly matches the old (perfect + good*0.5) scale so
+    // RHY_CLEAR_ACC (the advance threshold) keeps the same meaning.
+    var total = RHY.perfect + RHY.excellent + RHY.good + RHY.poor + RHY.miss;
+    var acc = total > 0 ? Math.round(((RHY.perfect + RHY.excellent * 0.85 + RHY.good * 0.6 + RHY.poor * 0.3) / total) * 100) : 0;
     RHY.totalScore += RHY.score;
     var cleared = acc >= RHY_CLEAR_ACC;
     var lastLevel = RHY.level + 1 >= RHY_LEVELS.length;
@@ -1460,7 +1562,7 @@
       (typeof agTopBar === 'function' ? agTopBar('🎵 Cosmic Rhythm', 'openWonderland()') : '') +
       '<div class="wond-head"><h2 class="wond-title">' + headline + (newHigh ? ' 🏆' : '') + '</h2>' +
       '<p class="wond-sub">Reached level <b>' + (RHY.level + 1) + ' / ' + RHY_LEVELS.length + '</b> · total score <b>' + RHY.totalScore + '</b> · ' + acc + '% accuracy on that level</p>' +
-      '<p class="wond-sub">🎯 ' + RHY.perfect + ' Perfect · 👍 ' + RHY.good + ' Good · 💢 ' + RHY.miss + ' Miss (last level)</p></div>' +
+      '<p class="wond-sub">🎯 ' + RHY.perfect + ' Perfect · ✨ ' + RHY.excellent + ' Excellent · 👍 ' + RHY.good + ' Good · 😬 ' + RHY.poor + ' Poor · 💢 ' + RHY.miss + ' Missed (last level)</p></div>' +
       '<div class="wond-result-card"><div class="wond-result-label">Reward</div>' +
         '<div class="wond-prizes"><span class="wond-chip wond-prize-chip">💵 Cash ×' + coins + '</span></div></div>' +
       '<div class="wond-footer" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +

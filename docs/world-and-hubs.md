@@ -545,6 +545,32 @@ same-colour decoy tiles at the gates (Forbidden City).
   Forbidden City: 0 fallbacks, ≤3ms/level. No console errors; render path (`_glToRows`/`_skParse`/
   `_skGridHtml`/`_shikToRows`) unchanged.
 
+**2026-07-16 batch #10 — Virus Lab sequential labs (up to a 55%-full bottle) + Cosmic Rhythm 5-tier
+judgment comments (`js/40-action.js`).**
+- **💊 Virus Lab: 10 sequential labs replace the single 8-virus board** (player: "too easy… make it
+  50-60% full at the end"). `VL_LEVELS` = `{viruses, topRow, interval}` ×10 — 12 viruses → 62
+  (= 55% of the 8×14 bottle, Dr-Mario-Lv20 territory); the spawn zone's top row climbs 8→3 (rows above
+  stay clear to maneuver); fall interval speeds up 850→500ms. `_vlStartRun` now just resets the run and
+  calls the new `_vlLevel()` (board build + shell for the current lab). Seeding shuffles the zone cells
+  and gives each a shuffled colour that passes `_vlMakes3` (no 3-in-a-row at spawn — a pre-made 4-run
+  would self-clear on the first resolve and look like a bug); at the densest labs a cell can refuse all
+  3 colours, so `VL.virusTotal` = what actually landed. Clear a lab → free advance (toast + `_vlLevel`,
+  no pass re-charge, same as the other sequential games); clear all 10 → LAB STERILIZED at frac 1.
+  Run score accumulates in `VL.totalKilled` (leaderboard: `totalKilled×100`, level = lab reached); a
+  loss pays `frac = (labs cleared + partial) / 10` capped at 0.95. HUD gained a `🧪 Lab N / 10` chip;
+  welcome + lobby card mention the lab count. Verified: 20 seeds/lab × 10 labs all place the full virus
+  target with zero pre-made 3-runs.
+- **🎵 Cosmic Rhythm: 5 judgment tiers + floating side comments** (player: "add comments on the side…
+  good, poor, excellent, perfect, missed"). The ±180ms hit window is UNCHANGED — it's just sliced
+  finer: `RHY_PERFECT_MS 45 / RHY_EXCELLENT_MS 90 / RHY_GOOD_MS 135 / RHY_POOR_MS 180`; late = MISSED.
+  Scores: perfect 100+combo·5, excellent 75+combo·4, good 50+combo·2, poor 15 (poor and miss RESET the
+  combo). Every judgment sets `RHY.judge = {kind, born: RHY.t}`; `_rhyDraw` renders `RHY_JUDGE_STYLE`
+  text (colour-coded PERFECT!!/EXCELLENT!/GOOD/POOR…/MISSED) at the right side above the hit line —
+  pops large, drifts up, fades over 700ms of GAME time. HUD + end screen show all five counters.
+  Accuracy reweighted (`perfect + excellent·0.85 + good·0.6 + poor·0.3`) ≈ the old perfect+good·0.5
+  scale, so `RHY_CLEAR_ACC = 50` keeps its meaning. Verified in-browser: each timing tier lands in the
+  right bucket, exact score arithmetic, stray taps outside ±180ms ignored, miss sweep + combo reset OK.
+
 ## Farm — `js/18-farm.js` (`#farmView`)
 
 Crops (apple/orange/rice/wheat/corn/coffee/sugarcane) + animals (chicken/duck/sheep/pig/cow) + houses.
