@@ -286,31 +286,39 @@
   // 10-tier difficulty ramp (was 8, gentler). Slide levels are BFS-verified at generation time, and
   // 4-crate ice states blow up fast, so crates are capped at 4 and scramble at 12 to keep generation
   // snappy (a rejected candidate must bail quickly); the ramp grows board size + scramble depth.
+  // 10-tier ramp. `carves` = interior walls/pillars scattered through the board (the main obstacle
+  // lever the player asked for) — sliding ice needs backstops, so denser walls = tighter, harder
+  // routing. Crates capped at 4 (BFS-verified; 4-crate ice states blow up), so late difficulty comes
+  // from board size + wall density + scramble depth.
+  // Difficulty rises via WALL DENSITY (carves, the lever the player asked for) + scramble depth. Ice
+  // crates are held at MAX 3 on purpose: 4-crate slide states blow the verifying BFS up (seconds per
+  // level, often unsolvable-by-construction) — proven by simulation. So late levels lean on denser
+  // pillar mazes and deeper scrambles, not a 4th crate.
   var GLACIER_DIFFS = [
-    { W: 7,  H: 6,  carves: 2, crates: 2, scramble: 3 },
-    { W: 7,  H: 7,  carves: 3, crates: 2, scramble: 4 },
+    { W: 7,  H: 6,  carves: 2, crates: 2, scramble: 4 },
+    { W: 7,  H: 7,  carves: 3, crates: 2, scramble: 5 },
     { W: 8,  H: 7,  carves: 3, crates: 2, scramble: 6 },
-    { W: 8,  H: 8,  carves: 3, crates: 3, scramble: 6 },
+    { W: 8,  H: 8,  carves: 4, crates: 3, scramble: 7 },
     { W: 9,  H: 8,  carves: 4, crates: 3, scramble: 8 },
-    { W: 9,  H: 8,  carves: 4, crates: 3, scramble: 9 },
+    { W: 9,  H: 8,  carves: 5, crates: 3, scramble: 9 },
     { W: 9,  H: 9,  carves: 5, crates: 3, scramble: 10 },
-    { W: 10, H: 9,  carves: 5, crates: 3, scramble: 11 },
+    { W: 10, H: 9,  carves: 6, crates: 3, scramble: 11 },
     { W: 10, H: 9,  carves: 6, crates: 3, scramble: 12 },
-    { W: 10, H: 10, carves: 6, crates: 3, scramble: 13 }
+    { W: 10, H: 10, carves: 7, crates: 3, scramble: 13 }
   ];
-  // Classic PUSH Sokoban (Cargo Bay) difficulty ramp — deeper reverse-pull scrambles than Glacier
-  // (push demands exact positioning, so depth is the main lever) and up to 6 crates on the big boards.
+  // Classic PUSH Sokoban (Cargo Bay). Push is guaranteed-solvable by the reverse-pull (no BFS), so
+  // wall density can go much higher than Glacier — dense pillars + deep scrambles are the difficulty.
   var CARGO_DIFFS = [
-    { W: 7,  H: 6,  carves: 1, crates: 2, scramble: 5 },
-    { W: 7,  H: 7,  carves: 2, crates: 2, scramble: 7 },
-    { W: 8,  H: 7,  carves: 2, crates: 3, scramble: 9 },
-    { W: 8,  H: 8,  carves: 3, crates: 3, scramble: 12 },
-    { W: 9,  H: 8,  carves: 3, crates: 4, scramble: 15 },
-    { W: 9,  H: 8,  carves: 4, crates: 4, scramble: 18 },
-    { W: 10, H: 9,  carves: 4, crates: 5, scramble: 21 },
-    { W: 10, H: 9,  carves: 5, crates: 5, scramble: 24 },
-    { W: 11, H: 9,  carves: 5, crates: 6, scramble: 28 },
-    { W: 11, H: 10, carves: 6, crates: 6, scramble: 32 }
+    { W: 7,  H: 6,  carves: 2,  crates: 2, scramble: 5 },
+    { W: 7,  H: 7,  carves: 4,  crates: 2, scramble: 7 },
+    { W: 8,  H: 7,  carves: 6,  crates: 3, scramble: 9 },
+    { W: 8,  H: 8,  carves: 8,  crates: 3, scramble: 12 },
+    { W: 9,  H: 8,  carves: 10, crates: 4, scramble: 15 },
+    { W: 9,  H: 8,  carves: 12, crates: 4, scramble: 18 },
+    { W: 10, H: 9,  carves: 14, crates: 5, scramble: 21 },
+    { W: 10, H: 9,  carves: 16, crates: 5, scramble: 24 },
+    { W: 11, H: 9,  carves: 18, crates: 6, scramble: 28 },
+    { W: 11, H: 10, carves: 20, crates: 6, scramble: 32 }
   ];
 
   function _glFloorCount(grid, W, H){ var n = 0; for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) if (grid[y][x]) n++; return n; }
@@ -337,15 +345,18 @@
   // — a "carve" — keeping the change ONLY if the region stays a single connected blob with enough
   // floor left. Repeating this a random number of times produces an irregular, non-rectangular
   // silhouette instead of an open box every time.
-  function _glCarveRegion(W, H, carves){
+  function _glCarveRegion(W, H, carves, minFloorFrac){
     var grid = [];
     for (var y = 0; y < H; y++){
       var row = [];
       for (var x = 0; x < W; x++) row.push(x > 0 && y > 0 && x < W - 1 && y < H - 1);
       grid.push(row);
     }
-    var minFloor = Math.max(9, Math.floor((W - 2) * (H - 2) * 0.55));
-    var made = 0, attempts = carves * 8;
+    // How much interior floor must survive. PUSH (Cargo) tolerates dense pillar mazes (low frac);
+    // ICE (Glacier) does NOT — sliding crates need open lanes to reach a backstop, so a dense board
+    // is usually unsolvable AND makes the verifying BFS crawl. Caller passes the right fraction.
+    var minFloor = Math.max(9, Math.floor((W - 2) * (H - 2) * (minFloorFrac || 0.46)));
+    var made = 0, attempts = carves * 10;
     while (made < carves && attempts-- > 0){
       var x = rand(1, W - 2), y = rand(1, H - 2);
       if (!grid[y][x]) continue;
@@ -396,9 +407,21 @@
     for (var step = 0; step < scrambleSteps; step++){
       var ci = rand(0, crates.length - 1);
       var cx = crates[ci][0], cy = crates[ci][1];
-      var d = dirs[rand(0, 3)];                        // the FORWARD push direction for this crate
-      // Slide backwards (opposite `d`) from the crate's current cell as far as legal.
       var occ = {}; crates.forEach(function(c, i2){ if (i2 !== ci) occ[c[0] + ',' + c[1]] = 1; });
+      // Choose the FORWARD push direction `d` — but ONLY a direction with a BACKSTOP just past the
+      // crate's current cell (a wall or another crate at O+d). This is the whole ballgame for ice:
+      // when the crate is later pushed forward in `d` it glides until it hits something, and it must
+      // come to rest EXACTLY back on this origin cell (its target). Without a backstop it overshoots,
+      // the target is never covered, and the level is unsolvable — which is why picking `d` at random
+      // produced ~95% dead levels that silently fell back to a preset.
+      var okDirs = [];
+      for (var dd = 0; dd < 4; dd++){
+        var bx = cx + dirs[dd][0], by = cy + dirs[dd][1], bk = bx + ',' + by;
+        if (bx < 0 || by < 0 || bx >= W || by >= H || !grid[by][bx] || occ[bk]) okDirs.push(dirs[dd]);
+      }
+      if (!okDirs.length) continue;
+      var d = okDirs[rand(0, okDirs.length - 1)];
+      // Slide backwards (opposite `d`) from the crate's current cell as far as legal.
       var path = [], gx = cx, gy = cy;
       while (true){
         var tx = gx - d[0], ty = gy - d[1], tk = tx + ',' + ty;
@@ -483,7 +506,12 @@
     // We only need to know IF the level is solvable (not the shortest path), so this is a DFS with a
     // visited-set: q.pop() dequeues in O(1). (A BFS with q.shift() is O(n) per dequeue → O(states²)
     // overall, which froze generation on the harder profiles.)
-    var q = [{ crates: crates, norm: r0.min }], iter = 0, CAP = 5000;
+    // Ice (slide) states fan out further than one-cell push. Measured: a genuinely-solvable
+    // reverse-constructed level here is confirmed in at most ~3.3k states (p90 ~1.5k), so a 10k cap
+    // confirms every good level with margin while letting a genuinely-UNsolvable candidate bail ~6×
+    // sooner than a huge cap would — keeping per-level generation snappy. Push confirms via
+    // _skReplayPush and never reaches this BFS, so its cap can stay small.
+    var q = [{ crates: crates, norm: r0.min }], iter = 0, CAP = slide ? 10000 : 5000;
     while (q.length){
       if (iter++ > CAP) return false;
       var cur = q.pop();
@@ -615,8 +643,13 @@
   // risk on big boards). Retries on a skipped/degenerate scramble; falls back to a hand-authored
   // level only if generation somehow never succeeds, so the player is never handed a broken puzzle.
   function _skGenerateOne(diff, slide, fallback){
-    for (var attempt = 0; attempt < 10; attempt++){
-      var grid = _glCarveRegion(diff.W, diff.H, diff.carves);
+    // Push levels are cheap to generate (guaranteed solvable by reverse-pull) and dense boards fail
+    // more often, so give them a big retry budget. Ice levels are BFS-verified (each attempt costs
+    // real time) but are tuned sparse enough to hit on the first few tries, so a smaller budget keeps
+    // worst-case generation snappy.
+    var maxAttempts = slide ? 14 : 60, minFloorFrac = slide ? 0.60 : 0.46;
+    for (var attempt = 0; attempt < maxAttempts; attempt++){
+      var grid = _glCarveRegion(diff.W, diff.H, diff.carves, minFloorFrac);
       var targets = _glPickTargets(grid, diff.W, diff.H, diff.crates, slide);
       if (!targets) continue;
       var ent = slide ? _glReversePlace(grid, diff.W, diff.H, targets, diff.scramble)
@@ -789,20 +822,23 @@
                     '7': '🟫', '8': '🔴', '9': '🔵', 'A': '🟢', 'B': '🟠', 'C': '🟣', 'D': '🔶' };
   var _SHIK_LABELS = ['1','2','3','4','5','6','7','8','9','A','B','C','D'];   // keys of SHIK_TILE
 
-  // 10-tier difficulty ramp — `barriers` (mandatory gate pairs the panda must clear to reach the
-  // exit) is the main lever, so each run gets steadily harder; board width = 3*barriers+4 (rendered
-  // with responsive cells so wide boards still fit). optional pairs + decoys add red herrings.
+  // 10-tier difficulty ramp — `barriers` = mandatory gate pairs the panda must clear to reach the
+  // exit (board width = 3*barriers+4, drawn with responsive cells). `decoys` = unique-colour red
+  // herrings. `mirrors` = SAME-COLOUR decoys: extra tiles that share a real gate pair's colour, so
+  // the player sees several identical-looking blocks and must push the RIGHT one to open the door —
+  // exactly the misdirection the player asked for. Mirrors are placed off the gate rows so they can
+  // never sit in a gate tile's slide path (which would break the guaranteed solution).
   var SHIK_DIFFS = [
-    { barriers: 1, H: 7,  optional: 0, decoys: 0 },
-    { barriers: 1, H: 7,  optional: 0, decoys: 1 },
-    { barriers: 2, H: 7,  optional: 0, decoys: 1 },
-    { barriers: 2, H: 8,  optional: 1, decoys: 1 },
-    { barriers: 3, H: 8,  optional: 1, decoys: 2 },
-    { barriers: 3, H: 8,  optional: 1, decoys: 2 },
-    { barriers: 4, H: 9,  optional: 1, decoys: 2 },
-    { barriers: 4, H: 9,  optional: 2, decoys: 3 },
-    { barriers: 5, H: 9,  optional: 2, decoys: 3 },
-    { barriers: 6, H: 10, optional: 2, decoys: 3 }
+    { barriers: 1, H: 7,  decoys: 1, mirrors: 0 },
+    { barriers: 2, H: 7,  decoys: 1, mirrors: 1 },
+    { barriers: 2, H: 8,  decoys: 1, mirrors: 1 },
+    { barriers: 3, H: 8,  decoys: 2, mirrors: 2 },
+    { barriers: 3, H: 9,  decoys: 2, mirrors: 2 },
+    { barriers: 4, H: 9,  decoys: 2, mirrors: 3 },
+    { barriers: 4, H: 9,  decoys: 3, mirrors: 3 },
+    { barriers: 5, H: 10, decoys: 3, mirrors: 4 },
+    { barriers: 5, H: 10, decoys: 3, mirrors: 4 },
+    { barriers: 6, H: 10, decoys: 3, mirrors: 5 }
   ];
   var SHIK_LEVELS = [
     // 1 — slide one tile across the gap into its twin to open the way out.
@@ -919,11 +955,13 @@
     return seen;
   }
 
-  function _shikConstruct(board, decoys){
+  function _shikConstruct(board, decoys, mirrors){
     var W = board.W, H = board.H, walls = board.walls, exit = board.exit, gates = board.gates;
-    var tiles = {}, rev = [], player = exit.slice(), li = 0;
+    var tiles = {}, rev = [], player = exit.slice(), li = 0, gateLabels = [];
+    var gateRows = {}; for (var gi = 0; gi < gates.length; gi++) gateRows[gates[gi][1]] = 1;
     function key(p){ return p[0] + ',' + p[1]; }
     function open(x, y){ return !walls[x + ',' + y]; }
+    function shuffle(a){ for (var s = a.length - 1; s > 0; s--){ var j = rand(0, s); var t = a[s]; a[s] = a[j]; a[j] = t; } return a; }
     function walkTo(target){
       var path = _shikWalk(W, H, walls, tiles, player, target);
       if (path === null) return false;
@@ -939,7 +977,7 @@
       if (!open(stationary[0], stationary[1]) || !open(behind[0], behind[1]) ||
           tiles[key(stationary)] || tiles[key(gate)] ||
           (stationary[0] === exit[0] && stationary[1] === exit[1])) return null;
-      tiles[key(gate)] = label; tiles[key(stationary)] = label;
+      tiles[key(gate)] = label; tiles[key(stationary)] = label; gateLabels.push(label);
       player = behind.slice();
       rev.push('L');                                       // forward: push the gate tile LEFT into its twin
     }
@@ -947,13 +985,29 @@
     var finalGateX = gates[gates.length - 1][0], reach = _shikReachSet(W, H, walls, tiles, player), far = [];
     for (var rk in reach){ var rp = rk.split(','); if (+rp[0] > finalGateX) far.push([+rp[0], +rp[1]]); }
     if (far.length) walkTo(far[rand(0, far.length - 1)]);
-    // Unmatched DECOY tiles (each its own unused type → they never cancel; a bad placement that blocks
-    // the solution is caught by the replay check in _shikGenerateOne).
+    // Extra tiles. Any bad placement (blocking the panda's walk) is caught by the replay check in
+    // _shikGenerateOne, which just retries. `mirrors` (same colour as a real gate pair) go ONLY in
+    // non-gate rows so they can never sit in a gate tile's horizontal slide path.
     var occ = {}; for (var tkk in tiles) occ[tkk] = 1; occ[key(player)] = 1; occ[key(exit)] = 1;
-    var cells = [];
-    for (var y = 1; y < H - 1; y++) for (var x = 1; x < W - 1; x++){ var ck = x + ',' + y; if (!walls[ck] && !occ[ck]) cells.push([x, y]); }
-    for (var s = cells.length - 1; s > 0; s--){ var j = rand(0, s); var t = cells[s]; cells[s] = cells[j]; cells[j] = t; }
-    for (var d = 0; d < decoys && li < _SHIK_LABELS.length && d < cells.length; d++) tiles[key(cells[d])] = _SHIK_LABELS[li++];
+    var anyCells = [], offRow = [];
+    for (var y = 1; y < H - 1; y++) for (var x = 1; x < W - 1; x++){
+      var ck = x + ',' + y; if (walls[ck] || occ[ck]) continue;
+      anyCells.push([x, y]); if (!gateRows[y]) offRow.push([x, y]);
+    }
+    shuffle(offRow);
+    // Same-colour MIRROR decoys first (off the gate rows) — the player sees several identical tiles
+    // and must push the correct gate tile to open the door.
+    for (var m = 0; m < (mirrors || 0) && gateLabels.length && offRow.length; m++){
+      var mc = offRow.pop(); occ[key(mc)] = 1;
+      tiles[key(mc)] = gateLabels[rand(0, gateLabels.length - 1)];
+    }
+    // Unique-colour decoys in any remaining free cell.
+    shuffle(anyCells);
+    for (var d = 0; d < (decoys || 0) && li < _SHIK_LABELS.length; d++){
+      while (anyCells.length && occ[key(anyCells[anyCells.length - 1])]) anyCells.pop();
+      if (!anyCells.length) break;
+      var dc = anyCells.pop(); occ[key(dc)] = 1; tiles[key(dc)] = _SHIK_LABELS[li++];
+    }
     return { player: player, tiles: tiles, solution: rev.slice().reverse().join('') };
   }
 
@@ -996,9 +1050,9 @@
   }
 
   function _shikGenerateOne(diff, fallback){
-    for (var attempt = 0; attempt < 25; attempt++){
+    for (var attempt = 0; attempt < 40; attempt++){
       var board = _shikMakeBoard(diff.H, diff.barriers);
-      var ent = _shikConstruct(board, diff.decoys || 0);
+      var ent = _shikConstruct(board, diff.decoys || 0, diff.mirrors || 0);
       if (!ent) continue;
       // Reject a trivial level (panda can already WALK to the exit without clearing any gate).
       var reach = _shikReachSet(board.W, board.H, board.walls, ent.tiles, ent.player);

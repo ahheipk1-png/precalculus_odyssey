@@ -511,6 +511,40 @@ a time as the player advances — masked by the inter-level toast — so there's
   types so every pair/decoy is unique. `SHIK_LEVELS` (the old hand-authored levels) is kept only as the
   fallback. Verified: all 10 tiers generate in ≤1ms, 0 fallbacks, every level replay-proven solvable.
 
+**2026-07-16 batch #9 — the three tile-puzzles made HARDER, plus a latent Glacier solvability bug
+fixed.** The player found all three "too easy" and asked for more walls/pillars (Cargo, Glacier) and
+same-colour decoy tiles at the gates (Forbidden City).
+- **Wall density is now a first-class difficulty lever.** `_glCarveRegion(W, H, carves, minFloorFrac)`
+  gained the `minFloorFrac` arg — how much interior floor must survive a carve. **Push (Cargo)** passes
+  a low frac (0.46) so dense pillar mazes are allowed; **ice (Glacier)** passes a high frac (0.60)
+  because sliding crates need open lanes to reach a backstop (a dense ice board is usually unsolvable
+  AND makes the verifying BFS crawl). `CARGO_DIFFS` carves ramp 2→20 (L9 ≈ 58 walls / 6 crates);
+  `GLACIER_DIFFS` carves ramp 2→7 with deeper scrambles, **crates held at max 3** (4-crate ice blows the
+  BFS up — proven by simulation).
+- **Glacier reverse-construction bug FIXED (`_glReversePlace`).** It chose the forward push-direction
+  `d` at RANDOM, but a forward push only glides a crate back onto its origin/target if there is a
+  BACKSTOP (wall or crate) immediately beyond that origin in direction `d`. A random `d` almost never
+  aligns with a backstop, so ~95% of ice constructions were genuinely UNsolvable and got rejected by
+  `_glSolvable` — the shipped game had been silently serving the static fallback level for most harder
+  Glacier levels. Now `d` is chosen ONLY from directions with a real backstop; per-attempt success
+  jumped from ~2-5% to ~40-67%, so `_skGenerateOne` reliably returns a fresh procedural level (fallback
+  probability ≈ 0.08%). The slide BFS `CAP` was retuned to 10 000 (measured: a solvable ice level is
+  confirmed in ≤ ~3.3k states, so 10k confirms every good level yet lets a genuinely-unsolvable
+  candidate bail ~6× sooner than a huge cap). `_skGenerateOne` retry budget: 60 for push (cheap,
+  replay-proven), 14 for ice (BFS-verified, each attempt costs real time).
+- **Forbidden City same-colour decoys (`_shikConstruct(board, decoys, mirrors)`).** `SHIK_DIFFS` gained
+  a `mirrors` field (ramp 0→5). Mirror tiles reuse a real gate pair's colour and are placed ONLY in
+  non-gate rows (so they can never sit in a gate tile's horizontal slide path and corrupt it); any
+  placement that blocks the panda's walk is caught by the existing `_shikReplay` proof and retried
+  (attempt budget 25→40). The player now sees several identical tiles and must push the RIGHT one to
+  open the path to the door, exactly as requested. Unique-colour decoys (`decoys`) still fill remaining
+  cells. Verified by simulation: all 10 tiers 0 fallbacks / ≤3ms, mirrors appear 0→5 as configured,
+  every level still replay-proven solvable.
+- **Verification (all via the real generators, in-browser).** Cargo: 0 fallbacks, ≤24ms/level. Glacier:
+  0 fallbacks, every returned level independently BFS-confirmed solvable, ~90-370ms real per level.
+  Forbidden City: 0 fallbacks, ≤3ms/level. No console errors; render path (`_glToRows`/`_skParse`/
+  `_skGridHtml`/`_shikToRows`) unchanged.
+
 ## Farm — `js/18-farm.js` (`#farmView`)
 
 Crops (apple/orange/rice/wheat/corn/coffee/sugarcane) + animals (chicken/duck/sheep/pig/cow) + houses.
