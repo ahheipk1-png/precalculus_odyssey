@@ -16,7 +16,7 @@ issues in casual language; **you** are responsible for engineering rigor.
 | Local project root | `C:\PythonProject\AlgebraGame` (Windows 11, PowerShell + Git Bash available, no Node/Python installed) |
 | Game entry point | `game/index.html` |
 | Server code | `functions/api/**` (Cloudflare Pages Functions: `auth/`, `cloud/`, `admin/`) |
-| Current cache token | `?v=20260717l` (see "Cache-busting" below — bump it EVERY deploy) |
+| Current cache token | `?v=20260717m` (see "Cache-busting" below — bump it EVERY deploy) |
 
 ---
 

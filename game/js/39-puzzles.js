@@ -294,31 +294,40 @@
   // crates are held at MAX 3 on purpose: 4-crate slide states blow the verifying BFS up (seconds per
   // level, often unsolvable-by-construction) — proven by simulation. So late levels lean on denser
   // pillar mazes and deeper scrambles, not a 4th crate.
+  // 2026-07-17: ramp shifted UP after the player again called it "very easy" — L1 now starts at
+  // 3 crates on a 9×8 (the old L5) and the top end grows to an 11×11 board with 10 pillars and an
+  // 18-deep scramble. Crates stay capped at 3 (see the cap note above) — late difficulty comes from
+  // board size + wall density + scramble depth, which the backstop-aware reverse construction
+  // handles reliably.
   var GLACIER_DIFFS = [
-    { W: 7,  H: 6,  carves: 2, crates: 2, scramble: 4 },
-    { W: 7,  H: 7,  carves: 3, crates: 2, scramble: 5 },
-    { W: 8,  H: 7,  carves: 3, crates: 2, scramble: 6 },
-    { W: 8,  H: 8,  carves: 4, crates: 3, scramble: 7 },
-    { W: 9,  H: 8,  carves: 4, crates: 3, scramble: 8 },
-    { W: 9,  H: 8,  carves: 5, crates: 3, scramble: 9 },
-    { W: 9,  H: 9,  carves: 5, crates: 3, scramble: 10 },
-    { W: 10, H: 9,  carves: 6, crates: 3, scramble: 11 },
-    { W: 10, H: 9,  carves: 6, crates: 3, scramble: 12 },
-    { W: 10, H: 10, carves: 7, crates: 3, scramble: 13 }
+    { W: 9,  H: 8,  carves: 4,  crates: 3, scramble: 8 },
+    { W: 9,  H: 8,  carves: 5,  crates: 3, scramble: 9 },
+    { W: 9,  H: 9,  carves: 5,  crates: 3, scramble: 10 },
+    { W: 10, H: 9,  carves: 6,  crates: 3, scramble: 11 },
+    { W: 10, H: 9,  carves: 6,  crates: 3, scramble: 12 },
+    { W: 10, H: 10, carves: 7,  crates: 3, scramble: 13 },
+    { W: 10, H: 10, carves: 8,  crates: 3, scramble: 14 },
+    { W: 11, H: 10, carves: 8,  crates: 3, scramble: 15 },
+    { W: 11, H: 10, carves: 9,  crates: 3, scramble: 16 },
+    { W: 11, H: 11, carves: 10, crates: 3, scramble: 18 }
   ];
   // Classic PUSH Sokoban (Cargo Bay). Push is guaranteed-solvable by the reverse-pull (no BFS), so
   // wall density can go much higher than Glacier — dense pillars + deep scrambles are the difficulty.
+  // 2026-07-17: the player cleared the old ramp and still called it "very easy", twice — so the
+  // whole ramp shifted UP: L1 starts where the old L4 was (3 crates in a pillar maze) and the top
+  // end pushes to 8 crates / 26 walls / 46-deep scrambles. Push is replay-proven solvable and cheap
+  // to generate, so this is safe; board width stays ≤11 (fixed 56px cells must fit the panel).
   var CARGO_DIFFS = [
-    { W: 7,  H: 6,  carves: 2,  crates: 2, scramble: 5 },
-    { W: 7,  H: 7,  carves: 4,  crates: 2, scramble: 7 },
-    { W: 8,  H: 7,  carves: 6,  crates: 3, scramble: 9 },
     { W: 8,  H: 8,  carves: 8,  crates: 3, scramble: 12 },
     { W: 9,  H: 8,  carves: 10, crates: 4, scramble: 15 },
-    { W: 9,  H: 8,  carves: 12, crates: 4, scramble: 18 },
-    { W: 10, H: 9,  carves: 14, crates: 5, scramble: 21 },
-    { W: 10, H: 9,  carves: 16, crates: 5, scramble: 24 },
-    { W: 11, H: 9,  carves: 18, crates: 6, scramble: 28 },
-    { W: 11, H: 10, carves: 20, crates: 6, scramble: 32 }
+    { W: 9,  H: 9,  carves: 12, crates: 4, scramble: 18 },
+    { W: 10, H: 9,  carves: 14, crates: 5, scramble: 22 },
+    { W: 10, H: 9,  carves: 16, crates: 5, scramble: 26 },
+    { W: 10, H: 10, carves: 18, crates: 6, scramble: 30 },
+    { W: 11, H: 10, carves: 20, crates: 6, scramble: 34 },
+    { W: 11, H: 10, carves: 22, crates: 7, scramble: 38 },
+    { W: 11, H: 11, carves: 24, crates: 7, scramble: 42 },
+    { W: 11, H: 11, carves: 26, crates: 8, scramble: 46 }
   ];
 
   function _glFloorCount(grid, W, H){ var n = 0; for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) if (grid[y][x]) n++; return n; }
@@ -800,7 +809,7 @@
   }
   function _cargoStartRun(){ SOKO.title = '📦 Cargo Bay'; SOKO.replay = 'openCargo'; SOKO.gameId = 'cargo'; SOKO.slide = false; SOKO.diffs = CARGO_DIFFS; SOKO.fallbacks = CARGO_LEVELS; SOKO.total = CARGO_DIFFS.length; SOKO.levels = []; SOKO.idx = 0; SOKO.totalMoves = 0; _skLevel(); }
 
-  // A freshly generated (BFS-verified) set of 8 levels every time — see _glGenerateLevels above.
+  // A freshly generated (BFS-verified) set of GLACIER_DIFFS.length levels every run.
   function openGlacier(){
     gameWelcome('glacier', '❄️', 'Glacier Push',
       'Ice blocks SLIDE until they hit something. Plan your pushes! ' + GLACIER_DIFFS.length + ' fresh levels every run, harder and harder.',
@@ -828,17 +837,21 @@
   // the player sees several identical-looking blocks and must push the RIGHT one to open the door —
   // exactly the misdirection the player asked for. Mirrors are placed off the gate rows so they can
   // never sit in a gate tile's slide path (which would break the guaranteed solution).
+  // 2026-07-17: ramp shifted UP ("very easy" feedback, twice) — no more 1-gate warm-up: L1 starts
+  // at 2 gates with a same-colour mirror decoy already in play, and the top end is 6 gates on an
+  // 11-tall palace with 4 unique decoys + 6 mirrors. Label budget: 6 gates + 4 decoys = 10 of the
+  // 13 SHIK_TILE types (mirrors reuse gate labels), so no exhaustion.
   var SHIK_DIFFS = [
-    { barriers: 1, H: 7,  decoys: 1, mirrors: 0 },
-    { barriers: 2, H: 7,  decoys: 1, mirrors: 1 },
     { barriers: 2, H: 8,  decoys: 1, mirrors: 1 },
+    { barriers: 2, H: 8,  decoys: 2, mirrors: 2 },
     { barriers: 3, H: 8,  decoys: 2, mirrors: 2 },
-    { barriers: 3, H: 9,  decoys: 2, mirrors: 2 },
-    { barriers: 4, H: 9,  decoys: 2, mirrors: 3 },
+    { barriers: 3, H: 9,  decoys: 2, mirrors: 3 },
     { barriers: 4, H: 9,  decoys: 3, mirrors: 3 },
+    { barriers: 4, H: 10, decoys: 3, mirrors: 4 },
     { barriers: 5, H: 10, decoys: 3, mirrors: 4 },
-    { barriers: 5, H: 10, decoys: 3, mirrors: 4 },
-    { barriers: 6, H: 10, decoys: 3, mirrors: 5 }
+    { barriers: 5, H: 10, decoys: 4, mirrors: 5 },
+    { barriers: 6, H: 11, decoys: 4, mirrors: 5 },
+    { barriers: 6, H: 11, decoys: 4, mirrors: 6 }
   ];
   var SHIK_LEVELS = [
     // 1 — slide one tile across the gap into its twin to open the way out.

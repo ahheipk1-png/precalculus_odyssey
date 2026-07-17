@@ -545,6 +545,30 @@ same-colour decoy tiles at the gates (Forbidden City).
   Forbidden City: 0 fallbacks, ≤3ms/level. No console errors; render path (`_glToRows`/`_skParse`/
   `_skGridHtml`/`_shikToRows`) unchanged.
 
+**2026-07-17 batch #11 — puzzle-trio ramps shifted UP + stale lobby cards fixed (the player's
+"i don't think you made any changes / still very easy").** Two compounding causes: (1) the Wonderland
+lobby cards still advertised the OLD hand-authored level counts ("8 levels" via `CARGO_LEVELS.length`,
+a hardcoded "8 fresh levels", "5 levels" via `SHIK_LEVELS.length`) even though the games run the
+10-level `*_DIFFS` generators — making it LOOK like nothing changed; (2) the ramps genuinely kept
+gentle warm-up levels at the bottom.
+- **Lobby cards (`17-wonderland.js`)** now interpolate `CARGO_DIFFS.length` / `GLACIER_DIFFS.length` /
+  `SHIK_DIFFS.length` with copy mentioning the pillar mazes and same-colour decoys. Swept every other
+  card + `gameWelcome` text: all remaining counts read the array their game actually runs
+  (`WOND/QBF/MEM/SUD/STK/VL/BB/BU/RHY/SN_LEVELS`, `FISH_MAX_LEVEL`) — no other stale numbers found.
+- **Ramps (`39-puzzles.js`)**: every game now STARTS mid-old-ramp and ends beyond it.
+  `CARGO_DIFFS` L1 = 8×8/8 walls/3 crates/scramble 12 (the old L4) → L10 = 11×11/26 walls/8 crates/
+  scramble 46 (was 6 crates/32); board width stays ≤11 (fixed 56px cells). `GLACIER_DIFFS` L1 =
+  9×8/3 crates/scramble 8 (the old L5) → L10 = 11×11/10 pillars/scramble 18; ice crates stay capped
+  at 3 (BFS). `SHIK_DIFFS` L1 = 2 gates + 1 mirror decoy (no more 1-gate warm-up) → L10 = 6 gates/
+  H=11/4 decoys/6 mirrors (label budget 10 of 13, mirrors reuse gate labels).
+- **Verification caveat**: browser-based simulation was unavailable this batch (tool sandbox), so
+  verification was STATIC: `_shikMakeBoard` confirmed fully parametric in H/barriers (H=11 → gate
+  rows rand(2,8); barriers=6 → W=22, already handled responsively); minFloor math leaves headroom
+  (11×11 push: 26 carves ≤ 44 max; ice: 10 ≤ 33); `_skReversePull` cost ≤ steps·30+80 iterations;
+  glacier L1-L6 reuse EXACTLY the old L4-L9 values that measured 0 fallbacks. The next session
+  should re-run the standard in-browser stress test (10× per level, count fallbacks) to confirm
+  fallback rates stay ≈0 at the new Cargo top end (8 crates) and Shik H=11.
+
 **2026-07-16 batch #10 — Virus Lab sequential labs (up to a 55%-full bottle) + Cosmic Rhythm 5-tier
 judgment comments (`js/40-action.js`).**
 - **💊 Virus Lab: 10 sequential labs replace the single 8-virus board** (player: "too easy… make it

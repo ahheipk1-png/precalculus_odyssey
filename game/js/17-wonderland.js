@@ -293,9 +293,9 @@
             '<button type="button" class="btn btn-primary wond-play" onclick="openSudoku()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
           '</div>' +
           _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots', true) +
-          _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring — classic warehouse puzzling! ' + CARGO_LEVELS.length + ' levels.', 'openCargo') +
-          _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes! 8 fresh levels every run.', 'openGlacier') +
-          _wondCard('🏯', 'Forbidden City', 'Push matching mahjong tiles together to cancel them and reach the exit! ' + SHIK_LEVELS.length + ' levels.', 'openShikinjou') +
+          _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring through dense pillar mazes! ' + CARGO_DIFFS.length + ' freshly-generated levels, harder and harder.', 'openCargo') +
+          _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes! ' + GLACIER_DIFFS.length + ' fresh levels every run, harder and harder.', 'openGlacier') +
+          _wondCard('🏯', 'Forbidden City', 'Slide matching spirit tiles together to cancel them — beware the same-color decoys! ' + SHIK_DIFFS.length + ' fresh chambers every run.', 'openShikinjou') +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🗼</div>' +
             '<div class="wond-card-name">Sky Stacker</div>' +
