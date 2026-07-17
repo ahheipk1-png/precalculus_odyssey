@@ -768,29 +768,26 @@
   }
 
   function showGateScreen() {
-    // The Boss Gate button lives in the always-visible header, so it can be clicked from ANY view
-    // (Earth Hub, Space Atlas, shop, Wonderland, profile…). But #levelGateActions lives inside
-    // #equationView — a .view-container that is display:none unless it's the active view. Without
-    // this, clicking the gold button off the practice screen toggled panels inside a hidden
-    // container and "nothing happened". So first make the equation view active (mirrors
-    // returnToArenaFromBoss), then reveal the boss-choice buttons, then scroll them into view
-    // (they render well below the fold on a tall page).
-    if (el.equationView && !el.equationView.classList.contains('active')) {
-      document.querySelectorAll('.view-container.active').forEach(function(v){ v.classList.remove('active'); });
-      el.equationView.classList.add('active');
-    }
-    el.levelGateActions.style.display = 'flex';
-    el.eqActions.style.display = 'none';
-    el.moveLabel.style.display = 'none';
-    el.opRow.style.display = 'none';
-    el.applyForm.style.display = 'none';
-    el.expandPanel.style.display = 'none';
-    if (el.directAnswerPanel) el.directAnswerPanel.style.display = 'none';
-    if (el.mcChoices) el.mcChoices.style.display = 'none';
-    if (el.questionPrompt) el.questionPrompt.style.display = 'none';
-    if (el.levelGateActions.scrollIntoView) {
-      try { el.levelGateActions.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { el.levelGateActions.scrollIntoView(); }
-    }
+    // Header Boss Gate button → a simple "are you sure you want to leave?" confirm overlay
+    // (replaces the old in-console Challenge/Keep-Training choice screen, which the player found
+    // confusing). Yes = straight into the Boss Room; No = close the popup and carry on.
+    var ov = document.getElementById('bossLeaveOverlay');
+    if (!ov) { confirmBossLeave(true); return; }   // fallback if the overlay markup is ever missing
+    ov.hidden = false;
+    if (typeof playSfx === 'function') playSfx('machine');
+  }
+
+  // Yes/No handler for the #bossLeaveOverlay confirm. The gate button lives in the always-visible
+  // header, so this can fire from ANY view (Earth Hub, Wonderland, profile…) — openBattle only
+  // deactivates equation/shop, so deactivate every view first or the old view stays visible
+  // underneath the Boss Room.
+  function confirmBossLeave(yes){
+    var ov = document.getElementById('bossLeaveOverlay');
+    if (ov) ov.hidden = true;
+    if (!yes) return;
+    document.querySelectorAll('.view-container.active').forEach(function(v){ v.classList.remove('active'); });
+    if (el.equationView) el.equationView.classList.add('active');
+    if (typeof openBattle === 'function') openBattle();
   }
 
   function hideGateScreen() {

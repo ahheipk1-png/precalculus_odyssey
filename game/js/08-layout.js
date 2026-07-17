@@ -30,7 +30,6 @@
     var status=make('div','equation-status-row');
     var heading=make('div','control-panel-heading',
       '<span class="control-kicker">Algebra Console</span>'+
-      '<h2>Choose your move</h2>'+
       '<p id="controlHint">Use the same operation on both sides. Keep the balance steady until <strong>x</strong> stands alone.</p>'
     );
 

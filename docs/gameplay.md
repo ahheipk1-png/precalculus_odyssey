@@ -173,6 +173,22 @@ toggled panels inside a hidden container and "nothing happened". Fix (`showGateS
 first activate `#equationView` (mirrors `returnToArenaFromBoss`), then reveal the boss-choice, then
 `scrollIntoView({block:'center'})` the actions (they render well below the fold on a tall page).
 
+**2026-07-17 — Boss Gate click = a confirm popup, straight to the boss (supersedes the in-console
+choice screen above).** The player found the "Choose your move / Challenge Planet Boss / Keep
+Training" console swap confusing. Now clicking **⚔️ Boss Gate Open!** opens a modal
+(`#bossLeaveOverlay` in `index.html`, same `gameover-overlay bossgate-overlay` styling as the
+gate-open notice): *"Challenge the Planet Boss? Are you sure you want to leave the arena?…"* with
+**⚔️ Yes — to the boss!** and **↩ Not yet**. `showGateScreen()` (`05-render.js`) now just shows the
+overlay; the new `confirmBossLeave(yes)` hides it and, on yes, deactivates every `.view-container`
+(the button is clickable from ANY view, and `openBattle` only deactivates equation/shop itself),
+activates `#equationView`, then calls `openBattle()` — the gate-closes-if-you-flee rule is unchanged.
+The **"Choose your move" `<h2>`** was removed from the console heading (`08-layout.js`; the kicker
+"Algebra Console" + `#controlHint` remain). `#levelGateActions` (Challenge/Keep-Training buttons) is
+now never shown — the markup + listeners stay because many code paths still call
+`el.levelGateActions.style.display='none'` and `hideGateScreen()` (still used by `closeShop`);
+removing the node would null those refs and break init. Verified in-browser: overlay pops on click,
+No closes it with no state change, Yes fires `openBattle` (spy) with `#equationView` active.
+
 **2026-07-16 — Exponent placeholder `2^?` renders as a superscript.** The `mathPrettyBasic` superscript
 regex (`04-logic.js`) matched `^` only before a digit, an ASCII-signed digit, or a single letter — so
 in "2⁸ ÷ 2² = 2^?" the first two became superscripts but the `?` placeholder stayed a raw caret. The
