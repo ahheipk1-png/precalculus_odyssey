@@ -1113,6 +1113,30 @@
     80% { transform: translateY(-28px) scale(1); opacity: 1; }
     100% { transform: translateY(-38px) scale(0.8); opacity: 0; }
   }
+  /* 2026-07-17 combat-feel layer (docs/balance-design.md): MISS / POWER HIT callouts + the
+     defender's dodge side-step. `.note` = neutral callout, `.power` = big golden power hit. */
+  .floating-dmg.note {
+    color: var(--chalk, #f4f1e8);
+    left: 50%;
+    font-size: 18px;
+    opacity: 0.95;
+  }
+  .floating-dmg.power {
+    color: var(--yellow, #f2c14e);
+    left: 50%;
+    top: -34px;
+    font-size: 26px;
+    letter-spacing: 1px;
+  }
+  .dodge-slide {
+    animation: dodgeSlide 0.45s ease-out;
+  }
+  @keyframes dodgeSlide {
+    0%   { transform: translateX(0); }
+    35%  { transform: translateX(-22px) rotate(-4deg); }
+    70%  { transform: translateX(10px) rotate(2deg); }
+    100% { transform: translateX(0); }
+  }
   
   .combat-log-wrapper {
     background: rgba(0, 0, 0, 0.25);

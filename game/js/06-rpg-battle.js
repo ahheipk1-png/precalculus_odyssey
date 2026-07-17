@@ -325,18 +325,27 @@
     { id: 'r10_3', room: 10, rank: 3, name: 'Galaxy Final King' }
   ];
 
+  // Stats come from the BAL designer curves (economy.config.js / docs/balance-design.md):
+  // one shared power curve drives boss HP/DEF/Cash, a solved table drives boss ATK, and rank
+  // multipliers scale Easy/Elite down from the boss line. XP scales with arena so hero level
+  // keeps pace with the requiredHeroLvl gate all the way to arena 65 (old flat-100 XP soft-locked
+  // straight-through players around arena 40). Speed feeds the new dodge roll.
   function buildMonster(entry) {
     var rank = monsterRanks[entry.rank - 1];
+    var m = BAL.RANK_MULT[entry.rank - 1];
+    var r = entry.room;
     return {
       id: entry.id,
-      room: entry.room,
+      room: r,
       rank: entry.rank,
       name: entry.name,
-      maxHp: entry.room * rank.hp,
-      maxMp: rank.mp + entry.room * 5,
-      attack: entry.room * rank.attack,
-      defense: Math.round(entry.room * rank.defense),
-      reward: entry.room * rank.reward,
+      maxHp: Math.max(5, Math.round(BAL.bossHp(r) * m.hp)),
+      maxMp: rank.mp + r * 2,
+      attack: Math.max(1, Math.round(BAL.bossAtk(r) * m.atk)),
+      defense: Math.max(0, Math.round(BAL.bossDef(r) * m.def)),
+      speed: BAL.monsterSpeed(r),
+      reward: Math.max(5, Math.round(BAL.bossCash(r) * m.cash)),
+      xp: BAL.killXp(r, entry.rank),
       difficulty: rank.difficulty,
       element: getMonsterElement(entry),
       // Grows at half the arena pace so late arenas stay reachable without endless grinding.
@@ -599,6 +608,31 @@
     }, 700);
   }
 
+  // Floating text without the '-' damage prefix — used for MISS! / POWER HIT! callouts.
+  function triggerFloatingNote(target, text, cls) {
+    var wrap = target === 'player' ? el.playerSprite.parentNode : el.monsterSprite.parentNode;
+    var pop = document.createElement('div');
+    pop.className = 'floating-dmg ' + (cls || 'note');
+    pop.textContent = text;
+    wrap.appendChild(pop);
+    setTimeout(function(){ pop.remove(); }, 800);
+  }
+
+  // Equipped weapon's authored crit stat = the player's POWER HIT chance (%). This activates a
+  // previously-dead config stat (docs/balance-design.md).
+  function getPlayerCrit(){
+    var w = (state.weapons || []).filter(function(it){ return it.id === state.equippedWeapon; })[0];
+    return (w && w.crit) ? w.crit : 5;
+  }
+
+  // Speed-based dodge: defender's speed advantage raises the chance, clamped so it never
+  // dominates. Shoes (and monster speed) are now real combat stats.
+  function rollDodge(defSpd, atkSpd){
+    var chance = Math.min(BAL.DODGE_MAX, Math.max(BAL.DODGE_MIN,
+      BAL.DODGE_BASE + (defSpd - atkSpd) * BAL.DODGE_PER_SPD));
+    return Math.random() * 100 < chance;
+  }
+
   function showImpactEffect(target, emoji) {
     var cardId = target === 'player' ? 'playerCombatCard' : 'monsterCombatCard';
     var card = document.getElementById(cardId);
@@ -626,24 +660,40 @@
       var mDef = activeCombat.monster.defense;
       // Wu Xing: weapon element vs enemy element scales the hit.
       var wx = (typeof elementMultiplier === 'function') ? elementMultiplier(getPlayerElement(), activeCombat.monster.element) : 1;
-      var dmgToMonster = Math.max(1, Math.round((pAp - mDef) * wx));
-      if (wx !== 1 && typeof elementMatchupNote === 'function') {
-        var note = elementMatchupNote(getPlayerElement(), activeCombat.monster.element);
-        if (note) appendCombatLog('🔥 ' + note, wx > 1 ? 'p-attack' : 'system');
+      var pSpd = (typeof getPlayerSpeed === 'function') ? getPlayerSpeed() : 5;
+      // Order: DODGE roll first (a dodge deals NOTHING — no floor-1), then POWER HIT roll, then
+      // the smooth ratio formula AP²/(AP+DEF) — no subtraction walls (docs/balance-design.md).
+      if (rollDodge(activeCombat.monster.speed || 5, pSpd)) {
+        el.monsterSprite.classList.add('dodge-slide');
+        setTimeout(function(){ el.monsterSprite.classList.remove('dodge-slide'); }, 450);
+        triggerFloatingNote('monster', 'MISS 💨');
+        appendCombatLog(`💨 ${activeCombat.monster.name} dodges your attack!`, 'system');
+        if (typeof playSfx === 'function') playSfx('click');
+      } else {
+        var dmgToMonster = Math.max(1, Math.round(pAp * pAp / (pAp + mDef) * wx));
+        var powerHit = Math.random() * 100 < getPlayerCrit();
+        if (powerHit) dmgToMonster = Math.round(dmgToMonster * BAL.POWER_HIT_MULT);
+        if (wx !== 1 && typeof elementMatchupNote === 'function') {
+          var note = elementMatchupNote(getPlayerElement(), activeCombat.monster.element);
+          if (note) appendCombatLog('🔥 ' + note, wx > 1 ? 'p-attack' : 'system');
+        }
+
+        activeCombat.monsterHp = Math.max(0, activeCombat.monsterHp - dmgToMonster);
+        updateCombatHpBars();
+
+        if (powerHit) triggerFloatingNote('monster', '💥 POWER HIT!', 'power');
+        triggerFloatingDmg('monster', dmgToMonster, false);
+        showImpactEffect('monster', powerHit ? '💥💥' : '💥');
+        battleImpactAt(el.monsterSprite);
+
+        el.monsterSprite.classList.add('hit-shake');
+        setTimeout(function(){ el.monsterSprite.classList.remove('hit-shake'); }, 400);
+
+        appendCombatLog(powerHit
+          ? `💥 POWER HIT! You smash ${activeCombat.monster.name} for ${dmgToMonster} damage!`
+          : `You hit ${activeCombat.monster.name} for ${dmgToMonster} damage!`, 'p-attack');
+        if (typeof playSfx === 'function') playSfx('battle-hit');
       }
-
-      activeCombat.monsterHp = Math.max(0, activeCombat.monsterHp - dmgToMonster);
-      updateCombatHpBars();
-
-      triggerFloatingDmg('monster', dmgToMonster, false);
-      showImpactEffect('monster', '💥');
-      battleImpactAt(el.monsterSprite);
-      
-      el.monsterSprite.classList.add('hit-shake');
-      setTimeout(function(){ el.monsterSprite.classList.remove('hit-shake'); }, 400);
-
-      appendCombatLog(`You hit ${activeCombat.monster.name} for ${dmgToMonster} damage!`, 'p-attack');
-      if (typeof playSfx === 'function') playSfx('battle-hit');
 
       setTimeout(function(){ el.playerSprite.classList.remove('attack-right','casting'); }, 360);
     }, 250);
@@ -657,7 +707,10 @@
       // Status effects (poison/burn tick, freeze/stun skip) — unified engine in 26-spells.js.
       var pre = (typeof applyMonsterStatusPreTurn === 'function') ? applyMonsterStatusPreTurn() : { disabled: false, note: '' };
       if (activeCombat.monsterHp <= 0) { handleBattleVictory(); return; }
-      var isHealTurn = !pre.disabled && (activeCombat.monsterHp <= activeCombat.monster.maxHp * 0.35) && (activeCombat.monsterMp >= 20);
+      // Heal costs a FRACTION of the monster's own MP pool (≈2 heals per fight at any arena) and
+      // restores 20% — the old flat-20-MP cost let late bosses chain-heal (docs/balance-design.md).
+      var healCost = Math.max(20, Math.round(activeCombat.monster.maxMp * BAL.HEAL_COST_FRAC));
+      var isHealTurn = !pre.disabled && (activeCombat.monsterHp <= activeCombat.monster.maxHp * 0.35) && (activeCombat.monsterMp >= healCost);
 
       if (pre.disabled) {
         appendCombatLog(pre.note, 'system');
@@ -666,8 +719,8 @@
         setTimeout(function(){ el.monsterSprite.classList.remove('hit-shake'); }, 400);
 
         setTimeout(function(){
-          activeCombat.monsterMp = Math.max(0, activeCombat.monsterMp - 20);
-          var healVal = Math.round(activeCombat.monster.maxHp * 0.35) || 10;
+          activeCombat.monsterMp = Math.max(0, activeCombat.monsterMp - healCost);
+          var healVal = Math.round(activeCombat.monster.maxHp * BAL.HEAL_FRAC) || 10;
           activeCombat.monsterHp = Math.min(activeCombat.monster.maxHp, activeCombat.monsterHp + healVal);
           updateCombatHpBars();
 
@@ -686,27 +739,43 @@
           var pDef = getPlayerDp();
           var mwx = (typeof elementMultiplier === 'function' && typeof getShieldElement === 'function') ? elementMultiplier(activeCombat.monster.element, getShieldElement()) : 1;
           var pInc = (typeof playerIncomingFactor === 'function') ? playerIncomingFactor() : 1;
-          var dmgToPlayer = Math.max(1, Math.round((mAp - pDef) * mwx * pInc));
-
-          activeCombat.playerHp = Math.max(0, activeCombat.playerHp - dmgToPlayer);
-          updateCombatHpBars();
-
-          triggerFloatingDmg('player', dmgToPlayer, false);
-          
-          if (pDef > 0) {
-            el.playerShieldSprite.classList.add('defend');
-            setTimeout(function(){ el.playerShieldSprite.classList.remove('defend'); }, 400);
-            showImpactEffect('player', '🛡️');
+          var pSpdD = (typeof getPlayerSpeed === 'function') ? getPlayerSpeed() : 5;
+          // Player dodge roll first (shoes/speed finally matter!), then monster power-hit, then
+          // ratio damage with the 0.75 enemy coefficient (docs/balance-design.md).
+          if (rollDodge(pSpdD, activeCombat.monster.speed || 5)) {
+            el.playerSprite.classList.add('dodge-slide');
+            setTimeout(function(){ el.playerSprite.classList.remove('dodge-slide'); }, 450);
+            triggerFloatingNote('player', 'MISS 💨');
+            appendCombatLog(`💨 You dodge ${activeCombat.monster.name}'s attack!`, 'p-attack');
+            if (typeof playSfx === 'function') playSfx('click');
           } else {
-            showImpactEffect('player', activeCombat.monster.rank >= 5 ? '❄️' : '💥');
-          }
-          
-          battleImpactAt(el.playerSprite);
-          el.playerSprite.classList.add('hit-shake');
-          setTimeout(function(){ el.playerSprite.classList.remove('hit-shake'); }, 400);
+            var dmgToPlayer = Math.max(1, Math.round(BAL.ENEMY_COEFF * mAp * mAp / (mAp + pDef) * mwx * pInc));
+            var mPower = Math.random() * 100 < (BAL.MONSTER_CRIT_BASE + 2 * activeCombat.monster.rank);
+            if (mPower) dmgToPlayer = Math.round(dmgToPlayer * BAL.POWER_HIT_MULT);
 
-          appendCombatLog(`${activeCombat.monster.name} attacks you for ${dmgToPlayer} damage!`, 'm-attack');
-          
+            activeCombat.playerHp = Math.max(0, activeCombat.playerHp - dmgToPlayer);
+            updateCombatHpBars();
+
+            if (mPower) triggerFloatingNote('player', '💥 POWER HIT!', 'power');
+            triggerFloatingDmg('player', dmgToPlayer, false);
+
+            if (pDef > 0) {
+              el.playerShieldSprite.classList.add('defend');
+              setTimeout(function(){ el.playerShieldSprite.classList.remove('defend'); }, 400);
+              showImpactEffect('player', '🛡️');
+            } else {
+              showImpactEffect('player', activeCombat.monster.rank >= 5 ? '❄️' : '💥');
+            }
+
+            battleImpactAt(el.playerSprite);
+            el.playerSprite.classList.add('hit-shake');
+            setTimeout(function(){ el.playerSprite.classList.remove('hit-shake'); }, 400);
+
+            appendCombatLog(mPower
+              ? `💥 POWER HIT! ${activeCombat.monster.name} smashes you for ${dmgToPlayer} damage!`
+              : `${activeCombat.monster.name} attacks you for ${dmgToPlayer} damage!`, 'm-attack');
+          }
+
           el.monsterSprite.classList.remove('attack-left','casting');
         }, 250);
       }
@@ -737,13 +806,25 @@
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
 
     activeCombat.playerMp = Math.max(0, activeCombat.playerMp - mpCost);
-    activeCombat.playerHp = Math.min(activeCombat.playerMaxHp, activeCombat.playerHp + healVal);
-    updateCombatHpBars();
-
+    // Spell reliability (docs/balance-design.md): 70% full / 20% weak (half) / 10% fizzle (MP
+    // spent, no effect) — spells are powerful but not a guaranteed button.
+    var spellRoll = Math.random();
     el.playerSprite.classList.add('casting');
     setTimeout(function(){ el.playerSprite.classList.remove('casting'); }, 600);
-    showImpactEffect('player', '💚');
-    appendCombatLog(`You cast ${spellName}! Recovered +${healVal} HP!`, 'system');
+    if (spellRoll >= BAL.SPELL_FULL + BAL.SPELL_WEAK) {
+      triggerFloatingNote('player', 'FIZZLE 💨');
+      showImpactEffect('player', '💨');
+      appendCombatLog(`💨 ${spellName} fizzles out! The MP is spent but nothing happens…`, 'system');
+    } else {
+      var spellEff = (spellRoll >= BAL.SPELL_FULL) ? 0.5 : 1;
+      var actualHeal = Math.max(1, Math.round(healVal * spellEff));
+      activeCombat.playerHp = Math.min(activeCombat.playerMaxHp, activeCombat.playerHp + actualHeal);
+      showImpactEffect('player', '💚');
+      appendCombatLog(spellEff < 1
+        ? `✨ ${spellName} fizzles — it only partly works! Recovered +${actualHeal} HP.`
+        : `You cast ${spellName}! Recovered +${actualHeal} HP!`, 'system');
+    }
+    updateCombatHpBars();
 
     setTimeout(function() {
       if (activeCombat.monsterHp <= 0) {
@@ -751,15 +832,16 @@
         return;
       }
 
-      var isHealTurn = (activeCombat.monsterHp <= activeCombat.monster.maxHp * 0.35) && (activeCombat.monsterMp >= 20);
+      var counterHealCost = Math.max(20, Math.round(activeCombat.monster.maxMp * BAL.HEAL_COST_FRAC));
+      var isHealTurn = (activeCombat.monsterHp <= activeCombat.monster.maxHp * 0.35) && (activeCombat.monsterMp >= counterHealCost);
 
       if (isHealTurn) {
         el.monsterSprite.classList.add('hit-shake');
         setTimeout(function(){ el.monsterSprite.classList.remove('hit-shake'); }, 400);
 
         setTimeout(function(){
-          activeCombat.monsterMp = Math.max(0, activeCombat.monsterMp - 20);
-          var monsterHealVal = Math.round(activeCombat.monster.maxHp * 0.35) || 10;
+          activeCombat.monsterMp = Math.max(0, activeCombat.monsterMp - counterHealCost);
+          var monsterHealVal = Math.round(activeCombat.monster.maxHp * BAL.HEAL_FRAC) || 10;
           activeCombat.monsterHp = Math.min(activeCombat.monster.maxHp, activeCombat.monsterHp + monsterHealVal);
           updateCombatHpBars();
 
@@ -778,27 +860,43 @@
           var pDef = getPlayerDp();
           var mwx = (typeof elementMultiplier === 'function' && typeof getShieldElement === 'function') ? elementMultiplier(activeCombat.monster.element, getShieldElement()) : 1;
           var pInc = (typeof playerIncomingFactor === 'function') ? playerIncomingFactor() : 1;
-          var dmgToPlayer = Math.max(1, Math.round((mAp - pDef) * mwx * pInc));
-
-          activeCombat.playerHp = Math.max(0, activeCombat.playerHp - dmgToPlayer);
-          updateCombatHpBars();
-
-          triggerFloatingDmg('player', dmgToPlayer, false);
-          
-          if (pDef > 0) {
-            el.playerShieldSprite.classList.add('defend');
-            setTimeout(function(){ el.playerShieldSprite.classList.remove('defend'); }, 400);
-            showImpactEffect('player', '🛡️');
+          var pSpdD = (typeof getPlayerSpeed === 'function') ? getPlayerSpeed() : 5;
+          // Player dodge roll first (shoes/speed finally matter!), then monster power-hit, then
+          // ratio damage with the 0.75 enemy coefficient (docs/balance-design.md).
+          if (rollDodge(pSpdD, activeCombat.monster.speed || 5)) {
+            el.playerSprite.classList.add('dodge-slide');
+            setTimeout(function(){ el.playerSprite.classList.remove('dodge-slide'); }, 450);
+            triggerFloatingNote('player', 'MISS 💨');
+            appendCombatLog(`💨 You dodge ${activeCombat.monster.name}'s attack!`, 'p-attack');
+            if (typeof playSfx === 'function') playSfx('click');
           } else {
-            showImpactEffect('player', activeCombat.monster.rank >= 5 ? '❄️' : '💥');
-          }
-          
-          battleImpactAt(el.playerSprite);
-          el.playerSprite.classList.add('hit-shake');
-          setTimeout(function(){ el.playerSprite.classList.remove('hit-shake'); }, 400);
+            var dmgToPlayer = Math.max(1, Math.round(BAL.ENEMY_COEFF * mAp * mAp / (mAp + pDef) * mwx * pInc));
+            var mPower = Math.random() * 100 < (BAL.MONSTER_CRIT_BASE + 2 * activeCombat.monster.rank);
+            if (mPower) dmgToPlayer = Math.round(dmgToPlayer * BAL.POWER_HIT_MULT);
 
-          appendCombatLog(`${activeCombat.monster.name} attacks you for ${dmgToPlayer} damage!`, 'm-attack');
-          
+            activeCombat.playerHp = Math.max(0, activeCombat.playerHp - dmgToPlayer);
+            updateCombatHpBars();
+
+            if (mPower) triggerFloatingNote('player', '💥 POWER HIT!', 'power');
+            triggerFloatingDmg('player', dmgToPlayer, false);
+
+            if (pDef > 0) {
+              el.playerShieldSprite.classList.add('defend');
+              setTimeout(function(){ el.playerShieldSprite.classList.remove('defend'); }, 400);
+              showImpactEffect('player', '🛡️');
+            } else {
+              showImpactEffect('player', activeCombat.monster.rank >= 5 ? '❄️' : '💥');
+            }
+
+            battleImpactAt(el.playerSprite);
+            el.playerSprite.classList.add('hit-shake');
+            setTimeout(function(){ el.playerSprite.classList.remove('hit-shake'); }, 400);
+
+            appendCombatLog(mPower
+              ? `💥 POWER HIT! ${activeCombat.monster.name} smashes you for ${dmgToPlayer} damage!`
+              : `${activeCombat.monster.name} attacks you for ${dmgToPlayer} damage!`, 'm-attack');
+          }
+
           el.monsterSprite.classList.remove('attack-left','casting');
         }, 250);
       }
@@ -899,7 +997,9 @@
       }
     }
 
-    var victoryXp = 100;
+    // XP scales with arena + rank (BAL.killXp) — the old flat 100 made hero level grow like
+    // √kills and soft-locked the requiredHeroLvl gate around arena 40 (docs/balance-design.md).
+    var victoryXp = (activeCombat && activeCombat.monster && activeCombat.monster.xp) ? activeCombat.monster.xp : 100;
     addHeroXp(victoryXp);
 
     updateStats();

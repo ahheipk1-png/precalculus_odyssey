@@ -810,7 +810,10 @@
       ? 3
       : (state.movesTaken === state.problem.par + 1 ? 2 : 1);
 
-    var coinsEarned = rating === 3 ? 15 : (rating === 2 ? 10 : 5);
+    // Problem Cash scales with the arena (docs/balance-design.md) — solving math must never
+    // become economically worthless next to combat income. XP stays flat (kills drive levels).
+    var coinsEarned = (typeof BAL !== 'undefined') ? BAL.problemCash(state.level, rating)
+                      : (rating === 3 ? 15 : (rating === 2 ? 10 : 5));
     var xpEarned = rating === 3 ? 30 : (rating === 2 ? 20 : 10);
     state.coins += coinsEarned;
     state.score += 10 * rating;

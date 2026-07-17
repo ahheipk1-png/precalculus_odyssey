@@ -78,13 +78,31 @@
     el.playerSprite.classList.add('casting');
     setTimeout(function(){ el.playerSprite.classList.remove('casting'); }, 500);
 
+    // Spell reliability (docs/balance-design.md): 70% full / 20% weak (half effect + half
+    // duration) / 10% total fizzle (MP spent, nothing happens). Rolled ONCE per cast.
+    var spellRoll = Math.random();
+    if (spellRoll >= BAL.SPELL_FULL + BAL.SPELL_WEAK){
+      triggerFloatingNote('player', 'FIZZLE 💨');
+      showImpactEffect('player', '💨');
+      appendCombatLog('💨 ' + sp.icon + ' ' + sp.name + ' fizzles out! The MP is spent but nothing happens…', 'system');
+      updateCombatHpBars();
+      if (typeof playSfx === 'function') playSfx('click');
+      setTimeout(function(){
+        if (activeCombat.monsterHp <= 0){ handleBattleVictory(); return; }
+        spellMonsterCounter();
+      }, 650);
+      return;
+    }
+    var spellEff = (spellRoll >= BAL.SPELL_FULL) ? 0.5 : 1;
+    if (spellEff < 1) appendCombatLog('✨ ' + sp.icon + ' ' + sp.name + ' fizzles — it only partly works!', 'system');
+
     if (sp.targetType === 'self'){
       if (sp.statusEffect === 'heal'){
-        var heal = sp.power;
+        var heal = Math.max(1, Math.round(sp.power * spellEff));
         activeCombat.playerHp = Math.min(activeCombat.playerMaxHp, activeCombat.playerHp + heal);
         showImpactEffect('player', '💚'); appendCombatLog('You cast ' + sp.icon + ' ' + sp.name + ' — +' + heal + ' HP!', 'system');
       } else {
-        applyPlayerStatus(sp.statusEffect, sp.duration || 3);
+        applyPlayerStatus(sp.statusEffect, Math.max(1, Math.round((sp.duration || 3) * spellEff)));
         showImpactEffect('player', sp.icon); appendCombatLog('You cast ' + sp.icon + ' ' + sp.name + '! ' + sp.desc, 'system');
       }
     } else {
@@ -93,7 +111,7 @@
       var dmg = 0;
       if (sp.power > 0){
         var wx = (typeof elementMultiplier === 'function') ? elementMultiplier(sp.element, activeCombat.monster.element) : 1;
-        dmg = Math.max(1, Math.round((sp.power + Math.round(getPlayerAp() * 0.3) - monsterEffDefense() * 0.3) * wx));
+        dmg = Math.max(1, Math.round((sp.power + Math.round(getPlayerAp() * 0.3) - monsterEffDefense() * 0.3) * wx * spellEff));
         activeCombat.monsterHp = Math.max(0, activeCombat.monsterHp - dmg);
         triggerFloatingDmg('monster', dmg, false); showImpactEffect('monster', sp.icon);
         appendCombatLog('You cast ' + sp.icon + ' ' + sp.name + ' for ' + dmg + ' damage!', 'p-attack');
@@ -101,7 +119,7 @@
       } else {
         appendCombatLog('You cast ' + sp.icon + ' ' + sp.name + '!', 'system');
       }
-      if (sp.statusEffect) { applyMonsterStatus(sp.statusEffect, sp.duration || 2); appendCombatLog('  → ' + activeCombat.monster.name + ' is affected: ' + sp.statusEffect + '!', 'system'); }
+      if (sp.statusEffect) { applyMonsterStatus(sp.statusEffect, Math.max(1, Math.round((sp.duration || 2) * spellEff))); appendCombatLog('  → ' + activeCombat.monster.name + ' is affected: ' + sp.statusEffect + '!', 'system'); }
     }
     updateCombatHpBars();
     if (typeof playSfx === 'function') playSfx(sp.targetType === 'self' ? 'upgrade' : 'battle-hit');
@@ -131,13 +149,26 @@
     launchBattleProjectile('ice', el.monsterSprite, el.playerSprite);
     setTimeout(function(){
       var wx = (typeof elementMultiplier === 'function') ? elementMultiplier(activeCombat.monster.element, getShieldElement()) : 1;
-      var raw = (activeCombat.monster.attack * monsterAttackFactor()) - getPlayerDp();
-      var dmg = Math.max(1, Math.round(raw * wx * playerIncomingFactor()));
-      activeCombat.playerHp = Math.max(0, activeCombat.playerHp - dmg);
-      updateCombatHpBars();
-      triggerFloatingDmg('player', dmg, false);
-      showImpactEffect('player', activeCombat.pStatus.shield > 0 ? '🛡️' : '💥');
-      appendCombatLog(activeCombat.monster.name + ' hits you for ' + dmg + ' damage!', 'm-attack');
+      var eff = activeCombat.monster.attack * monsterAttackFactor();
+      var pDef = getPlayerDp();
+      var pSpd = (typeof getPlayerSpeed === 'function') ? getPlayerSpeed() : 5;
+      // Same dodge → power-hit → ratio-damage order as 06's main round (docs/balance-design.md).
+      if (rollDodge(pSpd, activeCombat.monster.speed || 5)) {
+        el.playerSprite.classList.add('dodge-slide');
+        setTimeout(function(){ el.playerSprite.classList.remove('dodge-slide'); }, 450);
+        triggerFloatingNote('player', 'MISS 💨');
+        appendCombatLog('💨 You dodge ' + activeCombat.monster.name + "'s attack!", 'p-attack');
+      } else {
+        var dmg = Math.max(1, Math.round(BAL.ENEMY_COEFF * eff * eff / (eff + pDef) * wx * playerIncomingFactor()));
+        var mPower = Math.random() * 100 < (BAL.MONSTER_CRIT_BASE + 2 * activeCombat.monster.rank);
+        if (mPower) dmg = Math.round(dmg * BAL.POWER_HIT_MULT);
+        activeCombat.playerHp = Math.max(0, activeCombat.playerHp - dmg);
+        updateCombatHpBars();
+        if (mPower) triggerFloatingNote('player', '💥 POWER HIT!', 'power');
+        triggerFloatingDmg('player', dmg, false);
+        showImpactEffect('player', activeCombat.pStatus.shield > 0 ? '🛡️' : '💥');
+        appendCombatLog((mPower ? '💥 POWER HIT! ' : '') + activeCombat.monster.name + ' hits you for ' + dmg + ' damage!', 'm-attack');
+      }
       el.monsterSprite.classList.remove('attack-left', 'casting');
       finishSpellRound();
     }, 250);

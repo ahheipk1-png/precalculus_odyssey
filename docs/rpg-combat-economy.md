@@ -2,6 +2,47 @@
 
 ← [docs orchestra](README.md) · code: `js/06-rpg-battle.js`, `js/09-items.js`, `js/16-chest.js`
 
+> ⚠️ **2026-07-17: the combat/economy system was REBALANCED end-to-end** — ratio damage, designer
+> stat curves, dodge/power-hit/spell-reliability, scaled XP & Cash. The authoritative design (all
+> formulas + curve tables + rationale) is **[balance-design.md](balance-design.md)**; the entry
+> below records what changed and how it was verified. Older sections of this file describing
+> `max(1, AP−DEF)` damage, `monsterRanks` linear stat coefficients, flat 100 XP, or flat 5-15
+> problem Cash are SUPERSEDED.
+
+## 2026-07-17 — Full rebalance implemented (BAL curves + combat-feel layer)
+
+User-approved ("you can change the numbers… I am open to anything") redesign fixing the five
+measured issues from the same-day playtest (binary walls, economy done by arena 20, worthless math
+income, XP soft-lock ≈ arena 40-45, dead crit/SPD stats). Implementation:
+- **`config/economy.config.js`**: new `BAL` block — `AP_STAR`/`BOSS_ATK` checkpoint tables +
+  `_balLerp` interpolation, rank multipliers, dodge/crit/heal/spell constants, `killXp`,
+  `problemCash`. All numbers mirror `balance-design.md`.
+- **`js/06-rpg-battle.js`**: `buildMonster` now reads the curves (+ new `speed`, `xp` fields);
+  BOTH monster-attack blocks and the player-attack block use dodge → power-hit → ratio damage;
+  boss heal = 20% of maxHp costing 35% of maxMp (≈2 heals cap); victory XP = `monster.xp`;
+  new helpers `triggerFloatingNote`, `getPlayerCrit`, `rollDodge`; `castPlayerSpell` gained the
+  70/20/10 reliability roll.
+- **`js/26-spells.js`**: `castSpell` reliability roll (fizzle keeps the monster counter-turn);
+  `spellMonsterCounter` uses the same dodge/power/ratio logic as 06.
+- **`js/05-render.js`**: `handleSolved` Cash = `BAL.problemCash(state.level, rating)`.
+- **`css/styles.css`**: `.floating-dmg.note`/`.power` + `dodgeSlide` keyframes (MISS/POWER HIT
+  callouts, dodge side-step).
+
+**Verified** (memory rule: simulate via the real functions): (1) `buildMonster` outputs match the
+design table exactly at r=1 and r=65; (2) full r=1..65 sweep through the real `buildMonster` + the
+real damage formulas with an on-schedule gear model: kill-in 7-14 / die-in 9-33 nearly everywhere —
+the 13 mild outliers (worst kill-in 26 at r53) are artifacts of the sim's pessimistic upgrade
+pacing (real income buys upgrades much sooner); no walls, no one-shots; (3) LIVE arena-2 boss fight
+through the real UI on the new balance: Granite Titan 99/28/6 — 9 player hits (incl. one 💥 POWER
+HIT for 24 that rendered correctly), boss healed exactly twice then ran dry (cap works), player
+took formula-exact 18/hit and won at 52/160 HP — precisely the intended "tense but fair" feel;
+(4) Hotel heal (30 Cash) exercised via the real `hotelSleep()`; (5) no console errors.
+
+Notes: shield ladder is non-monotonic (crystal_shield 25 DEF/380 > legendary 8/600 + archive
+20/1400) — the on-curve path skips those two tiers; consider re-statting them later. Wonderland
+reward Cash (flat 20-100/pass) is the remaining un-scaled income source — revisit after the full
+65-arena playthrough.
+
 ## Hero & stats
 
 `state.heroLvl / heroXp / playerHp / playerMaxHp / playerMp / playerMaxMp`. XP curve

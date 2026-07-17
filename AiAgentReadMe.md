@@ -16,7 +16,7 @@ issues in casual language; **you** are responsible for engineering rigor.
 | Local project root | `C:\PythonProject\AlgebraGame` (Windows 11, PowerShell + Git Bash available, no Node/Python installed) |
 | Game entry point | `game/index.html` |
 | Server code | `functions/api/**` (Cloudflare Pages Functions: `auth/`, `cloud/`, `admin/`) |
-| Current cache token | `?v=20260717o` (see "Cache-busting" below — bump it EVERY deploy) |
+| Current cache token | `?v=20260717p` (see "Cache-busting" below — bump it EVERY deploy) |
 
 ---
 
@@ -171,12 +171,12 @@ edit files → bump ?v= cache token in game/index.html → git commit → git pu
 - **Bible curriculum style-rotation bug (CONFIRMED, re-confirmed 2026-07-17)**: 65 arenas/registries
   exist, but questions only ever render Direct-MC style — the authored modeling/reverse/graph fields
   are never read. A fix has not been attempted yet.
-- **NEW 2026-07-17 — arena-1 boss is a binary wall, not a "slightly hard" nudge toward Wonderland.**
-  Real playtest (not modeled): 0 gear purchases = the boss is unwinnable (35 hits needed vs. dying in
-  28); the single cheapest weapon+shield combo (90 of the 150 Cash earned from just the 10
-  arena-1 problems, zero Wonderland income) = a comfortable win at 70% HP remaining. There's no
-  "slightly not enough" middle state at arena 1 right now — full details + candidate fixes in
-  `docs/rpg-combat-economy.md`'s 2026-07-17 entry. **Not yet re-tuned.**
+- ~~arena-1 boss binary wall / economy-done-by-arena-20 / XP soft-lock ≈ arena 40~~ — **FIXED by
+  the 2026-07-17 full rebalance** (`docs/balance-design.md` = the authoritative design; `BAL` block
+  in `config/economy.config.js` = the implementation; verified by r=1..65 simulation + a live
+  arena-2 boss fight). When tuning ANY combat/economy number: edit balance-design.md first, then
+  mirror into BAL. Known leftovers: shield ladder non-monotonic (crystal 25 DEF/380 outclasses
+  legendary+archive shields), Wonderland reward Cash still flat 20-100/pass.
 - **NEW 2026-07-17 — Bible-curriculum (arenas 7-65) question/distractor quality still unverified by
   a human-style pass.** Only arena 1 (hand-authored pre-algebra) was played through this session and
   its distractors are genuinely good; the Bible-template phases' `_perturbDistractors`/

@@ -1,0 +1,134 @@
+# ⚖️ Balance Design — stats, gear, monsters & combat formulas
+
+← [docs orchestra](README.md) · implemented in: `config/economy.config.js` (the `BAL` block),
+`js/06-rpg-battle.js`, `js/26-spells.js`, `js/05-render.js`
+
+This is the **single source of truth for the 2026-07-17 combat/economy rebalance** — the design
+was derived from a real playtest (see `playtest-methodology.md` + the dated entries in
+`rpg-combat-economy.md`) plus classical-RPG balancing rules. **Change numbers here first, then
+mirror them into the config** — never tune code constants without updating this doc.
+
+## Why (the five measured problems this fixes)
+
+1. **Flat-subtraction damage** (`max(1, AP−DEF)`) made difficulty binary: one DEF point above your
+   AP → 70-hit "impossible" fight; one cheap purchase → trivial. Walls at every gear-tier boundary.
+2. **The economy finished at ~arena 20 of 65**: boss Cash grew linearly (cumulative ≈ quadratic)
+   while the gear ladder capped at 10k — everything maxed by arena ~20, then 45 arenas of one-shot
+   trivia.
+3. **Math income never scaled** (5–15 Cash at arena 1 *and* 65) — the educational activity became
+   economically worthless next to combat.
+4. **Flat 100 XP/kill + one-time monster kills** → hero level ~√(kills) → the boss-gate
+   requirement (`ceil(r/2)+2`) became unreachable around arena 40–45 (soft-lock).
+5. **Dead stats**: weapon `crit` was authored but never read; shoe SPD was cosmetic.
+
+## Design principles (industry-standard, adapted)
+
+- **Battle-length first**: pick how many hits a fight should take, derive stats backward.
+- **Ratio damage** `C·AP·AP/(AP+DP)` (Pokémon/LoL-family): smooth, scale-free, no walls.
+- **Endpoint-pinned curves**: designer tables with checkpoints + linear interpolation — the
+  arena-65 numbers are *chosen*, not emergent.
+- **Enemy damage coefficient** `C = 0.75`: monsters get impressive stats but deal controlled damage.
+- **Constant time-to-upgrade**: each gear tier costs ≈ a similar stretch of on-level play.
+- Kept deliberately: the ×2.5 gear tiers and ×2/×3/×5 upgrade multipliers (the game's identity —
+  safe under ratio damage), the Wu Xing element multipliers (1.6/1.15/1.0/0.66), hero level-up
+  grants (+20 HP/+10 MP/+2 AP/+1 DP, +1 SPD per 2 levels).
+
+## The formulas
+
+```
+Player hit:    dmg = max(1, round( AP² / (AP + monsterDEF) × element ))
+Monster hit:   eff = ATK × statusFactor
+               dmg = max(1, round( 0.75 × eff² / (eff + playerDP) × element × incomingFactor ))
+Dodge:         chance% = clamp( 5 + (defenderSPD − attackerSPD) × 0.8, 2, 25 )
+               (rolled BEFORE damage; a dodge deals nothing — no floor-1)
+Power hit:     rolled after a non-dodge. Player chance = equipped weapon's crit stat (5–24%).
+               Monster chance = 4 + 2×rank %. Damage × 1.5.
+Spell cast:    70% full effect · 20% weak (×0.5 effect) · 10% fizzle (MP spent, no effect)
+Boss heal:     amount = 20% of maxHp · cost = max(20, 35% of maxMp)  → ≈2 heals per fight, any arena
+Kill XP:       (20 + 8×arena) × rank      (rank 1/2/3)
+Problem Cash:  rating × (3 + ceil(arena/2))     (rating 1–3 from solve speed)
+Problem XP:    unchanged (10/20/30 by rating)
+Monster SPD:   round(2 + 0.6×arena)
+```
+
+## The power curve (everything derives from this one table)
+
+`AP*(r)` = expected on-curve total player AP at arena r (weapon on schedule, ~+1 upgraded, + hero
+bonus). Piecewise-linear between checkpoints:
+
+```
+[1,12] [5,30] [10,70] [15,115] [20,175] [25,265] [30,400]
+[35,600] [40,950] [45,1400] [50,1950] [55,2600] [60,3700] [65,5200]
+```
+
+Boss stats: **HP = 6×AP*** · **DEF = AP*/3** · **Cash = 40 + 3×AP*** · **MP = rankMp + 2×arena** ·
+**ATK** from its own solved table (targets ~12-hit player survival):
+
+```
+[1,24] [5,38] [10,57] [15,75] [20,95] [25,118] [30,145]
+[35,177] [40,219] [45,266] [50,316] [55,370] [60,444] [65,530]
+```
+
+Rank multipliers: **Easy** hp .18 / atk .55 / def .50 / cash .15 · **Elite** hp .45 / atk .80 /
+def .80 / cash .50 · **Boss** 1 / 1 / 1 / 1. `requiredHeroLvl = ceil(arena/2) + rank − 1` (kept).
+
+### Boss checkpoint table
+
+| Arena | HP | ATK | DEF | Cash | On-curve weapon |
+|---:|---:|---:|---:|---:|---|
+| 1 | 72 | 24 | 4 | 76 | bronze_dagger (60) |
+| 5 | 180 | 38 | 10 | 130 | iron_broadsword (220) |
+| 10 | 420 | 57 | 23 | 250 | legendary (700) |
+| 15 | 690 | 75 | 38 | 385 | archive (1,600) |
+| 20 | 1,050 | 95 | 58 | 565 | archive +1/+2 |
+| 25 | 1,590 | 118 | 88 | 835 | stellar (3,200) |
+| 30 | 2,400 | 145 | 133 | 1,240 | stellar +1/+2 |
+| 35 | 3,600 | 177 | 200 | 1,840 | rift (6,000) |
+| 40 | 5,700 | 219 | 317 | 2,890 | rift +1/+2 |
+| 45 | 8,400 | 266 | 467 | 4,240 | rift +2 / odyssey soon |
+| 50 | 11,700 | 316 | 650 | 5,890 | odyssey (10,000) |
+| 55 | 15,600 | 370 | 867 | 7,840 | odyssey +1/+2 |
+| 60 | 22,200 | 444 | 1,233 | 11,140 | odyssey +2/+3 |
+| 65 | 31,200 | 530 | 1,733 | 15,640 | odyssey +3 (maxed) |
+
+## Content inventory
+
+- **65 arenas** / 11 star systems · **195 monster encounters** (65×3; 30 identities cycled with
+  era names) · ~650 math problems minimum per run · 21+ Wonderland minigames.
+- **Swords (9)**: wood 2/free · bronze 8/60 · iron 20/220 · legendary 30/700 (×2 element variants)
+  · archive 75/1,600 · stellar 188/3,200 · rift 470/6,000 · odyssey 1,175/10,000.
+- **Shields (10)**: leather 0/free · wood 2/30 · iron 5/80 · aegis 11/180 · crystal 25/380 ·
+  legendary 8/600 · archive 20/1,400 · stellar 50/2,800 · rift 125/5,200 · odyssey 312/8,000.
+- **Armor (6)**: cloth 0/free · 5 DEF+30 HP/650 · 13+60/1,500 · 32+120/3,000 · 80+240/5,600 ·
+  200+480/8,500.
+- **Shoes (6)**: basic 2/free · 8/500 · 14/1,200 · 22/2,400 · 34/4,400 · 52/7,000 — **SPD now
+  drives dodge**, shoes are real combat gear.
+- **Upgrades**: every item ×2/×3/×5 at +1/+2/+3, costing 25/50/100% of item price + chips.
+- **7 chip types** and **all existing spells** unchanged (spells gain the reliability roll).
+
+## Feel targets (the design's acceptance criteria)
+
+1. Arena 1, zero purchases → close **loss** with visible progress ("slightly not enough" — nudges
+   the player to the shop/Wonderland without a hard wall).
+2. Arena 1 after the 90-Cash bronze+wood_shield combo → **narrow win**.
+3. Every arena 1→65 with on-schedule gear: boss dies in **~6–12 hits**, kills you in **~10–14** —
+   no floor-damage walls, no one-shots, anywhere.
+4. Maxed everything at arena 65 → still a **~7-hit** boss fight.
+5. Hero level tracks ≈ arena·0.6+ so the boss-gate requirement is always met by normal play.
+
+## Combat outcome animations
+
+| Outcome | Visual |
+|---|---|
+| Dodge | "💨 MISS!" floating text + defender side-step keyframe + journal line |
+| Power hit | "💥 POWER HIT!" bigger floating text + stronger impact + journal line |
+| Normal hit | existing hit effects (unchanged) |
+| Weak spell | "✨ fizzles — only partly works!" journal + floating text |
+| Failed spell | "💨 the spell fizzles out!" (MP still spent) |
+
+## Out of scope this pass (follow-ups)
+
+- Wonderland `a2Reward`/`wgPayReward` Cash amounts (flat 20–100) — revisit after the playthrough
+  measures the new economy end-to-end.
+- New spells / item special effects (the reliability layer lands first).
+- Elite/Easy respawn or repeatable-XP source if the playthrough shows XP still tight late.

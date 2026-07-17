@@ -64,3 +64,50 @@
     base:  { gold: 90, silver: 45 },
     minMult: 0.6, maxMult: 1.8, drift: 0.12
   };
+
+  // ============================================================================
+  // BAL — 2026-07-17 combat/economy balance curves. THE numbers live in
+  // docs/balance-design.md — change them THERE first, then mirror here.
+  // Everything derives from one designer table (AP_STAR = expected on-curve
+  // total player AP per arena) + a solved boss-ATK table, piecewise-linear
+  // interpolated. Damage is RATIO-based (C·AP·AP/(AP+DP)) — no subtraction walls.
+  // ============================================================================
+  function _balLerp(table, r){
+    if (r <= table[0][0]) return table[0][1];
+    for (var i = 1; i < table.length; i++){
+      if (r <= table[i][0]){
+        var a = table[i - 1], b = table[i];
+        return a[1] + (b[1] - a[1]) * (r - a[0]) / (b[0] - a[0]);
+      }
+    }
+    return table[table.length - 1][1];
+  }
+  var BAL = {
+    AP_STAR: [[1,12],[5,30],[10,70],[15,115],[20,175],[25,265],[30,400],
+              [35,600],[40,950],[45,1400],[50,1950],[55,2600],[60,3700],[65,5200]],
+    BOSS_ATK: [[1,24],[5,38],[10,57],[15,75],[20,95],[25,118],[30,145],
+               [35,177],[40,219],[45,266],[50,316],[55,370],[60,444],[65,530]],
+    // rank index 0=Easy, 1=Elite, 2=Boss
+    RANK_MULT: [
+      { hp: 0.18, atk: 0.55, def: 0.50, cash: 0.15 },
+      { hp: 0.45, atk: 0.80, def: 0.80, cash: 0.50 },
+      { hp: 1.00, atk: 1.00, def: 1.00, cash: 1.00 }
+    ],
+    apStar:   function(r){ return Math.round(_balLerp(BAL.AP_STAR, r)); },
+    bossHp:   function(r){ return Math.round(6.0 * _balLerp(BAL.AP_STAR, r)); },
+    bossAtk:  function(r){ return Math.round(_balLerp(BAL.BOSS_ATK, r)); },
+    bossDef:  function(r){ return Math.round(_balLerp(BAL.AP_STAR, r) / 3); },
+    bossCash: function(r){ return Math.round(40 + 3 * _balLerp(BAL.AP_STAR, r)); },
+    monsterSpeed: function(r){ return Math.round(2 + 0.6 * r); },
+    killXp:   function(r, rank){ return (20 + 8 * r) * rank; },
+    problemCash: function(r, rating){ return rating * (3 + Math.ceil(r / 2)); },
+    ENEMY_COEFF: 0.75,        // monsters hit with C=0.75 (impressive stats, controlled damage)
+    POWER_HIT_MULT: 1.5,      // "power hit" (crit) damage multiplier
+    MONSTER_CRIT_BASE: 4,     // monster power-hit chance = base + 2×rank (%)
+    DODGE_BASE: 5,            // dodge chance = clamp(base + (defSpd−atkSpd)×PER_SPD, MIN, MAX) %
+    DODGE_PER_SPD: 0.8,
+    DODGE_MIN: 2, DODGE_MAX: 25,
+    HEAL_FRAC: 0.20,          // boss self-heal = 20% of maxHp…
+    HEAL_COST_FRAC: 0.35,     // …costing 35% of maxMp (≈2 heals per fight at any arena)
+    SPELL_FULL: 0.70, SPELL_WEAK: 0.20   // remaining 10% = total fizzle (MP spent, no effect)
+  };
