@@ -192,6 +192,22 @@ edit files → bump ?v= cache token in game/index.html → git commit → git pu
   HP; over-invested gear trivializes it) — **not yet verified across the full 65-arena range**;
   if a future session finds it's a brick wall or trivially easy at other arenas, tune
   `BAL.GAUNTLET_SUB_MULT` / the `cardLockReason` bonus in `06-rpg-battle.js`, not the base curves.
+- **NEW 2026-07-17 — Fixed: wrong parabola graph on compound-factor polynomial questions.**
+  `_parseParabolasFromPrompt` in `04-logic.js` (used to auto-draw a graph when a prompt names a
+  parabola directly, e.g. "y=(x-4)^2+6") matched just the "(x+2)^2" PREFIX of prompts like
+  "f(x)=(x+2)^2(x-1)^3" (a degree-5 polynomial), silently ignoring the "(x-1)^3" factor and
+  drawing a plain upward parabola for a completely different function — user-reported as
+  "confusing." Fixed with a `(?!\s*\()` negative lookahead so the regex declines to match when
+  another factor immediately follows the squared term. Verified: the quintic case now shows no
+  graph; genuine simple-parabola prompts ("y=(x-4)^2+6", "y=4x^2") still draw correctly; full
+  1180-template sweep still 0 failures/0 errors, 71 templates still get a (now-correct) graphIllu,
+  0 remaining compound-factor false positives. **Reported but NOT reproduced**: user also said
+  "expand bracket didn't work ... used to become multiple choice" — tested exhaustively (the
+  Equation-Battle bracket→expand→MC morph at `07-main.js:236`, both right/wrong answer paths; the
+  Bible `_bibleBuildFromTemplate` MC-distractor fallback chain across all 1180 templates; a live
+  "Expand y=(x-4)^2+6 into standard form" MC render) and every path produced correct, working
+  multiple-choice. Needs a repro (screenshot or arena number) from the user before touching
+  anything here — don't guess-fix without one.
 - **NEW 2026-07-17 — Bible-curriculum (arenas 7-65) question/distractor quality still unverified by
   a human-style pass.** Only arena 1 (hand-authored pre-algebra) was played through this session and
   its distractors are genuinely good; the Bible-template phases' `_perturbDistractors`/
