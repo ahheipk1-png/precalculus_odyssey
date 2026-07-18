@@ -94,13 +94,13 @@
       { hp: 1.00, atk: 1.00, def: 1.00, cash: 1.00 }
     ],
     // 2-Boss/3-Boss Gauntlet sub-bosses (chained fights, no Hotel access in between — see
-    // 06-rpg-battle.js buildSubBoss). DELIBERATELY full Boss-tier stats (not a nerfed Elite) —
+    // 06b-monster-roster.js buildSubBoss). DELIBERATELY full Boss-tier stats (not a nerfed Elite) —
     // these are meant to be genuinely hard, on-schedule-gear-and-hero-level should NOT reliably
     // clear the 3-Boss chain (2 of these + the real Boss, no heal). The intended path to actually
     // beating it is over-leveling via Arena Infinity's repeatable XP grind (regular monster kills
     // are one-time, so it's the only repeatable combat-XP source) and/or extra Cash for early
     // upgrades — see the elevated hero-level gate on the gauntlet cards themselves
-    // (cardLockReason's `bonus` param in 06-rpg-battle.js). Tune this DOWN only if real playtest
+    // (cardLockReason's `bonus` param in 06c-monster-select.js). Tune this DOWN only if real playtest
     // shows it's uncrackable even with meaningful over-investment, not just "hard."
     GAUNTLET_SUB_MULT: { hp: 1.00, atk: 1.00, def: 1.00, cash: 1.00 },
     apStar:   function(r){ return Math.round(_balLerp(BAL.AP_STAR, r)); },

@@ -1,5 +1,5 @@
   // ---------- Items, materials, loot & upgrade recipes (RPG Systems Expansion, phase R1) ----------
-  // Loaded after 04-logic.js (needs the global `rand`) and before 05-render.js / 06-rpg-battle.js,
+  // Loaded after 04-logic.js (needs the global `rand`) and before 05-render.js / 06-gear-shop.js + siblings,
   // which call these helpers at runtime. Pure data + helpers; the only state touched is
   // `state.materials` (an id -> count map added in 01-data.js and persisted via 03-save.js).
 

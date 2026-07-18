@@ -1,6 +1,6 @@
   // ============================================================================
   // CONFIG · Spells — pure data. The turn-based status engine lives in
-  // js/06-rpg-battle.js (castPlayerSpell + executeCombatRound). Freeze/poison/burn
+  // js/06d-combat-round.js (castPlayerSpell + executeCombatRound). Freeze/poison/burn
   // are REAL multi-turn effects. targetType: 'enemy' | 'self'.
   // `cat` groups the in-combat spell menu (26-spells.js): 'attack' | 'control' |
   // 'recovery' — anything WITHOUT a cat lands in the ✨ Special tab automatically.

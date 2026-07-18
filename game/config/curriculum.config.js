@@ -26,7 +26,7 @@
     // NOT counted in CURRICULUM_MAX (below) or in any chapter, so normal advancement never flows
     // into it (arena 65 clear → "Return to Quest"). Reached only via the Galaxy Center atlas card,
     // which itself only appears once all 65 arenas are perfect-starred. special:'blackhole' drives
-    // its hardest-review questions (04-logic.js) and 10-monster gauntlet (06-rpg-battle.js).
+    // its hardest-review questions (04-logic.js) and 10-monster gauntlet (06b-monster-roster.js).
     CURRICULUM.push({
       n: 66, worldId: 'galaxy-center', systemId: 'galaxy-center', origSystem: 'galaxy-center',
       topic: 'The hardest review from every arena', mechanic: 'mcOnly', code: 'HOLE',

@@ -10,7 +10,7 @@
   //   layout (special-store.css only adds what's genuinely different: the violet "special" theme
   //   + a purchase-count badge).
   // * AP/DP/Speed bonuses are additive terms read live by getPlayerAp/getPlayerDp/getPlayerSpeed
-  //   (06-rpg-battle.js / 21-catalogue.js) via specialStoreBonus(id) — same pattern as
+  //   (06-gear-shop.js / 21-catalogue.js) via specialStoreBonus(id) — same pattern as
   //   socketBonusTotal, so a purchase is felt in combat immediately, no separate "effective stat"
   //   plumbing needed. HP/MP have no such live-bonus layer in this codebase (combat reads
   //   state.playerMaxHp/playerMaxMp directly) so those two machines bump the base stat directly,
@@ -55,7 +55,7 @@
   function specialStoreCount(id){ return (state.specialStore && state.specialStore[id]) || 0; }
   function specialStoreCost(id){ return SPECIAL_STORE_BASE_COST + SPECIAL_STORE_COST_STEP * specialStoreCount(id); }
   // The live additive bonus a stat function should add — see getPlayerAp/getPlayerDp
-  // (06-rpg-battle.js) and getPlayerSpeed (21-catalogue.js). HP/MP don't use this (see file header).
+  // (06-gear-shop.js) and getPlayerSpeed (21-catalogue.js). HP/MP don't use this (see file header).
   function specialStoreBonus(id){
     var m = specialStoreMachine(id);
     return m ? specialStoreCount(id) * m.gain : 0;

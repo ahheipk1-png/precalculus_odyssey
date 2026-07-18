@@ -1,7 +1,7 @@
 # ⚖️ Balance Design — stats, gear, monsters & combat formulas
 
 ← [docs orchestra](README.md) · implemented in: `config/economy.config.js` (the `BAL` block),
-`js/06-rpg-battle.js`, `js/26-spells.js`, `js/05-render.js`
+`js/06-gear-shop.js` + siblings (06b/06c/06d/06e), `js/26-spells.js`, `js/05-render.js`
 
 This is the **single source of truth for the 2026-07-17 combat/economy rebalance** — the design
 was derived from a real playtest (see `playtest-methodology.md` + the dated entries in
@@ -143,7 +143,7 @@ other two cards are chained, no-retreat gauntlets (user request: "make the 3rd m
 easily beatable so the player needs to go to Arena Infinity"):
 
 - **2-Boss Gauntlet** (middle card): 2 brand-new named sub-bosses per room (`gauntletCatalog` in
-  `06-rpg-battle.js`, era-cycled across all 65 arenas the same way the base 30-monster roster is),
+  `06b-monster-roster.js`, era-cycled across all 65 arenas the same way the base 30-monster roster is),
   fought back-to-back. (**2026-07-18 update:** the original "Escape hidden for the whole chain"
   no-retreat rule was replaced — Escape is now always available but a **speed-based gamble**
   (`attemptEscape`); a failed flee costs a free enemy hit. `activeCombat.gauntletLocked` still
@@ -217,8 +217,8 @@ Three linked additions (user request):
 
 - ~~Wonderland `a2Reward` Cash amounts (flat 20–100)~~ — **fixed 2026-07-17**: added
   `BAL.wonderCash(arena, frac)`, same `(3+ceil(r/2))/3.5` scale factor as `problemCash` (≈1x at
-  arena 1, ≈10x at arena 65), wired into `a2Reward` in `39-puzzles.js`. The per-game `wgPayReward`
-  payouts (memory/sudoku/rhythm in `36-arcade.js`/`40-action.js`) already scale with in-game score
+  arena 1, ≈10x at arena 65), wired into `a2Reward` in `39-a2-shell.js`. The per-game `wgPayReward`
+  payouts (memory/sudoku/rhythm in `36-arcade.js`/the 43-51 arcade split) already scale with in-game score
   and level, just not arena — left as-is, lower priority.
 - New spells / item special effects (the reliability layer lands first).
 - Elite/Easy respawn or repeatable-XP source if the playthrough shows XP still tight late.

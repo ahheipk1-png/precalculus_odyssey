@@ -593,7 +593,7 @@
     // Normal players: the button also reappears after a reload when they have ALREADY earned
     // the gate this arena (levelSolves >= ARENA_GOAL) and have not yet beaten the boss — i.e.
     // temporary gate access survives reload, but is gone once they leave the boss undefeated
-    // (which resets levelSolves to 0). See returnToArenaFromBoss (06-rpg-battle.js).
+    // (which resets levelSolves to 0). See returnToArenaFromBoss (06e-combat-outcome.js).
     var gateEarned = (state.levelSolves >= ARENA_GOAL) && !(state.bossDefeated && state.bossDefeated[state.level]);
     setGateButton(state.gatePending || state.testMode || gateEarned);
   }

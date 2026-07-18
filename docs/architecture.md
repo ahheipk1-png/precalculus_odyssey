@@ -28,7 +28,11 @@ js/04-logic.js             PURE LOGIC (browser-testable): problem gen, hints, mo
 js/09-items.js             materials, loot, upgrade recipes, ITEMS/consumables, wonder-pass economy
 js/14-lore.js              story/astronomy RENDER logic (planet SVG, codex/atlas/narration views, unlock helpers) — reads story/planets config
 js/05-render.js            economy helpers, updateStats, renderEquation, panels, scenes, loadProblem, gate/lives/game-over, warp FX
-js/06-rpg-battle.js        shop + upgrades + window.rpgActions + monsters + combat + spells + chest hook
+js/06-gear-shop.js         shop + upgrades + window.rpgActions (split 2026-07-18; see below)
+js/06b-monster-roster.js   monster art/build/roster/gauntlet-chain generation
+js/06c-monster-select.js   monster-select screen + gauntlet/easy/arena cards
+js/06d-combat-round.js     the live combat round + spell casting
+js/06e-combat-outcome.js   victory/defeat outcomes + advanceToNextLevel
 js/13-audio.js             background music (WAV loops) + SFX placeholders + mute
 js/15-map.js               star-system / Earth hub (walkable map, hotel)
 js/16-chest.js             victory treasure-chest overlay (pure presentation)
@@ -81,7 +85,7 @@ weapon/enemy/spell) is a config edit, not a code change.** Full schemas + recipe
   (`levelCodes`/`levelTitles`/`formulaBank`/`sceneCaptions`), `planets` (`BODIES`/`BODY_ORDER`),
   `story` (`STORY`/`CHAPTER_LORE`), `gear` (`WEAPONS`/`SHIELDS`/`ARMOR`/`SHOES` + rarity),
   `economy` (`CURRENCIES`/`CHIPS`/recipes/`TRADING`), `elements` (Wu Xing), `spells` (`SPELLS`).
-- **Still in code (later cleanup):** the enemy roster (`monsterCatalog`, `06-rpg-battle.js`) and
+- **Still in code (later cleanup):** the enemy roster (`monsterCatalog`, `06b-monster-roster.js`) and
   consumable `ITEMS` (`09-items.js`).
 - **RPG-systems modules added (2026-07-13 full build):** `21-catalogue.js` (weaponSVG + Wu Xing
   `elementMultiplier` + gear stat helpers), `22-profile.js`, `24-trading.js`, `25-nav.js` (Star

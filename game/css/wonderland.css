@@ -394,7 +394,7 @@ body:has(#wonderlandView.active) .wond-tip{ font-size: 16px; }
   .mem-card:hover{ transform: none; }
 }
 
-/* ---- Arcade wave 2 (39-puzzles.js / 40-action.js) ---- */
+/* ---- Arcade wave 2 (39-a2-shell.js + 39b/c/d/e siblings / 43-51 split from the old 40-action.js) ---- */
 .a2-center{ display:flex; justify-content:center; margin:10px 0; }
 .a2-grid{ display:grid; gap:4px; }
 .a2-cell{ width:56px; height:56px; border-radius:8px; background:rgba(244,241,232,0.05);
@@ -502,7 +502,7 @@ body:has(#wonderlandView.active) .board{ max-width:none !important; }
 /* ---- Monster drop preview line ---- */
 .monster-drops{ font-size:13px; color:var(--sky,#6ec1e4); }
 
-/* ---- Shared pointer-drag ghost + drop-target highlight (39-puzzles.js a2Drag*) ---- */
+/* ---- Shared pointer-drag ghost + drop-target highlight (39-a2-shell.js a2Drag*) ---- */
 .a2-drag-ghost{ position:fixed; left:0; top:0; z-index:999; pointer-events:none;
   transform:translate(-50%,-50%) scale(1.08); opacity:0.92; filter:drop-shadow(0 6px 14px rgba(0,0,0,.5)); }
 .qbf-drag-ghost-inner{ background:rgba(20,30,50,.9); border:2px solid var(--yellow,#f2c14e); border-radius:10px; padding:6px; }

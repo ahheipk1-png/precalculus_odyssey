@@ -1,7 +1,7 @@
   // ============================================================================
   // Spell system — reads config/spells.config.js (SPELLS). Real turn-based status
   // effects (freeze/poison/burn/armorbreak/weaken/blind/stun/shield/haste). Works
-  // alongside 06-rpg-battle.js's combat (activeCombat is the shared global).
+  // alongside the combat modules' fight loop (06d-combat-round.js; activeCombat is the shared global).
   //  - castSpell(spellId): player casts → damage/status/heal → monster counter-turn.
   //  - applyMonsterStatusPreTurn(): 06's basic strike calls this so statuses set by
   //    spells still matter on a plain attack turn. Returns { disabled, note }.
