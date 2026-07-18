@@ -201,13 +201,20 @@ edit files → bump ?v= cache token in game/index.html → git commit → git pu
   another factor immediately follows the squared term. Verified: the quintic case now shows no
   graph; genuine simple-parabola prompts ("y=(x-4)^2+6", "y=4x^2") still draw correctly; full
   1180-template sweep still 0 failures/0 errors, 71 templates still get a (now-correct) graphIllu,
-  0 remaining compound-factor false positives. **Reported but NOT reproduced**: user also said
-  "expand bracket didn't work ... used to become multiple choice" — tested exhaustively (the
-  Equation-Battle bracket→expand→MC morph at `07-main.js:236`, both right/wrong answer paths; the
-  Bible `_bibleBuildFromTemplate` MC-distractor fallback chain across all 1180 templates; a live
-  "Expand y=(x-4)^2+6 into standard form" MC render) and every path produced correct, working
-  multiple-choice. Needs a repro (screenshot or arena number) from the user before touching
-  anything here — don't guess-fix without one.
+  0 remaining compound-factor false positives.
+- **FIXED 2026-07-17 — "Expand the brackets" button did nothing on a real click** (the
+  Equation-Battle bracket mechanic, `07-main.js` `expandBtn` handler). Root cause: pure CSS, not
+  logic — the handler correctly built the 4 MC buttons and cleared `el.mcChoices`'s `hidden`
+  attribute, but never reset the inline `style.display='none'` that `updateProblemDisplay`
+  (`05-render.js`) sets whenever the panel is hidden; the inline style silently overrides the
+  attribute-based `[hidden]{display:none}` CSS rule once the attribute is gone, so the buttons
+  existed in the DOM but stayed invisible. Only caught via a REAL mouse click through the Browser
+  pane's `computer` tool — a synthetic `el.expandBtn.click()` + checking `.hidden` in the JS
+  console missed it entirely (same trap as the mathPretty false-alarm below: checking the wrong
+  property gives false confidence — always confirm with an actual screenshot after a real click,
+  not just a JS-state read). Fix: `el.mcChoices.style.display = 'grid'` alongside `hidden = false`
+  in the handler, matching what `renderMcOnlyChoices()` already does. Verified live: the 4 choices
+  now render and are clickable; picking the correct one still morphs the problem to numeric mode.
 - **NEW 2026-07-17 — Bible-curriculum (arenas 7-65) question/distractor quality still unverified by
   a human-style pass.** Only arena 1 (hand-authored pre-algebra) was played through this session and
   its distractors are genuinely good; the Bible-template phases' `_perturbDistractors`/

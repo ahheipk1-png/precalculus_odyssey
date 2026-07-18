@@ -69,7 +69,12 @@ distractor that is the same *set* as the answer slips through — e.g. arena 94'
 vs `x=−2 or x=2` (fixed by forcing the two factors' numbers to differ). (2) `#mcChoices` has TWO click
 handlers — the per-button `answerMcOnly` (`05-render.js`) and the bracket-morph delegated handler
 (`07-main.js`); the latter now bails unless `state.mode==='bracket'`, or it fires on every Identify tap
-and double-counts the fail. Both are covered by browser audits: an unordered-set dedup, a
+and double-counts the fail. **2026-07-17 fix**: the bracket-morph's `expandBtn` click handler built
+the 4 MC choices and cleared `#mcChoices`'s `hidden` attribute correctly, but never reset the
+inline `style.display='none'` left over from `updateProblemDisplay` hiding the panel — so on a real
+click the button vanished and NOTHING appeared (buttons existed in the DOM, just invisible). A
+synthetic `.click()` + checking `.hidden` in the console missed this; only a real mouse click
+through a screenshot caught it. Fixed by also setting `style.display='grid'` in the handler. Both are covered by browser audits: an unordered-set dedup, a
 numeric-equivalence check (evaluate expression choices at many x), and property checks on the
 classification arenas (prime / factor / difference-of-squares / perfect-square / quadratic / roots) —
 all confirm exactly-one-correct across hundreds of generations.

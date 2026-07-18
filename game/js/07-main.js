@@ -259,7 +259,12 @@
       el.mcChoices.appendChild(b);
     });
     el.expandBtn.hidden = true;
+    // #mcChoices has a `.mc-choices[hidden]{display:none}` CSS rule, but updateProblemDisplay
+    // also sets an inline style.display='none' when hiding it (05-render.js) — clearing just the
+    // `hidden` attribute leaves that inline style in charge, so the buttons exist in the DOM but
+    // never become visible. Must reset both, same as renderMcOnlyChoices() does.
     el.mcChoices.hidden = false;
+    el.mcChoices.style.display = 'grid';
   });
 
   el.mcChoices.addEventListener('click', function(ev){
