@@ -92,6 +92,7 @@
       perfectArenas: state.perfectArenas,
       trophies: state.trophies,
       specialStore: state.specialStore,
+      specialStoreOwned: state.specialStoreOwned,
       specialStoreAnnounced: state.specialStoreAnnounced,
       savedAt: Date.now()
     };
@@ -202,6 +203,10 @@
       ? { hp: snap.specialStore.hp || 0, mp: snap.specialStore.mp || 0, ap: snap.specialStore.ap || 0,
           dp: snap.specialStore.dp || 0, spd: snap.specialStore.spd || 0 }
       : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+    state.specialStoreOwned = (snap.specialStoreOwned && typeof snap.specialStoreOwned === 'object')
+      ? { hp: snap.specialStoreOwned.hp || 0, mp: snap.specialStoreOwned.mp || 0, ap: snap.specialStoreOwned.ap || 0,
+          dp: snap.specialStoreOwned.dp || 0, spd: snap.specialStoreOwned.spd || 0 }
+      : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
     state.specialStoreAnnounced = !!snap.specialStoreAnnounced;
     // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
     // the Boss Gate button is re-derived from levelSolves/bossDefeated in updatePanelVisibility.
@@ -251,6 +256,7 @@
     state.defeatedMonsters = {};
     state.trophies = [];
     state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+    state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
     state.specialStoreAnnounced = false;
     if (el.trophiesPanel) el.trophiesPanel.style.display = 'none';
     state.weapons = reconcileGear(WEAPONS, null);

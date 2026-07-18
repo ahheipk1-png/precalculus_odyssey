@@ -71,9 +71,12 @@
     shoes:   SHOES.map(function(g){ return Object.assign({}, g); }),
     defeatedMonsters: {},
     trophies: [],
-    // Special Item Store (unlocks after clearing Arena 44 — see js/42-special-store.js): purchase
-    // counts per stat machine (hp/mp/ap/dp/spd), each capped at SPECIAL_STORE_MAX_PURCHASES.
+    // Special Item Store (unlocks after clearing Arena 44 — see js/42-special-store.js): INSTALLED
+    // machine counts per stat (hp/mp/ap/dp/spd) — these actually grant their stat bonus.
     specialStore: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 },
+    // Bought but not yet installed (Buy acquires; Use installs — matches the Item Store's
+    // buy-then-use pattern). Same 5 keys; installed + owned share one price/cap ladder.
+    specialStoreOwned: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 },
     specialStoreAnnounced: false   // has the one-time "Special Item Store is open!" modal fired yet
   };
   // levelTitles, formulaBank, sceneCaptions \u2192 game/config/rooms.config.js (loaded first).

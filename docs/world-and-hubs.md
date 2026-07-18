@@ -616,6 +616,29 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #19 — Odyssey Forge: split Buy from Use (matches the Item Store's buy-then-use
+pattern).** User, after seeing the store live: "just add a use button below each of them."
+- **Buy now only acquires** a machine into an uninstalled stockpile (`state.specialStoreOwned =
+  {hp,mp,ap,dp,spd}`, new save field, 4-place-wired) — it charges Cash and increments `owned[id]`,
+  but does NOT touch any stat yet.
+- **Use installs one** (`specialStoreUseMachine(id)`, new): moves one unit from `owned` to
+  `state.specialStore` (the existing INSTALLED count) and applies the permanent bonus exactly as
+  the old atomic Buy used to (HP/MP bump the base stat directly; AP/DP/Speed are picked up live by
+  `specialStoreBonus()` since it reads the installed count). No-ops with a clear toast if nothing's
+  owned to install.
+- **Price/cap ladder now reads the TOTAL** (`specialStoreTotalCount` = installed + owned) so buying
+  2 and using 0 still costs the same as buying-and-installing 2 one at a time — the ladder can't be
+  gamed by stockpiling.
+- **UI**: each card now shows the installed count (`×N` badge, unchanged), a "📦 N waiting to
+  install" chip that only appears when you own an uninstalled unit, the existing "Buy 💵cost"
+  button, and a new "Use (N)" button below it (disabled + explains why when nothing's owned).
+- **Verified**: buying twice left AP/DP/HP/MP/Speed completely unchanged (owned=2, installed=0);
+  using twice installed both, +2 AP each time; using with nothing owned correctly fails without
+  mutating state; HP buy-then-use bumped max/current only on Use, not on Buy; cost ladder read the
+  combined total correctly (2 total → 💵12000, matching the existing +1000/purchase formula); a
+  real click on the rendered "Use" button correctly installed a Mana Reactor (MP 50→60, chip
+  disappeared, badge went ×0→×1). Cache token bumped `20260718k → 20260718l`.
+
 **2026-07-18 batch #18 — Housekeeping: split the three oversized modules into per-feature files
 (ZERO logic changes — pure file-boundary moves, verified end-to-end live).** User: "make sure
 functions/files are not too big...make sure they are modular easy to maintain...things are

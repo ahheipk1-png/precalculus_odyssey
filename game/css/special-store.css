@@ -15,6 +15,25 @@
   background: var(--violet, #9a6cff);
 }
 
+/* "N waiting to install" chip — shown only while a machine is bought but not yet used. */
+.sstr-stock{
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--yellow);
+}
+
+/* Use button — ghost styling like other secondary actions; visually distinct from Buy (primary). */
+.sstr-use{
+  font-size: 15px;
+  padding: 8px 14px;
+  border-color: var(--violet, #9a6cff);
+  color: var(--violet, #9a6cff);
+}
+.sstr-use:disabled{
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* First-visit congratulations overlay (specialStoreMaybeAnnounce, 42-special-store.js) — reuses
    the shared .gameover-overlay/.gameover-card modal shell, themed violet + a slightly bigger,
    glowing emoji so it reads as a genuine milestone, not a routine toast. */

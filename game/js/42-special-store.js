@@ -52,32 +52,54 @@
   function specialStoreUnlocked(){
     return !!(state.bossDefeated && state.bossDefeated[SPECIAL_STORE_UNLOCK_ARENA]) || !!state.testMode;
   }
+  // "Installed" = the count actually contributing its stat bonus right now. Matches the Item
+  // Store's buy-then-use pattern (user 2026-07-18: "just add a use button beloew each of them") —
+  // Buy only ACQUIRES a machine into your uninstalled stockpile; Use INSTALLS one, applying its
+  // permanent bonus. Both counts share one price/cap ladder (see specialStoreTotalCount).
   function specialStoreCount(id){ return (state.specialStore && state.specialStore[id]) || 0; }
-  function specialStoreCost(id){ return SPECIAL_STORE_BASE_COST + SPECIAL_STORE_COST_STEP * specialStoreCount(id); }
+  function specialStoreOwned(id){ return (state.specialStoreOwned && state.specialStoreOwned[id]) || 0; }
+  function specialStoreTotalCount(id){ return specialStoreCount(id) + specialStoreOwned(id); }
+  function specialStoreCost(id){ return SPECIAL_STORE_BASE_COST + SPECIAL_STORE_COST_STEP * specialStoreTotalCount(id); }
   // The live additive bonus a stat function should add — see getPlayerAp/getPlayerDp
   // (06-gear-shop.js) and getPlayerSpeed (21-catalogue.js). HP/MP don't use this (see file header).
+  // Only INSTALLED machines count — an unused one in the stockpile grants nothing yet.
   function specialStoreBonus(id){
     var m = specialStoreMachine(id);
     return m ? specialStoreCount(id) * m.gain : 0;
   }
 
-  // The transaction (console-testable). Returns { ok, msg }.
+  // Buy: acquire one machine into the uninstalled stockpile. Does NOT apply any bonus yet — see
+  // specialStoreUseMachine for that. Console-testable; returns { ok, msg }.
   function specialStoreBuy(id){
     if (!specialStoreUnlocked()) return { ok: false, msg: 'The Odyssey Forge isn’t open yet.' };
     var m = specialStoreMachine(id);
     if (!m) return { ok: false, msg: 'Unknown machine.' };
     if (!state.specialStore) state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
-    var n = specialStoreCount(id);
-    if (n >= SPECIAL_STORE_MAX_PURCHASES) return { ok: false, msg: m.name + ' is already maxed at ' + SPECIAL_STORE_MAX_PURCHASES + '!' };
+    if (!state.specialStoreOwned) state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+    var total = specialStoreTotalCount(id);
+    if (total >= SPECIAL_STORE_MAX_PURCHASES) return { ok: false, msg: m.name + ' is already maxed at ' + SPECIAL_STORE_MAX_PURCHASES + '!' };
     var cost = specialStoreCost(id);
     if ((state.coins || 0) < cost) {
       return { ok: false, msg: 'Not enough Cash — ' + m.name + ' costs 💵 ' + cost + ' and you have 💵 ' + (state.coins || 0) + '.' };
     }
     state.coins -= cost;
-    state.specialStore[id] = n + 1;
+    state.specialStoreOwned[id] = specialStoreOwned(id) + 1;
+    if (typeof updateStats === 'function') updateStats();
+    if (typeof saveGame === 'function') saveGame();
+    return { ok: true, msg: '📦 ' + m.name + ' acquired! Hit Use to install it — permanent, one-way.' };
+  }
+
+  // Use: install ONE owned-but-uninstalled machine, applying its permanent bonus. Console-testable;
+  // returns { ok, msg }.
+  function specialStoreUseMachine(id){
+    var m = specialStoreMachine(id);
+    if (!m) return { ok: false, msg: 'Unknown machine.' };
+    if (specialStoreOwned(id) < 1) return { ok: false, msg: 'You don’t have a ' + m.name + ' to install — buy one first!' };
+    state.specialStoreOwned[id] = specialStoreOwned(id) - 1;
+    state.specialStore[id] = specialStoreCount(id) + 1;
     // HP/MP have no live "effective stat" reader in combat (see file header) — bump the base
     // directly, exactly like a hero level-up (05-render.js addHeroXp): grant the new capacity AND
-    // the current value, so the purchase is felt immediately, not just as extra headroom.
+    // the current value, so installing it is felt immediately, not just as extra headroom.
     if (id === 'hp'){ state.playerMaxHp += m.gain; state.playerHp = Math.min(state.playerMaxHp, state.playerHp + m.gain); }
     if (id === 'mp'){ state.playerMaxMp += m.gain; state.playerMp = Math.min(state.playerMaxMp, state.playerMp + m.gain); }
     if (typeof updateStats === 'function') updateStats();
@@ -109,6 +131,15 @@
     var res = specialStoreBuy(id);
     if (typeof showToast === 'function') showToast(res.msg);
     if (res.ok) {
+      if (typeof playSfx === 'function') playSfx('buy');
+    } else if (typeof playSfx === 'function') playSfx('wrong');
+    sstrRenderView();
+  }
+
+  function sstrUseClick(id){
+    var res = specialStoreUseMachine(id);
+    if (typeof showToast === 'function') showToast(res.msg);
+    if (res.ok) {
       if (typeof playSfx === 'function') playSfx('weapon-upgrade');
       if (typeof burst === 'function') burst(8);
     } else if (typeof playSfx === 'function') playSfx('wrong');
@@ -134,24 +165,33 @@
 
   function sstrShelfHtml(){
     return SPECIAL_STORE_MACHINES.map(function(m){
-      var n = specialStoreCount(m.id);
-      var maxed = n >= SPECIAL_STORE_MAX_PURCHASES;
+      var installed = specialStoreCount(m.id);
+      var owned = specialStoreOwned(m.id);
+      var total = installed + owned;
+      var maxed = total >= SPECIAL_STORE_MAX_PURCHASES;
       var cost = specialStoreCost(m.id);
       var afford = (state.coins || 0) >= cost;
       var short = cost - (state.coins || 0);
-      var btnTitle = maxed ? (m.name + ' is already maxed — every hero has a limit!')
+      var buyTitle = maxed ? (m.name + ' is already maxed — every hero has a limit!')
         : (afford ? ('Buy ' + m.name + ' for 💵' + cost + ' — ' + m.desc) : ('Not enough Cash — need 💵' + short + ' more'));
+      var useTitle = owned > 0 ? ('Install one ' + m.name + ' — permanently applies +' + m.gain + ' ' + m.statLabel + '.')
+        : 'Buy one first — nothing to install yet.';
       return (
         '<div class="istr-card sstr-card">' +
-          '<span class="istr-owned sstr-count" title="Machines installed so far (max ' + SPECIAL_STORE_MAX_PURCHASES + ')">×' + n + '</span>' +
+          '<span class="istr-owned sstr-count" title="Installed so far (max ' + SPECIAL_STORE_MAX_PURCHASES + ')">×' + installed + '</span>' +
           '<span class="istr-icon">' + m.icon + '</span>' +
           '<span class="istr-name">' + m.name + '</span>' +
           '<span class="istr-desc" title="' + m.desc + '">' + m.desc + '</span>' +
+          (owned > 0 ? '<span class="sstr-stock" title="Bought but not yet installed">📦 ' + owned + ' waiting to install</span>' : '') +
           '<div class="istr-buy-row">' +
             '<button class="btn btn-primary istr-buy" onclick="sstrBuyClick(\'' + m.id + '\')"' +
-              ((maxed || !afford) ? ' disabled' : '') + ' title="' + btnTitle + '">' +
+              ((maxed || !afford) ? ' disabled' : '') + ' title="' + buyTitle + '">' +
               (maxed ? 'MAXED ' + SPECIAL_STORE_MAX_PURCHASES + '/' + SPECIAL_STORE_MAX_PURCHASES : 'Buy 💵' + cost) +
             '</button>' +
+          '</div>' +
+          '<div class="istr-buy-row">' +
+            '<button class="btn btn-ghost sstr-use" onclick="sstrUseClick(\'' + m.id + '\')"' +
+              (owned > 0 ? '' : ' disabled') + ' title="' + useTitle + '">Use' + (owned > 0 ? ' (' + owned + ')' : '') + '</button>' +
           '</div>' +
           (!maxed && !afford ? '<span class="istr-short">Need 💵' + short + ' more!</span>' : '') +
         '</div>'
