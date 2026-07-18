@@ -87,6 +87,17 @@ cards were actually played through:
    card's own "Total Reward"); the cleared card shows the banner and greys out; the still-open
    3-Boss card (sharing 2 of the same sub-bosses) correctly shows "2/3 defeated — resume from here".
 
+**Follow-up (2026-07-18, card declutter — user feedback with an annotated screenshot):** the Easy
+card's full stat block (HP/MP, ATK/DEF, "Needs Hero Lv.", Reward, Drops) and the gauntlet cards'
+"⚠️ No retreat…" warning line + "Total Reward" line were circled as clutter to remove. Cut all of
+it: `buildEasyCard` now renders only art/name/element (+ a defeated/locked note when relevant);
+`buildGauntletCard` drops the warning and reward lines (member portraits' own compact HP/ATK/DEF
+row, the cleared banner, and the resume-progress line are untouched — those weren't circled). Also
+re-verified the "CLEARED" banner/dark-state from the prior entry via a FULL real click-by-click
+playthrough (real `startCombatBtn`/`postCombatBtn` clicks, not just `handleBattleVictory()` called
+directly) after the user reported not seeing it — confirmed it still renders correctly; likely a
+stale cache on their end, not a regression.
+
 ## Hero & stats
 
 `state.heroLvl / heroXp / playerHp / playerMaxHp / playerMp / playerMaxMp`. XP curve

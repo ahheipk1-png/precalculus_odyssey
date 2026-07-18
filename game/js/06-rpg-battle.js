@@ -521,7 +521,6 @@
     var isLocked = !!lockReason;
     var deadCount = members.filter(function(m){ return isMonsterDefeated(monsterKey(m)); }).length;
     var fullyCleared = deadCount === members.length;
-    var totalReward = members.reduce(function(s, m){ return s + m.reward; }, 0);
     var card = document.createElement('div');
     card.className = 'monster-card-select gauntlet-card' + (fullyCleared ? ' defeated' : '') + (isLocked ? ' locked' : '');
     if (fullyCleared) {
@@ -532,8 +531,6 @@
       (fullyCleared ? '<div class="gauntlet-cleared-banner">☑️ CLEARED</div>' : '') +
       '<div class="gauntlet-row">' + gauntletMembersHtml(members) + '</div>' +
       (deadCount > 0 && !fullyCleared ? '<div class="monster-select-stat gauntlet-progress">⏳ ' + deadCount + '/' + members.length + ' defeated — resume from here</div>' : '') +
-      '<div class="monster-select-stat gauntlet-warn">⚠️ No retreat — fight all ' + members.length + ' back-to-back, no Hotel until the chain is cleared</div>' +
-      '<div class="monster-select-reward">Total Reward: ' + totalReward + ' 💵</div>' +
       (isLocked ? ('<div class="monster-lock-note">🔒 Locked: ' + lockReason +
         (bonus ? ' — ♾️ grind Arena Infinity for extra hero XP to reach it' : '') + '</div>') : '');
     if (!fullyCleared && !isLocked) {
@@ -565,12 +562,7 @@
       <div class="monster-card-art">${getMonsterArtMarkup(easy)}</div>
       <div class="monster-select-name">${easy.name} ${isDefeated ? '💀' : ''}</div>
       <div class="monster-select-el">${elementBadgeHtml(easy.element)}</div>
-      <div class="monster-select-stat" style="color:var(--yellow)">Arena ${easy.room} · ${easy.difficulty}</div>
-      <div class="monster-select-stat">${isDefeated ? '☠️ DEFEATED (Gone Forever)' : ('HP: ' + easy.maxHp + ' · MP: ' + easy.maxMp)}</div>
-      <div class="monster-select-stat">ATK: ${easy.attack} &nbsp;|&nbsp; DEF: ${easy.defense}</div>
-      <div class="monster-select-stat">Needs Hero Lv. ${easy.requiredHeroLvl}</div>
-      <div class="monster-select-reward">Reward: ${easy.reward} 💵</div>
-      <div class="monster-select-stat monster-drops" title="Chip drops scale with the monster's strength — ? = not guaranteed">🎁 Drops: ${typeof monsterDropPreview === 'function' ? monsterDropPreview(easy) : ''}</div>
+      ${isDefeated ? `<div class="monster-select-stat">☠️ DEFEATED (Gone Forever)</div>` : ''}
       ${isLocked ? `<div class="monster-lock-note">🔒 Locked: ${lockReason}</div>` : ''}
     `;
     if (!isDefeated && !isLocked) {
