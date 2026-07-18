@@ -525,10 +525,11 @@
     var card = document.createElement('div');
     card.className = 'monster-card-select gauntlet-card' + (fullyCleared ? ' defeated' : '') + (isLocked ? ' locked' : '');
     if (fullyCleared) {
-      card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; card.style.borderStyle = 'dotted';
+      card.style.opacity = '0.45'; card.style.pointerEvents = 'none'; card.style.borderStyle = 'dotted'; card.style.filter = 'grayscale(0.6)';
     }
     card.innerHTML =
-      '<div class="gauntlet-card-title">' + icon + ' ' + label + '</div>' +
+      '<div class="gauntlet-card-title">' + icon + ' ' + label + (fullyCleared ? ' ✅' : '') + '</div>' +
+      (fullyCleared ? '<div class="gauntlet-cleared-banner">☑️ CLEARED</div>' : '') +
       '<div class="gauntlet-row">' + gauntletMembersHtml(members) + '</div>' +
       (deadCount > 0 && !fullyCleared ? '<div class="monster-select-stat gauntlet-progress">⏳ ' + deadCount + '/' + members.length + ' defeated — resume from here</div>' : '') +
       '<div class="monster-select-stat gauntlet-warn">⚠️ No retreat — fight all ' + members.length + ' back-to-back, no Hotel until the chain is cleared</div>' +
@@ -1124,6 +1125,19 @@
     el.spellsPanel.appendChild(closeBtn);
   }
 
+  // Combine two {chips:{...}, gold, silver} loot objects (gauntlet chest accumulation). Either
+  // side may be null/undefined (the first kill in a chain has nothing to merge into yet).
+  function _mergeLoot(a, b) {
+    var out = { chips: {}, gold: 0, silver: 0 };
+    [a, b].forEach(function(l){
+      if (!l) return;
+      out.gold += l.gold || 0;
+      out.silver += l.silver || 0;
+      for (var k in (l.chips || {})) out.chips[k] = (out.chips[k] || 0) + l.chips[k];
+    });
+    return out;
+  }
+
   function handleBattleVictory() {
     el.playerSprite.classList.add('victory');
     el.monsterSprite.classList.add('defeated');
@@ -1165,9 +1179,22 @@
     appendCombatLog(`Looted: ${lootStr}`, 'system');
     burst(10);
     if (typeof playSfx === 'function') playSfx('victory');
-    // 🧰 Treasure chest: the loot/cash are already credited above — the chest overlay
-    // (16-chest.js) is pure celebration. Falls back to the plain toast if absent.
-    if (typeof showVictoryChest === 'function') {
+
+    // Gauntlet fights: the loot/cash are already credited above (every kill counts), but only
+    // ONE combined chest shows — at the very end of the chain, not after each individual kill,
+    // so a 2/3-Boss run feels like one continuous fight instead of a chest popup every link.
+    if (activeCombat.gauntletLocked) {
+      activeCombat.chainCash = (activeCombat.chainCash || 0) + reward;
+      activeCombat.chainLoot = _mergeLoot(activeCombat.chainLoot, loot);
+      if (activeCombat.queue && activeCombat.queue.length > 0) {
+        // Mid-chain: no chest, just a quick toast so the kill still feels acknowledged.
+        if (typeof showToast === 'function') showToast(`💰 +${reward} 💵 · Looted ${lootStr}`);
+      } else if (typeof showVictoryChest === 'function') {
+        showVictoryChest(activeCombat.chainLoot, activeCombat.chainCash);
+      } else {
+        showToast(`💰 +${activeCombat.chainCash} Cash · Looted ${lootSummary(activeCombat.chainLoot)}`);
+      }
+    } else if (typeof showVictoryChest === 'function') {
       showVictoryChest(loot, reward);
     } else {
       showToast(`💰 +${reward} Cash · Looted ${lootStr}`);
@@ -1312,7 +1339,14 @@
   function continueGauntlet() {
     if (!activeCombat || !activeCombat.queue || !activeCombat.queue.length) return;
     var q = activeCombat.queue;
+    // startCombat below builds a FRESH activeCombat object — carry the running chain totals
+    // forward so the final chest (handleBattleVictory) can sum every kill in the run, not just
+    // the last one.
+    var chainCash = activeCombat.chainCash || 0;
+    var chainLoot = activeCombat.chainLoot || null;
     startCombat(q[0], q.slice(1), true);
+    activeCombat.chainCash = chainCash;
+    activeCombat.chainLoot = chainLoot;
   }
 
   function handlePostCombatRedirect() {

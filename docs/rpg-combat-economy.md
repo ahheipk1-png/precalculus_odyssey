@@ -72,6 +72,21 @@ browser force-packs whole arena rows into 3 columns side-by-side). Verified at a
 195 cards render in ~11ms, no console errors, clicking an older arena's card starts a real fight
 against that arena's monster.
 
+**Follow-up (2026-07-17, gauntlet polish — user feedback):** two gaps found once the gauntlet
+cards were actually played through:
+1. A fully-cleared gauntlet card only dimmed slightly (opacity 0.4) with no explicit label —
+   `buildGauntletCard` now adds a `✅` on the title and a `☑️ CLEARED` banner
+   (`.gauntlet-cleared-banner`), plus grayscale + stronger dimming, when `deadCount === members.length`.
+2. Every individual kill in a chain popped its own victory chest — jarring mid-fight in a
+   "no retreat" gauntlet. `activeCombat` now carries `chainCash`/`chainLoot` accumulators (merged
+   via `_mergeLoot`, carried across `continueGauntlet`'s `startCombat` re-init since that builds a
+   fresh `activeCombat` each link). Mid-chain kills get Cash/materials credited immediately (no
+   gameplay change) but only a toast, not a chest; the chest fires exactly once, at the true end
+   of the chain, with every link's cash+loot summed. Verified live: a 2-Boss chain showed 0 chest
+   calls after link 1, exactly 1 after link 2 with the combined total (117+117=234, matching the
+   card's own "Total Reward"); the cleared card shows the banner and greys out; the still-open
+   3-Boss card (sharing 2 of the same sub-bosses) correctly shows "2/3 defeated — resume from here".
+
 ## Hero & stats
 
 `state.heroLvl / heroXp / playerHp / playerMaxHp / playerMp / playerMaxMp`. XP curve
