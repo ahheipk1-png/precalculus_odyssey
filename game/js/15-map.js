@@ -25,7 +25,7 @@
     { id: 'weapon',   emoji: '⚔️', name: 'Weapon Store',  x: 33, y: 58, accent: 'var(--coral)', desc: 'Buy and upgrade weapons & shields with Cash and chips.' },
     { id: 'item',     emoji: '🎒', name: 'Item Store',    x: 56, y: 70, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
     { id: 'hotel',    emoji: '🏨', name: 'Hotel',         x: 82, y: 62, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },
-    { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    x: 84, y: 24, accent: 'var(--coral)', desc: 'Spend Wonderland Passes on mini-games (Tile Ball, Hoo Hey How).' },
+    { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    x: 84, y: 24, accent: 'var(--coral)', desc: 'Choose 🎰 Casino (bet Cash on games of chance) or 🕹️ Arcade (skill games & puzzles) — both cost Wonderland Passes.' },
     { id: 'farm',     emoji: '🌾', name: 'Farm',          x: 57, y: 30, accent: 'var(--yellow)', desc: 'Grow crops and raise animals for materials over time.' },
     { id: 'alchemy',  emoji: '🧪', name: 'Laboratory',    x: 27, y: 22, accent: 'var(--sky)', desc: 'Synthesize Super Medicine and Acid Vials from ingredients + chips.' },
     { id: 'trading',  emoji: '🔄', name: 'Trading Room',  x: 44, y: 46, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },

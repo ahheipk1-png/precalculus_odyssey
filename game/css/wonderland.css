@@ -60,6 +60,57 @@
 .rank-val{ flex:0 0 auto; color:var(--yellow); font-weight:700; text-align:right; }
 @media (max-width:520px){ .wond-rank-btn{ margin-left:0; } }
 
+/* ---- Top hub: 2 big centered tiles (Casino / Arcade) ---- */
+.wond-hub-grid{
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin: 26px auto 20px;
+  max-width: 680px;
+}
+.wond-hub-tile{
+  flex: 1 1 260px;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: rgba(244,241,232,0.06);
+  border: 2px solid rgba(244,241,232,0.14);
+  border-radius: 22px;
+  padding: 36px 20px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.wond-hub-tile:hover{ transform: translateY(-4px); }
+.wond-hub-casino:hover{ border-color: var(--yellow); box-shadow: 0 0 26px rgba(242,193,78,0.25); }
+.wond-hub-arcade:hover{ border-color: var(--sky); box-shadow: 0 0 26px rgba(110,193,228,0.25); }
+.wond-hub-icon{ font-size: 68px; line-height: 1; }
+.wond-hub-name{
+  font-family: 'Patrick Hand', cursive;
+  font-size: 30px;
+  color: var(--chalk);
+}
+.wond-hub-desc{
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chalk-dim);
+  text-align: center;
+}
+@media (max-width: 640px){
+  .wond-hub-grid{ gap: 16px; margin: 18px auto 14px; }
+  .wond-hub-tile{ padding: 26px 16px; }
+  .wond-hub-icon{ font-size: 52px; }
+  .wond-hub-name{ font-size: 25px; }
+}
+@media (prefers-reduced-motion: reduce){
+  .wond-hub-tile{ transition: none; }
+  .wond-hub-tile:hover{ transform: none; }
+}
+
 /* ---- Minigame card grid ---- */
 .wond-grid{
   display: grid;

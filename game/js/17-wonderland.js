@@ -173,12 +173,35 @@
     return view;
   }
 
+  // openWonderland() is the ONE function every game's "← Lobby"/back button calls (34 call sites
+  // across every minigame file) as well as the Earth Hub's Wonderland door — so making it render
+  // the new top hub (instead of the old flat game grid) automatically threads the extra layer
+  // through the whole app with zero other call sites touched. openWonderCasino()/openWonderArcade()
+  // are the two doors this hub screen opens onto.
   function openWonderland(){
     stopTileBall();                       // never leave a stale loop behind
     if (typeof wgStopAll === 'function') wgStopAll();   // and no stray carnival-game timer
     var view = wondShowView();
     if (!view) return;
-    view.innerHTML = wondLobbyHtml();
+    view.innerHTML = wondHubHtml();
+    if (typeof playMusic === 'function') playMusic('arena');
+  }
+
+  function openWonderCasino(){
+    stopTileBall();
+    if (typeof wgStopAll === 'function') wgStopAll();
+    var view = wondShowView();
+    if (!view) return;
+    view.innerHTML = wondCasinoHtml();
+    if (typeof playMusic === 'function') playMusic('arena');
+  }
+
+  function openWonderArcade(){
+    stopTileBall();
+    if (typeof wgStopAll === 'function') wgStopAll();
+    var view = wondShowView();
+    if (!view) return;
+    view.innerHTML = wondArcadeHtml();
     if (typeof playMusic === 'function') playMusic('arena');
   }
 
@@ -242,9 +265,73 @@
       btn + '</div>';
   }
 
-  // ---------- Lobby ----------
-  function wondLobbyHtml(){
-    var passes = (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0;
+  // ---------- Top-level hub: choose Casino or Arcade ----------
+  // Every game's "← Lobby" button (34 call sites — see openWonderland()'s comment) resolves here,
+  // so this is the one screen the whole game returns to; the passrow + Ranking button live here
+  // rather than duplicated on both sub-pages.
+  function wondHubHtml(){
+    var passes = wonderPassCount();
+    return '' +
+      '<div class="wond-board">' +
+        '<div class="wond-head">' +
+          '<h2 class="wond-title"><span class="wond-wheel">🎡</span> Wonderland</h2>' +
+          '<p class="wond-sub">Step right up! Where to first?</p>' +
+        '</div>' +
+        '<div class="wond-passrow">' +
+          '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
+          '<span class="wond-hint">Earn passes by answering questions in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
+          '<button type="button" class="btn btn-secondary wond-rank-btn" onclick="openRanking()" data-tooltip="See the global leaderboard — top levels and top minigame scores across every player.">🏆 Ranking</button>' +
+        '</div>' +
+        '<div class="wond-hub-grid">' +
+          '<button type="button" class="wond-hub-tile wond-hub-casino" onclick="openWonderCasino()" data-tooltip="Bet Cash on games of chance — Star Slots, Hoo Hey How, Pop-a-Tic-Tac-Toe. Entry still costs Wonderland Passes.">' +
+            '<span class="wond-hub-icon">🎰</span>' +
+            '<span class="wond-hub-name">Casino</span>' +
+            '<span class="wond-hub-desc">Bet Cash on games of chance</span>' +
+          '</button>' +
+          '<button type="button" class="wond-hub-tile wond-hub-arcade" onclick="openWonderArcade()" data-tooltip="Skill games and puzzles — no betting, just Wonderland Passes and prizes.">' +
+            '<span class="wond-hub-icon">🕹️</span>' +
+            '<span class="wond-hub-name">Arcade</span>' +
+            '<span class="wond-hub-desc">Skill games &amp; puzzles</span>' +
+          '</button>' +
+        '</div>' +
+        '<div class="wond-footer">' +
+          '<button type="button" class="btn btn-ghost" onclick="wonderBackToMap()">← Back to Earth</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  // ---------- Casino: the 3 gambling games (bet real Cash; entering IS the "play") ----------
+  function wondCasinoHtml(){
+    var passes = wonderPassCount();
+    return '' +
+      '<div class="wond-board">' +
+        '<div class="wond-head">' +
+          '<h2 class="wond-title wond-title-sm"><span class="wond-wheel">🎰</span> Casino</h2>' +
+          '<p class="wond-sub">Bet Cash on games of chance!</p>' +
+        '</div>' +
+        '<div class="wond-passrow">' +
+          '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
+          '<span class="wond-hint">Earn passes by answering questions in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
+        '</div>' +
+        '<div class="wond-grid">' +
+          '<div class="wond-card">' +
+            '<div class="wond-card-icon">🎲</div>' +
+            '<div class="wond-card-name">Hoo Hey How</div>' +
+            '<div class="wond-card-desc">Bet Cash on lucky symbols and roll three dice!</div>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openHooHey\',2)" data-tooltip="Entry costs 2 Wonderland Passes; then bet Cash on symbols.">Play! (2 🎟️)</button>' +
+          '</div>' +
+          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots', true, 2) +
+          _wondCard('🎯', 'Pop-a-Tic-Tac-Toe', 'Roll 4 balls onto the board, FIX the ones you like, reroll the rest — chase the jackpot pattern!', 'openPopTicTacToe', true) +
+        '</div>' +
+        '<div class="wond-footer">' +
+          '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Wonderland</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  // ---------- Arcade: every non-gambling skill game/puzzle ----------
+  function wondArcadeHtml(){
+    var passes = wonderPassCount();
     // Carnival games (single card = Gone Fishin'; Bullseye & Merry-Go-Round were removed).
     var carnival =
       '<div class="wond-card">' +
@@ -252,17 +339,15 @@
         '<div class="wond-card-name">Gone Fishin’</div>' +
         '<div class="wond-card-desc">Catch only the fish whose number matches the rule! ' + (typeof FISH_MAX_LEVEL !== 'undefined' ? FISH_MAX_LEVEL : 5) + ' levels, rising difficulty.</div>' +
         '<button type="button" class="btn btn-primary wond-play" onclick="openFishin()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button></div>';
-    var locked = carnival;
     return '' +
       '<div class="wond-board">' +
         '<div class="wond-head">' +
-          '<h2 class="wond-title"><span class="wond-wheel">🎡</span> Wonderland</h2>' +
-          '<p class="wond-sub">Step right up! Trade passes for carnival games and prizes!</p>' +
+          '<h2 class="wond-title wond-title-sm"><span class="wond-wheel">🕹️</span> Arcade</h2>' +
+          '<p class="wond-sub">Skill games &amp; puzzles — spend Wonderland Passes, no betting.</p>' +
         '</div>' +
         '<div class="wond-passrow">' +
           '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
           '<span class="wond-hint">Earn passes by answering questions in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
-          '<button type="button" class="btn btn-secondary wond-rank-btn" onclick="openRanking()" data-tooltip="See the global leaderboard — top levels and top minigame scores across every player.">🏆 Ranking</button>' +
         '</div>' +
         '<div class="wond-grid">' +
           '<div class="wond-card">' +
@@ -270,12 +355,6 @@
             '<div class="wond-card-name">Tile Ball</div>' +
             '<div class="wond-card-desc">Bounce the ball and smash every tile! ' + WOND_LEVELS.length + ' levels of rising difficulty.</div>' +
             '<button type="button" class="btn btn-primary wond-play" onclick="wondOpenTileLevels()" data-tooltip="Choose a Tile Ball level. Each play costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
-          '</div>' +
-          '<div class="wond-card">' +
-            '<div class="wond-card-icon">🎲</div>' +
-            '<div class="wond-card-name">Hoo Hey How</div>' +
-            '<div class="wond-card-desc">Bet Cash on lucky symbols and roll three dice!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openHooHey\',2)" data-tooltip="Entry costs 2 Wonderland Passes; then bet Cash on symbols.">Play! (2 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🧩</div>' +
@@ -295,7 +374,6 @@
             '<div class="wond-card-desc">Drag numbered tiles so every row, column &amp; box is complete. ' + SUD_LEVELS.length + ' levels — grows from a 4×4 warm-up to a full 9×9!</div>' +
             '<button type="button" class="btn btn-primary wond-play" onclick="openSudoku()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
           '</div>' +
-          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots', true, 2) +
           _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring through dense pillar mazes! ' + CARGO_DIFFS.length + ' freshly-generated levels, harder and harder.', 'openCargo') +
           _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes! ' + GLACIER_DIFFS.length + ' fresh levels every run, harder and harder.', 'openGlacier') +
           _wondCard('🏯', 'Forbidden City', 'Slide matching spirit tiles together to cancel them — beware the same-color decoys! ' + SHIK_DIFFS.length + ' fresh chambers every run.', 'openShikinjou') +
@@ -316,15 +394,14 @@
           _wondCard('👾', 'Comet Muncher', 'Munch every star in the maze — dodge the UFOs!', 'openComet') +
           _wondCard('💣', 'Blast Bot', 'Bomb the crates and zap the drones — mind the blast! ' + BB_LEVELS.length + ' levels.', 'openBlastBot') +
           _wondCard('🫧', 'Bubble Blast', 'Trap gremlins in bubbles, then pop them platform-style! ' + BU_LEVELS.length + ' levels.', 'openBubble') +
-          _wondCard('🎯', 'Pop-a-Tic-Tac-Toe', 'Roll 4 balls onto the board, FIX the ones you like, reroll the rest — chase the jackpot pattern!', 'openPopTicTacToe', true) +
           _wondCard('🎳', 'Star Lanes Bowling', 'A full 10-frame game — stop the marker to set your aim, power & spin. Strikes pay +100 Gold!', 'openBowling') +
           _wondCard('🎵', 'Cosmic Rhythm', 'Hit the falling notes on the beat — ' + RHY_LEVELS.length + ' levels, faster and denser as you climb!', 'openRhythm') +
           _wondCard('🐍', 'Snake', 'Steer the classic snake — eat food to grow, avoid the walls and your own tail! ' + SN_LEVELS.length + ' levels, faster each time.', 'openSnake') +
           _wondCard('💎', 'Crystal Cascade', 'Drop columns of 3 gems, cycle their colors, and chain cascading matches for huge combos!', 'openCrystal') +
-          locked +
+          carnival +
         '</div>' +
         '<div class="wond-footer">' +
-          '<button type="button" class="btn btn-ghost" onclick="wonderBackToMap()">← Back to Earth</button>' +
+          '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Wonderland</button>' +
         '</div>' +
       '</div>';
   }

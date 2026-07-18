@@ -24,9 +24,16 @@ presentation (rewards already credited by the caller); re-entrant; reduced-motio
 
 ## Wonderland — `js/17-wonderland.js` (`#wonderlandView`)
 
-Carnival lobby showing **🎟️ Wonderland Passes** + a playable **Tile Ball** (Breakout) canvas game
-costing 1 pass, plus **Hoo Hey How** and three carnival cards. `wonderRewardForScore(f)` (pure) pays
-materials + an item by cleared fraction; `applyWonderReward` credits them. The rAF loop is cancelled on exit.
+Carnival hub. `openWonderland()` renders a top-level screen (`wondHubHtml()`, added 2026-07-18 batch
+#22) with the **🎟️ Wonderland Passes** banner + 🏆 Ranking button and two big centered category
+tiles: **🎰 Casino** (`openWonderCasino()` → `wondCasinoHtml()` — the 3 gambling games: Hoo Hey How,
+Star Slots, Pop-a-Tic-Tac-Toe) and **🕹️ Arcade** (`openWonderArcade()` → `wondArcadeHtml()` — every
+other minigame, including the playable **Tile Ball** Breakout canvas game costing 1 pass). Every
+minigame's "← Lobby"/back button (34 call sites across 20 files) calls the same `openWonderland()`,
+so they all land back on this hub screen rather than the specific Casino/Arcade page they came from
+— an accepted one-extra-tap tradeoff for touching zero of those 34 call sites. `wonderRewardForScore(f)`
+(pure) pays materials + an item by cleared fraction; `applyWonderReward` credits them. The rAF loop
+is cancelled on exit.
 
 **Tile Ball has 5 difficulty levels** (`WOND_LEVELS`, Warm-Up→Singularity): rising grid size + ball
 speed + fewer balls, `checker` gap patterns and 2-hit `armoured` tiles (`tile.hp`). The lobby card
@@ -41,7 +48,7 @@ Wonderland mini-games.
 **Carnival games — `js/34-wonder-games.js`.** Math-flavoured games built on shared helpers
 `wgMini`/`wgRecordScore`/`wgPayReward` (`wgStopAll` stops every carnival timer and is called by all
 Wonderland nav exits). ⚠️ Despite the name, these are **not free** in the current lobby — every card in
-`wondLobbyHtml` (including this one) is wired through `_wondCard(...)` → `wonderPlay(launcher)`, which
+`wondArcadeHtml` (including this one) is wired through `_wondCard(...)` → `wonderPlay(launcher)`, which
 charges 1 🎟️ Wonderland Pass on entry; only *replaying* inside a game (its own Replay/Difficulty
 buttons call the start function directly, bypassing `wonderPlay`) is free until you back out to the
 lobby. Bullseye Numbers and Merry Math-Go-Round were removed from the lobby grid; only:
@@ -615,6 +622,40 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   (25-nav.js) renders a text `★` and `.atlas-perfect-star` (systems.css) paints it `#4bf08a` at
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
+
+**2026-07-18 batch #22 — Wonderland gains a hub layer: Casino vs. Arcade, with big centered
+category tiles.** User: "add one more layer in wonderland: 1. casino... 2. arcade (add all the
+games expect the gambling ones to it)... make the buttons larger and in the center of the screen."
+- **New top screen** (`wondHubHtml()`, `js/17-wonderland.js`) replaces the old flat 20-card grid as
+  what `openWonderland()` renders. It shows the Passes banner + 🏆 Ranking button (unchanged) plus
+  two big centered tiles: 🎰 **Casino** (`openWonderCasino()`) and 🕹️ **Arcade**
+  (`openWonderArcade()`). New `.wond-hub-grid`/`.wond-hub-tile` CSS (`wonderland.css`) — 300px-max
+  tiles, 68px icons, centered flex row (stacks full-width on ≤640px), hover glow tinted per tile
+  (gold for Casino, sky for Arcade).
+- **Casino** (`wondCasinoHtml()`) holds exactly the 3 existing gambling games, moved as-is (no new
+  game built — the user's own "reorganize only" choice when asked whether to also add a new
+  wheel-spin game): Hoo Hey How, Star Slots, Pop-a-Tic-Tac-Toe.
+- **Arcade** (`wondArcadeHtml()`) holds all 19 remaining games unchanged: Tile Ball, Quantum Block
+  Forge, Star Match, Mini Sudoku, Cargo Bay, Glacier Push, Forbidden City, Sky Stacker, Astro Drop,
+  Virus Lab, Circuit Loop, Comet Muncher, Blast Bot, Bubble Blast, Star Lanes Bowling, Cosmic
+  Rhythm, Snake, Crystal Cascade, Gone Fishin'.
+- **Zero of the 34 existing "← Lobby"/back-button call sites (across 20 minigame files) needed to
+  change.** Every one of them calls the shared `openWonderland()` — by making THAT function render
+  the new hub instead of the old flat grid, the extra layer threads through the whole app for free.
+  The tradeoff (accepted as the literal reading of "add one more layer"): leaving any game now
+  returns to the hub, not straight back into the Casino/Arcade page you came from — one extra tap
+  to get back to browsing the same category, in exchange for zero risk of mis-touching 34 call
+  sites across 20 files.
+- Earth Hub's Wonderland building tooltip (`js/15-map.js`) updated to describe both sections instead
+  of naming 2 example games.
+- **Verified live**: fresh `claude_agent` session, `openWonderland()` → hub screen (2 large centered
+  tiles, Passes banner, Ranking button) with zero console errors; clicked into Casino → exactly the
+  3 gambling cards; back → Arcade → all 19 non-gambling games present via `get_page_text`, none of
+  the 3 gambling ones mixed in; opened Snake's welcome screen and Cargo Bay's live in-game screen,
+  confirmed both "← Lobby"/"← Back" buttons return to the hub (Cargo Bay's pass spend of 1 also
+  confirmed, 20→19); clicked the Earth Hub's Wonderland building itself → hub screen, confirming the
+  entry point also updated; resized to 375px mobile — hub tiles stack full-width and stay centered,
+  no horizontal scroll. Cache token bumped `20260718n → 20260718o`.
 
 **2026-07-18 batch #21 — Odyssey Forge: wider cards.** User, after seeing the Buy/Use cards live:
 "make each of them wider."
