@@ -550,28 +550,34 @@
 
   function renderMonsterChoices() {
     el.monsterChoices.innerHTML = '';
-    if (el.bountyLvlText) el.bountyLvlText.textContent = state.level;
 
     var currentRoomMonsters = getRoomMonsters(state.level);
     var easy = currentRoomMonsters.find(function(m){ return m.rank === 1; });
     var chain2 = getGauntletChain(state.level, 2);
     var chain3 = getGauntletChain(state.level, 3);
-    // Bounty checklist tracks what's actually fightable now: Easy solo + the gauntlet chain
-    // (2 new sub-bosses + the real Boss) — the old solo Elite fight is superseded by the chains.
-    var checklistMonsters = easy ? [easy].concat(chain3) : chain3;
 
     if (el.bountyChecklist) {
+      // Show the full monster history across EVERY cleared/current arena (1..state.level), not
+      // just the current one — grouped by arena so a 65-arena-deep list stays scannable.
       var bHTML = '';
-      checklistMonsters.forEach(function(m) {
-        var lockReason = getMonsterLockReason(m);
-        var isDefeated = isMonsterDefeated(monsterKey(m));
-        var checkSymbol = isDefeated ? '☑️' : (lockReason ? '🔒' : '⬜');
-        var textColor = isDefeated ? 'var(--chalk-dim)' : 'var(--chalk)';
-        var textStyle = isDefeated ? 'text-decoration: line-through; opacity: 0.65;' : '';
-        bHTML += `<div style="display:flex; align-items:center; gap:6px; color:${textColor}; ${textStyle}">${checkSymbol} <strong>${m.name}</strong> (${m.difficulty}${lockReason ? ', ' + lockReason : ''})</div>`;
-      });
+      for (var ar = 1; ar <= state.level; ar++) {
+        var arEasy = getRoomMonsters(ar).find(function(m){ return m.rank === 1; });
+        var arChain3 = getGauntletChain(ar, 3);
+        var arMonsters = arEasy ? [arEasy].concat(arChain3) : arChain3;
+        bHTML += '<div style="flex-basis:100%; font-weight:700; color:var(--yellow); margin-top:' +
+          (ar === 1 ? '0' : '6px') + ';">Arena ' + ar + '</div>';
+        arMonsters.forEach(function(m) {
+          var lockReason = getMonsterLockReason(m);
+          var isDefeated = isMonsterDefeated(monsterKey(m));
+          var checkSymbol = isDefeated ? '☑️' : (lockReason ? '🔒' : '⬜');
+          var textColor = isDefeated ? 'var(--chalk-dim)' : 'var(--chalk)';
+          var textStyle = isDefeated ? 'text-decoration: line-through; opacity: 0.65;' : '';
+          bHTML += `<div style="display:flex; align-items:center; gap:6px; color:${textColor}; ${textStyle}">${checkSymbol} <strong>${m.name}</strong> (${m.difficulty}${lockReason ? ', ' + lockReason : ''})</div>`;
+        });
+      }
       el.bountyChecklist.innerHTML = bHTML;
     }
+    if (el.bountyLvlText) el.bountyLvlText.textContent = (state.level > 1 ? ('1-' + state.level) : '1');
 
     // Card 1: the solo Easy fight — unchanged behavior, narrower layout (see CSS).
     if (easy) {
