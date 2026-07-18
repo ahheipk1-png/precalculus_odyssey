@@ -132,13 +132,13 @@
 
     // Ingredient shelf: the four things the cauldron eats, with live counts.
     var jars = [
-      { icon: '🌿', name: 'Moon Herb', count: alchItemCount('moon_herb') },
-      { icon: '✨', name: 'Star Dew',  count: alchItemCount('star_dew') },
-      { icon: '🔋', name: 'Energy Core',   count: alchMatCount('energy_core') },
-      { icon: '🔩', name: 'Robotic Alloy', count: alchMatCount('robotic_alloy') }
+      { icon: '🌿', name: 'Moon Herb', count: alchItemCount('moon_herb'), hint: 'Moon Herb — ingredient sold at the Item Store, used in brews' },
+      { icon: '✨', name: 'Star Dew',  count: alchItemCount('star_dew'), hint: 'Star Dew — ingredient sold at the Item Store, used in brews' },
+      { icon: '🔋', name: 'Energy Core',   count: alchMatCount('energy_core'), hint: 'Energy Core — material dropped by monsters, used in brews' },
+      { icon: '🔩', name: 'Robotic Alloy', count: alchMatCount('robotic_alloy'), hint: 'Robotic Alloy — material dropped by monsters, used in brews' }
     ];
     var jarHtml = jars.map(function(j){
-      return '<div class="alch-jar"><span class="alch-jar-icon">' + j.icon + '</span>' +
+      return '<div class="alch-jar" title="' + j.hint + '"><span class="alch-jar-icon">' + j.icon + '</span>' +
         '<span class="alch-jar-count">' + j.count + '</span>' +
         '<span class="alch-jar-name">' + j.name + '</span></div>';
     }).join('');
@@ -148,12 +148,16 @@
       var r = ALCHEMY_RECIPES[rid];
       var check = canCraft(rid);
       var rows = '';
+      var costParts = [];
       Object.keys(r.items).forEach(function(id){
         rows += alchNeedRow(alchItemLabel(id), alchItemCount(id), r.items[id]);
+        costParts.push(alchItemLabel(id) + ' ×' + r.items[id]);
       });
       Object.keys(r.materials).forEach(function(id){
         rows += alchNeedRow(alchMatLabel(id), alchMatCount(id), r.materials[id]);
+        costParts.push(alchMatLabel(id) + ' ×' + r.materials[id]);
       });
+      var mixTitle = 'Brew 1 ' + r.icon + ' ' + r.name + ' — costs ' + costParts.join(', ');
       return '<div class="alch-card">' +
         '<div class="alch-card-head">' +
           '<span class="alch-card-icon">' + r.icon + '</span>' +
@@ -161,7 +165,7 @@
           '<div class="alch-card-desc">' + r.desc + '</div></div>' +
         '</div>' +
         '<ul class="alch-needs">' + rows + '</ul>' +
-        '<button class="btn btn-primary alch-mix-btn" onclick="alchMix(\'' + rid + '\')"' +
+        '<button class="btn btn-primary alch-mix-btn" onclick="alchMix(\'' + rid + '\')" title="' + mixTitle + '"' +
           (check.ok ? '' : ' disabled') + '>🧪 Mix!</button>' +
         (check.ok ? '' : '<div class="alch-missing">Need: ' + check.missing.join(', ') + '</div>') +
         '</div>';
@@ -171,11 +175,12 @@
     var stockHtml = ALCHEMY_ORDER.map(function(rid){
       var r = ALCHEMY_RECIPES[rid];
       var n = alchItemCount(r.product);
+      var useTitle = 'Use 1 ' + r.icon + ' ' + r.name + ' — ' + r.desc;
       return '<div class="alch-stock-row">' +
         '<span class="alch-stock-icon">' + r.icon + '</span>' +
         '<span class="alch-stock-name">' + r.name + '</span>' +
-        '<span class="alch-stock-count">×' + n + '</span>' +
-        '<button class="btn btn-ghost alch-use-btn" onclick="alchUse(\'' + r.product + '\')"' +
+        '<span class="alch-stock-count" title="Brews in stock">×' + n + '</span>' +
+        '<button class="btn btn-ghost alch-use-btn" onclick="alchUse(\'' + r.product + '\')" title="' + useTitle + '"' +
           (n > 0 ? '' : ' disabled') + '>Use</button>' +
         '</div>';
     }).join('');
@@ -183,7 +188,7 @@
     view.innerHTML =
       '<div class="alch-lab">' +
         '<div class="alch-header">' +
-          '<button class="btn btn-ghost alch-back" onclick="closeAlchemy()">← Back to Earth</button>' +
+          '<button class="btn btn-ghost alch-back" onclick="closeAlchemy()" title="Back to Earth Hub — return to the overworld map">← Back to Earth</button>' +
           '<h2 class="alch-title">🧪 Laboratory</h2>' +
           '<p class="alch-tagline">Something is always bubbling…</p>' +
         '</div>' +

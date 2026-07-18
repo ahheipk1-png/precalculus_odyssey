@@ -28,8 +28,23 @@
     { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    x: 84, y: 24, accent: 'var(--coral)', desc: 'Spend Wonderland Passes on mini-games (Tile Ball, Hoo Hey How).' },
     { id: 'farm',     emoji: '🌾', name: 'Farm',          x: 57, y: 30, accent: 'var(--yellow)', desc: 'Grow crops and raise animals for materials over time.' },
     { id: 'alchemy',  emoji: '🧪', name: 'Laboratory',    x: 27, y: 22, accent: 'var(--sky)', desc: 'Synthesize Super Medicine and Acid Vials from ingredients + chips.' },
-    { id: 'trading',  emoji: '🔄', name: 'Trading Room',  x: 44, y: 46, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' }
+    { id: 'trading',  emoji: '🔄', name: 'Trading Room',  x: 44, y: 46, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },
+    // Hidden until specialStoreUnlocked() (42-special-store.js) — clearing Arena 44's boss. Not
+    // just rendered-disabled: it doesn't appear on the map at all before that, so there's nothing
+    // to be curious about early. See wmapVisibleSpots().
+    { id: 'special',  emoji: '🏭', name: 'Special Item Store', x: 16, y: 46, accent: 'var(--violet, #9a6cff)',
+      desc: 'Permanent HP/MP/AP/DP/Speed upgrades, stacking forever at a rising price. Unlocked by clearing Arena 44.', hidden: true }
   ];
+
+  // Buildings actually shown right now — filters out `hidden` spots whose unlock check hasn't
+  // passed yet (currently only the Special Item Store). Used by both rendering and the
+  // walk-up-and-press-Enter proximity check so a hidden building can't be reached either way.
+  function wmapVisibleSpots(){
+    return WMAP_SPOTS.filter(function(s){
+      if (!s.hidden) return true;
+      return typeof specialStoreUnlocked === 'function' && specialStoreUnlocked();
+    });
+  }
 
   var wmapPos = { x: 12, y: 84 };  // where the avatar is standing (scene %); remembered between visits
   var wmapWalkTimer = null;        // pending "arrival" timer while a walk is in flight
@@ -74,6 +89,9 @@
     view.classList.add('active');
     wmapBindKeys();                          // free keyboard walking (item 10)
     if (typeof playMusic === 'function') playMusic('practice');
+    // One-time "Special Item Store is open!" celebration — fires exactly once, the first Earth
+    // Hub visit after Arena 44's boss falls (42-special-store.js). No-op every other visit.
+    if (typeof specialStoreMaybeAnnounce === 'function') specialStoreMaybeAnnounce();
   }
 
   // Header "Earth Hub" button: travel there WITH the worm-hole warp effect (openMapHub itself is
@@ -149,9 +167,9 @@
   }
 
   function wmapBuildingsHtml(){
-    return WMAP_SPOTS.map(function(s){
+    return wmapVisibleSpots().map(function(s){
       var badge = (s.id === 'wonder')
-        ? '<span class="wmap-badge" id="wmapWonderBadge">🎟️ ' + (state.wonderPasses || 0) + '</span>'
+        ? '<span class="wmap-badge" id="wmapWonderBadge" title="Wonderland Passes you have">🎟️ ' + (state.wonderPasses || 0) + '</span>'
         : '';
       return '<button type="button" class="wmap-building" data-id="' + s.id + '" style="left:' + s.x + '%;top:' + s.y +
         '%;--wmap-accent:' + s.accent + '" onclick="wmapGoTo(\'' + s.id + '\')" ' +
@@ -303,8 +321,9 @@
   // Highlight the nearest building door and toggle the "press Enter" hint.
   function wmapUpdateProximity(){
     var near = null, best = 8;               // within 8 grid units of a door
-    for (var i = 0; i < WMAP_SPOTS.length; i++){
-      var s = WMAP_SPOTS[i], ddx = s.x - wmapPos.x, ddy = (s.y + 10) - wmapPos.y;
+    var spots = wmapVisibleSpots();          // a hidden (not-yet-unlocked) building can't be walked up to either
+    for (var i = 0; i < spots.length; i++){
+      var s = spots[i], ddx = s.x - wmapPos.x, ddy = (s.y + 10) - wmapPos.y;
       var d = Math.sqrt(ddx * ddx + ddy * ddy);
       if (d < best){ best = d; near = s; }
     }
@@ -333,6 +352,7 @@
       case 'alchemy':  wmapOpenExternal('openAlchemy'); return;
       case 'trading':  wmapOpenExternal('openTrading'); return;
       case 'atlas':    wmapOpenExternal('openStarAtlas'); return;
+      case 'special':  wmapOpenExternal('openSpecialStore'); return;
     }
   }
 
@@ -385,13 +405,13 @@
       '<div class="wmap-hotel-emoji" aria-hidden="true">🏨</div>' +
       '<h3 class="wmap-hotel-title">Starlight Hotel</h3>' +
       '<p class="wmap-hotel-desc">A cozy night under the stars — wake up with full ❤️ HP and 💧 MP!</p>' +
-      '<div class="wmap-hotel-now">❤️ ' + state.playerHp + '/' + state.playerMaxHp +
+      '<div class="wmap-hotel-now" title="Your current HP, MP and Cash before sleeping">❤️ ' + state.playerHp + '/' + state.playerMaxHp +
         ' &nbsp;·&nbsp; 💧 ' + state.playerMp + '/' + state.playerMaxMp +
         ' &nbsp;·&nbsp; 💵 ' + (state.coins || 0) + '</div>' +
-      '<button type="button" class="btn btn-primary wmap-sleep-btn" onclick="wmapDoSleep()"' +
+      '<button type="button" class="btn btn-primary wmap-sleep-btn" title="Pay 💵 ' + cost + ' Cash to fully restore your HP & MP" onclick="wmapDoSleep()"' +
         ((full || broke) ? ' disabled' : '') + '>😴 Sleep — 💵 ' + cost + '</button>' +
       (reason ? '<div class="wmap-hotel-reason">' + reason + '</div>' : '') +
-      '<button type="button" class="btn btn-ghost wmap-hotel-leave" onclick="wmapCloseHotel()">🚪 Maybe later</button>';
+      '<button type="button" class="btn btn-ghost wmap-hotel-leave" title="Leave without sleeping — HP & MP stay as they are" onclick="wmapCloseHotel()">🚪 Maybe later</button>';
   }
 
   function wmapOpenHotel(){

@@ -616,6 +616,48 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #16 — Earth Hub tooltip audit + new Special Item Store (Odyssey Forge).**
+Player feedback: a screenshot of the Alchemy Lab showing zero tooltips anywhere, plus a request
+for a late-game "buy permanent stats" building gated behind Arena 44.
+- **Tooltip audit** — every Earth Hub page (Weapon Store shop section in `06-rpg-battle.js`, Item
+  Store, Farm, Laboratory/Alchemy, Trading Room, the map's building icons) had near-zero `title=`
+  coverage (the Alchemy Lab the user screenshotted had literally none). Ran a 6-file parallel
+  audit-and-fix pass (one agent per file, each independently verified by a second pass reading the
+  live diff) adding `title="..."` to every interactive element and info chip that lacked one, using
+  the existing tooltip voice (see index.html's header buttons for the established style). Because
+  `js/32-tooltip.js` already auto-upgrades any `title` into the game's nicer cursor-following
+  tooltip on first hover, this was purely additive — no new tooltip plumbing needed. Verified
+  live: Alchemy Lab 5/5 interactive elements now tooltipped (was 0), Weapon Store 38/39, Item
+  Store 9/9, Farm 12/12, Trading Room 10/10. All 6 files independently confirmed **zero logic/
+  structure changes** — attribute-only diffs.
+- **🏭 The Odyssey Forge (new "Special Item Store" building, `js/42-special-store.js`)** — hidden
+  on the Earth Hub map until `specialStoreUnlocked()` (`state.bossDefeated[44]` — clearing Arena
+  44's boss; admin/testMode sees it immediately). `wmapVisibleSpots()` (15-map.js) filters
+  `WMAP_SPOTS` so the building doesn't exist in the DOM at all pre-unlock, not just rendered
+  disabled. Sells 5 machines, one per core stat (❤️ Vitality Chamber/HP, 💧 Mana Reactor/MP,
+  ⚔️ Power Amplifier/AP, 🛡️ Aegis Forge/DP, 💨 Velocity Core/Speed); each purchase grants the same
+  flat bonus as ONE hero level (+20 HP / +10 MP / +2 AP / +1 DP / +1 SPD — mirrors `heroStatBonus`/
+  `addHeroXp` exactly, so the tooltip's claim stays true if that formula changes), stacks
+  indefinitely up to `SPECIAL_STORE_MAX_PURCHASES = 999` per stat, at `10000 + 1000×purchases`
+  Cash (rises forever, no purchase-count discount). AP/DP/Speed bonuses are read live via
+  `specialStoreBonus(id)`, an additive term added to `getPlayerAp()`/`getPlayerDp()`
+  (06-rpg-battle.js) and `getPlayerSpeed()` (21-catalogue.js) — same pattern as the existing
+  `socketBonusTotal`, so a purchase is felt in combat immediately. HP/MP have no such "effective
+  stat" layer in this codebase (combat reads `state.playerMaxHp`/`playerMaxMp` directly, and
+  `getEffectiveMaxHp()` is dead code only read by the profile display — pre-existing, NOT touched
+  here), so those two machines bump the base stat directly, exactly like a hero level-up.
+  State persists via `state.specialStore = {hp,mp,ap,dp,spd}` (purchase counts) +
+  `state.specialStoreAnnounced` (save/load/reset wired in 01-data.js + 03-save.js).
+- **First-visit congratulations** — `specialStoreMaybeAnnounce()` fires from `openMapHub()`
+  exactly once, the first Earth Hub visit after Arena 44 falls: a big violet-themed overlay
+  (reuses the shared `.gameover-overlay`/`.gameover-card` modal shell — see the "Boss Gate Open!"
+  notice for the same pattern) + a confetti burst, latched off by `specialStoreAnnounced`.
+- Verified live end-to-end: building invisible before unlock → appears + congrats modal fires
+  exactly once after `state.bossDefeated[44]=true` → real-click purchase (Aegis Forge) correctly
+  charged 💵10000 and raised live DP by 1 → cost ladder confirmed (2nd AP purchase costs +1000) →
+  cap (999) and insufficient-funds both correctly reject without mutating state.
+- Cache token bumped `20260718i → 20260718j`.
+
 **2026-07-18 batch #14 — puzzle trio harder + "no pre-solved" rule + icy Glacier look; Block Forge
 full-block drop preview; Bubble Blast more gremlins.** Player feedback on three screenshots.
 - **📦 Cargo Bay & ❄️ Glacier Push — no crate/cube may START on its target ring** (`_skGenerateOne`,

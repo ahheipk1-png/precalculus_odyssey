@@ -112,7 +112,8 @@
     var base = s ? effectiveGearStat(s.speed, s.upgradeLvl) : 0;
     var w = findGear(state.weapons || [], state.equippedWeapon);
     var hero = (typeof heroStatBonus === 'function') ? heroStatBonus('speed') : 0;
-    return base + hero + (w && w.speed ? Math.round(w.speed / 2) : 0) + socketBonusTotal('speed');
+    var specialBonus = (typeof specialStoreBonus === 'function') ? specialStoreBonus('spd') : 0;
+    return base + hero + (w && w.speed ? Math.round(w.speed / 2) : 0) + socketBonusTotal('speed') + specialBonus;
   }
   function getArmorDefense(){ var a = getEquippedArmor(); return a ? effectiveGearStat(a.defense, a.upgradeLvl) : 0; }
   function getArmorHpBonus(){ var a = getEquippedArmor(); return a ? effectiveGearStat(a.hp || 0, a.upgradeLvl) : 0; }

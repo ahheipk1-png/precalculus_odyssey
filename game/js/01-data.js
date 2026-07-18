@@ -70,7 +70,11 @@
     armor:   ARMOR.map(function(g){ return Object.assign({}, g); }),
     shoes:   SHOES.map(function(g){ return Object.assign({}, g); }),
     defeatedMonsters: {},
-    trophies: []
+    trophies: [],
+    // Special Item Store (unlocks after clearing Arena 44 — see js/42-special-store.js): purchase
+    // counts per stat machine (hp/mp/ap/dp/spd), each capped at SPECIAL_STORE_MAX_PURCHASES.
+    specialStore: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 },
+    specialStoreAnnounced: false   // has the one-time "Special Item Store is open!" modal fired yet
   };
   // levelTitles, formulaBank, sceneCaptions \u2192 game/config/rooms.config.js (loaded first).
   // The `chapters` registry \u2192 game/config/worlds.config.js. The chapter room-range

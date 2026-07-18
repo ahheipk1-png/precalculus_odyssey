@@ -58,7 +58,7 @@
     if (!arr || arr.length < 2) return '';
     var w = 120, h = 30, min = Math.min.apply(null, arr), max = Math.max.apply(null, arr), rng = (max - min) || 1;
     var pts = arr.map(function(v, i){ return (i / (arr.length - 1) * w).toFixed(1) + ',' + (h - (v - min) / rng * h).toFixed(1); }).join(' ');
-    return '<svg class="tr-spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2"/></svg>';
+    return '<svg class="tr-spark" title="Price trend over the last ' + arr.length + ' refreshes" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2"/></svg>';
   }
 
   function _tradeRow(g){
@@ -69,13 +69,13 @@
     var have = (state.currencies && state.currencies[g]) || 0;
     return '<div class="tr-row">' +
       '<div class="tr-good">' + meta.icon + ' <b>' + meta.name + '</b><span class="tr-have">you hold ' + have + '</span></div>' +
-      '<div class="tr-price">💵 ' + price + ' <span class="tr-chg ' + chgCls + '">' + (chg >= 0 ? '▲' : '▼') + ' ' + Math.abs(chgPct) + '%</span></div>' +
+      '<div class="tr-price" title="Current ' + meta.name + ' price, in Cash per unit">💵 ' + price + ' <span class="tr-chg ' + chgCls + '" title="Price change since the last refresh">' + (chg >= 0 ? '▲' : '▼') + ' ' + Math.abs(chgPct) + '%</span></div>' +
       _spark(hist, chg >= 0 ? '#57b45a' : '#f0705e') +
       '<div class="tr-actions">' +
-        '<button class="shop-btn shop-btn-buy" onclick="tradeBuy(\'' + g + '\',1)">Buy 1</button>' +
-        '<button class="shop-btn shop-btn-buy" onclick="tradeBuy(\'' + g + '\',5)">Buy 5</button>' +
-        '<button class="shop-btn shop-btn-sell" onclick="tradeSell(\'' + g + '\',1)">Sell 1</button>' +
-        '<button class="shop-btn shop-btn-sell" onclick="tradeSell(\'' + g + '\',5)">Sell 5</button>' +
+        '<button class="shop-btn shop-btn-buy" onclick="tradeBuy(\'' + g + '\',1)" title="Buy 1 ' + meta.name + ' at today\'s market price">Buy 1</button>' +
+        '<button class="shop-btn shop-btn-buy" onclick="tradeBuy(\'' + g + '\',5)" title="Buy 5 ' + meta.name + ' at today\'s market price">Buy 5</button>' +
+        '<button class="shop-btn shop-btn-sell" onclick="tradeSell(\'' + g + '\',1)" title="Sell 1 ' + meta.name + ' at today\'s market price">Sell 1</button>' +
+        '<button class="shop-btn shop-btn-sell" onclick="tradeSell(\'' + g + '\',5)" title="Sell 5 ' + meta.name + ' at today\'s market price">Sell 5</button>' +
       '</div></div>';
   }
 
@@ -92,20 +92,20 @@
         }).join('') + '</div>';
       } else {
         body = '<div class="tr-review-answer">' +
-          '<input type="text" inputmode="numeric" id="trReviewInput" class="number-input" placeholder="?" autocomplete="off" onkeydown="if(event.key===\'Enter\')tradeSubmitReview()" />' +
-          '<button class="btn btn-primary" onclick="tradeSubmitReview()">Submit &amp; Refresh</button></div>';
+          '<input type="text" inputmode="numeric" id="trReviewInput" class="number-input" placeholder="?" autocomplete="off" title="Type your numeric answer" onkeydown="if(event.key===\'Enter\')tradeSubmitReview()" />' +
+          '<button class="btn btn-primary" onclick="tradeSubmitReview()" title="Submit your answer — correct shifts Gold & Silver prices, wrong leaves them unchanged">Submit &amp; Refresh</button></div>';
       }
       reviewHtml = '<div class="tr-review"><p class="tr-review-q">📈 Solve to move the market:</p>' + src +
         '<div class="tr-review-prompt">' + _trReview.prompt + '</div>' + body + '</div>';
     } else {
-      reviewHtml = '<div class="tr-review"><button class="btn btn-primary" onclick="tradeAskReview()">📈 Refresh Prices (solve a problem)</button></div>';
+      reviewHtml = '<div class="tr-review"><button class="btn btn-primary" onclick="tradeAskReview()" title="Answer a review question correctly to shift Gold & Silver prices">📈 Refresh Prices (solve a problem)</button></div>';
     }
     var txHtml = _trTx.length
       ? _trTx.slice(-6).reverse().map(function(t){ return '<div class="tr-tx">' + t + '</div>'; }).join('')
       : '<div class="tr-tx tr-tx-empty">No trades yet.</div>';
     tv.innerHTML =
       '<div class="rpg-header"><h2 class="rpg-title">🔄 Trading Room</h2>' +
-      '<button class="btn btn-ghost" onclick="closeTrading()">← Back to Earth</button></div>' +
+      '<button class="btn btn-ghost" onclick="closeTrading()" title="Back to Earth Hub — leave the Trading Room and return to the map">← Back to Earth</button></div>' +
       '<div class="currency-bar" id="trCurBar"></div>' +
       '<p class="tr-intro">Gold & Silver prices drift with the market. Buy low, sell high — for Cash 💵.</p>' +
       _tradeRow('gold') + _tradeRow('silver') +

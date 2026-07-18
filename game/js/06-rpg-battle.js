@@ -10,13 +10,15 @@
   function getPlayerAp() {
     var w = state.weapons.find(function(x){ return x.id === state.equippedWeapon; }) || state.weapons[0];
     var base = effectiveGearStat(w.power, w.upgradeLvl);   // base × ×2/×3/×5 upgrade multiplier
-    return base + heroStatBonus('power') + (typeof socketBonusTotal === 'function' ? socketBonusTotal('power') : 0);
+    return base + heroStatBonus('power') + (typeof socketBonusTotal === 'function' ? socketBonusTotal('power') : 0) +
+      (typeof specialStoreBonus === 'function' ? specialStoreBonus('ap') : 0);
   }
   function getPlayerDp() {
     var s = state.shields.find(function(x){ return x.id === state.equippedShield; }) || state.shields[0];
     var base = effectiveGearStat(s.defense, s.upgradeLvl);
     var armor = (typeof getArmorDefense === 'function') ? getArmorDefense() : 0;
-    return base + armor + heroStatBonus('defense') + (typeof socketBonusTotal === 'function' ? socketBonusTotal('defense') : 0);
+    return base + armor + heroStatBonus('defense') + (typeof socketBonusTotal === 'function' ? socketBonusTotal('defense') : 0) +
+      (typeof specialStoreBonus === 'function' ? specialStoreBonus('dp') : 0);
   }
   // Equipped weapon's Wu Xing element (used for combat matchups).
   function getPlayerElement() {
@@ -91,28 +93,30 @@
       var upgCost = getUpgradeCost(item);
       var a = '';
       if (equipped) {
-        a += '<button class="shop-btn shop-btn-equip" disabled>Equipped</button>';
-        if (item.cost > 0) a += '<button class="shop-btn shop-btn-sell" onclick="window.rpgActions.sell(\'' + type + '\',\'' + item.id + '\')">Resell: ' + getItemSellValue(item) + ' 💵</button>';
+        a += '<button class="shop-btn shop-btn-equip" disabled title="Already equipped and in use">Equipped</button>';
+        if (item.cost > 0) a += '<button class="shop-btn shop-btn-sell" title="Sell back for coins — resets upgrades to +0" onclick="window.rpgActions.sell(\'' + type + '\',\'' + item.id + '\')">Resell: ' + getItemSellValue(item) + ' 💵</button>';
       } else if (item.owned) {
-        a += '<button class="shop-btn shop-btn-equip" onclick="window.rpgActions.equip(\'' + type + '\',\'' + item.id + '\')">Equip</button>';
-        if (item.cost > 0) a += '<button class="shop-btn shop-btn-sell" onclick="window.rpgActions.sell(\'' + type + '\',\'' + item.id + '\')">Resell: ' + getItemSellValue(item) + ' 💵</button>';
+        a += '<button class="shop-btn shop-btn-equip" title="Make this your active gear" onclick="window.rpgActions.equip(\'' + type + '\',\'' + item.id + '\')">Equip</button>';
+        if (item.cost > 0) a += '<button class="shop-btn shop-btn-sell" title="Sell back for coins — resets upgrades to +0" onclick="window.rpgActions.sell(\'' + type + '\',\'' + item.id + '\')">Resell: ' + getItemSellValue(item) + ' 💵</button>';
       } else {
-        a += '<button class="shop-btn shop-btn-buy" onclick="window.rpgActions.buy(\'' + type + '\',\'' + item.id + '\')">Buy: ' + item.cost + ' 💵</button>';
+        a += '<button class="shop-btn shop-btn-buy" title="Purchase and automatically equip this item" onclick="window.rpgActions.buy(\'' + type + '\',\'' + item.id + '\')">Buy: ' + item.cost + ' 💵</button>';
       }
       if (item.owned) {
         a += (item.upgradeLvl >= maxUpgradeLevel)
-          ? '<button class="shop-btn shop-btn-upgrade" disabled>Max +3</button>'
-          : '<button class="shop-btn shop-btn-upgrade" onclick="window.rpgActions.upgrade(\'' + type + '\',\'' + item.id + '\')">Upgrade: ' + upgCost + ' 💵</button>';
+          ? '<button class="shop-btn shop-btn-upgrade" disabled title="Fully upgraded — no further upgrades possible">Max +3</button>'
+          : '<button class="shop-btn shop-btn-upgrade" title="Spend coins and AI chips for a stat boost" onclick="window.rpgActions.upgrade(\'' + type + '\',\'' + item.id + '\')">Upgrade: ' + upgCost + ' 💵</button>';
       }
       var elIcon = (typeof elementIcon === 'function') ? elementIcon(item.element) : '';
+      var elName = (typeof ELEMENTS === 'object' && ELEMENTS[item.element]) ? ELEMENTS[item.element].name : (item.element || '');
       var rar = (typeof rarityLabel === 'function') ? rarityLabel(item) : '';
       var sockets = item.chipSlots ? ('<span class="gear-sockets" title="AI-chip sockets">' + new Array(item.chipSlots + 1).join('◈') + '</span>') : '';
+      var statDesc = { AP: 'Attack Power — damage dealt in combat', DP: 'Defense Power — damage blocked in combat', DEF: 'Defense — extra damage reduction', SPD: 'Speed — determines turn order in battle' };
       div.innerHTML =
         '<div class="shop-item-art">' + ((typeof gearArtSVG === 'function') ? gearArtSVG(item, type) : '') + '</div>' +
         '<div class="shop-item-info">' +
-          '<span class="shop-item-name">' + item.name + (item.upgradeLvl > 0 ? (' +' + item.upgradeLvl) : '') + ' <span class="gear-el">' + elIcon + '</span></span>' +
-          '<span class="gear-rarity">' + rar + ' ' + sockets + '</span>' +
-          '<span class="shop-item-stat">' + g.label + ': ' + g.stat(item) + '</span>' +
+          '<span class="shop-item-name">' + item.name + (item.upgradeLvl > 0 ? (' +' + item.upgradeLvl) : '') + ' <span class="gear-el" title="Element: ' + elName + ' — affects combat matchups">' + elIcon + '</span></span>' +
+          '<span class="gear-rarity" title="Item rarity — higher tiers boost stats and looks">' + rar + ' ' + sockets + '</span>' +
+          '<span class="shop-item-stat" title="' + (statDesc[g.label] || g.label) + '">' + g.label + ': ' + g.stat(item) + '</span>' +
           '<span class="shop-upgrade-hint">' + getUpgradeHint(type, item) + '</span>' +
         '</div>' +
         '<div class="shop-item-actions">' + a + '</div>';

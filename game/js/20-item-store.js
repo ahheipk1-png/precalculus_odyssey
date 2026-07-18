@@ -109,7 +109,7 @@
     view.innerHTML =
       '<div class="istr-wrap">' +
         '<div class="istr-header">' +
-          '<button class="btn btn-ghost istr-back" onclick="closeItemStore()">← Back to Earth</button>' +
+          '<button class="btn btn-ghost istr-back" onclick="closeItemStore()" title="Back to Earth Hub — return to the map">← Back to Earth</button>' +
           '<h2 class="istr-title">🎒 Trader Nova’s Supplies</h2>' +
           '<p class="istr-tagline">“Potions, herbs and stardust — everything a space explorer needs!”</p>' +
           '<span class="istr-cash-chip" title="Your Cash">💵 ' + state.coins + '</span>' +
@@ -131,14 +131,14 @@
       var short = it.price - state.coins;
       return (
         '<div class="istr-card">' +
-          (owned > 0 ? '<span class="istr-owned">x' + owned + '</span>' : '') +
+          (owned > 0 ? '<span class="istr-owned" title="How many you own">x' + owned + '</span>' : '') +
           '<span class="istr-icon">' + it.icon + '</span>' +
           '<span class="istr-name">' + it.name + '</span>' +
           '<span class="istr-desc">' + it.desc + '</span>' +
           '<div class="istr-buy-row">' +
             '<button class="btn btn-primary istr-buy" onclick="istrBuyClick(\'' + id + '\',1)"' +
-              (canBuy1 ? '' : ' disabled') + '>Buy 💵' + it.price + '</button>' +
-            (canBuy5 ? '<button class="btn btn-ghost istr-buy5" onclick="istrBuyClick(\'' + id + '\',5)">×5 💵' + (it.price * 5) + '</button>' : '') +
+              (canBuy1 ? '' : ' disabled') + ' title="' + (canBuy1 ? ('Buy 1× ' + it.name + ' for 💵' + it.price) : ('Not enough Cash — need 💵' + short + ' more')) + '">Buy 💵' + it.price + '</button>' +
+            (canBuy5 ? '<button class="btn btn-ghost istr-buy5" onclick="istrBuyClick(\'' + id + '\',5)" title="Buy 5× ' + it.name + ' for 💵' + (it.price * 5) + '">×5 💵' + (it.price * 5) + '</button>' : '') +
           '</div>' +
           (canBuy1 ? '' : '<span class="istr-short">Need 💵' + short + ' more!</span>') +
         '</div>'
@@ -154,16 +154,16 @@
       var owned = (typeof countItem === 'function') ? countItem(id) : (state.inventory[id] || 0);
       var action;
       if (id === 'feed' || id === 'fertilizer') {
-        action = '<span class="istr-note">Used at the Farm 🌾</span>';
+        action = '<span class="istr-note" title="Not used from here — bring it up at the Farm\'s market instead">Used at the Farm 🌾</span>';
       } else if (id === 'poison_vial' && state.poisonArmed) {
-        action = '<span class="istr-note istr-armed">☠️ prepared for next battle</span>';
+        action = '<span class="istr-note istr-armed" title="Will douse the next monster you fight in acid">☠️ prepared for next battle</span>';
       } else {
-        action = '<button class="btn btn-ghost istr-use" onclick="istrUseClick(\'' + id + '\')">Use</button>';
+        action = '<button class="btn btn-ghost istr-use" onclick="istrUseClick(\'' + id + '\')" title="' + it.desc + '">Use</button>';
       }
       return (
         '<div class="istr-pack-row">' +
           '<span class="istr-pack-icon">' + it.icon + '</span>' +
-          '<span class="istr-pack-name">' + it.name + ' <b class="istr-pack-count">x' + owned + '</b></span>' +
+          '<span class="istr-pack-name">' + it.name + ' <b class="istr-pack-count" title="How many you own">x' + owned + '</b></span>' +
           action +
         '</div>'
       );

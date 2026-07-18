@@ -334,18 +334,18 @@
     var cap = farmAnimalCapacity();
 
     var marketBtn = farmMarketOpen
-      ? '<button class="btn btn-primary farm-market-btn" onclick="farmGoMarket(false)">🌱 Back to Farm</button>'
-      : '<button class="btn btn-primary farm-market-btn" onclick="farmGoMarket(true)">🛒 Go to Market</button>';
+      ? '<button class="btn btn-primary farm-market-btn" onclick="farmGoMarket(false)" title="Back to Farm — return to your crops and animals">🌱 Back to Farm</button>'
+      : '<button class="btn btn-primary farm-market-btn" onclick="farmGoMarket(true)" title="Go to Market — buy seeds, animals, feed and fertilizer">🛒 Go to Market</button>';
 
     var html =
       '<div class="farm-wrap">' +
         '<div class="farm-topbar">' +
-          '<button class="btn btn-ghost farm-back-btn" onclick="closeFarm()">← Back to Earth</button>' +
+          '<button class="btn btn-ghost farm-back-btn" onclick="closeFarm()" title="Back to Earth — leave the farm and return to the hub">← Back to Earth</button>' +
           '<h2 class="farm-title">' + (farmMarketOpen ? '🛒 Farmers’ Market' : '🌾 Odyssey Farm') + '</h2>' +
           marketBtn +
         '</div>' +
         '<div class="farm-strip">' +
-          '<span class="farm-chip farm-chip-cash">💵 ' + state.coins + '</span>' +
+          '<span class="farm-chip farm-chip-cash" title="Cash — spend at the market on seeds, animals and supplies">💵 ' + state.coins + '</span>' +
           '<span class="farm-chip" title="Animal Feed">🌾 ' + farmCountItem('feed') + ' feed</span>' +
           '<span class="farm-chip" title="Fertilizer">🪴 ' + farmCountItem('fertilizer') + ' fertilizer</span>' +
           '<span class="farm-chip" title="Plots in use">🟫 ' + farmUsedPlots() + '/' + f.plotCount + ' plots</span>' +
@@ -381,14 +381,14 @@
     out += '</div>';
 
     // Animals
-    out += '<h3 class="farm-h">🏠 Animals <span class="farm-h-sub">' + f.animals.length + '/' + farmAnimalCapacity() + ' stalls</span></h3>';
+    out += '<h3 class="farm-h">🏠 Animals <span class="farm-h-sub" title="Animal stalls filled out of total capacity">' + f.animals.length + '/' + farmAnimalCapacity() + ' stalls</span></h3>';
     out += '<div class="farm-grid">';
     f.animals.forEach(function(a, i){ out += farmRenderAnimalCard(a, i); });
     for (var s = f.animals.length; s < farmAnimalCapacity(); s++){
       out += '<div class="farm-card farm-empty">' +
                '<div class="farm-card-icon">🏠</div>' +
                '<div class="farm-card-name">Empty Stall</div>' +
-               '<button class="btn btn-ghost farm-mini" onclick="farmGoMarket(true)">🛒 Buy animals</button>' +
+               '<button class="btn btn-ghost farm-mini" onclick="farmGoMarket(true)" title="Open the market to buy a young animal for this stall">🛒 Buy animals</button>' +
              '</div>';
     }
     out += '</div>';
@@ -402,7 +402,7 @@
       return '<div class="farm-card farm-empty">' +
                '<div class="farm-card-icon">🟫</div>' +
                '<div class="farm-card-name">Empty Plot</div>' +
-               '<button class="btn btn-ghost farm-mini" onclick="farmGoMarket(true)">🛒 Buy seeds</button>' +
+               '<button class="btn btn-ghost farm-mini" onclick="farmGoMarket(true)" title="Open the market to plant a seed in this plot">🛒 Buy seeds</button>' +
              '</div>';
     }
     var crop = FARM_CROPS[plot.crop] || { name: plot.crop, icon: '🌿', sell: 0 };
@@ -413,7 +413,7 @@
                '<div class="farm-card-icon">' + crop.icon + '</div>' +
                '<div class="farm-card-name">' + crop.name + '</div>' +
                '<div class="farm-status farm-status-ready">Ready to harvest!</div>' +
-               '<button class="btn btn-primary farm-mini" onclick="farmHarvest(' + i + ')">Harvest +' + crop.sell + ' 💵</button>' +
+               '<button class="btn btn-primary farm-mini" onclick="farmHarvest(' + i + ')" title="Harvest — sell this crop and empty the plot">Harvest +' + crop.sell + ' 💵</button>' +
              '</div>';
     }
 
@@ -423,7 +423,7 @@
     if (plot.fert) {
       fertBit = '<div class="farm-fert-tag">🪴 fertilized</div>';
     } else if (farmCountItem('fertilizer') > 0) {
-      fertBit = '<button class="btn btn-ghost farm-mini" onclick="farmFertilize(' + i + ')">🪴 Fertilize (faster!)</button>';
+      fertBit = '<button class="btn btn-ghost farm-mini" onclick="farmFertilize(' + i + ')" title="Fertilize — speeds up this crop, ripening in ' + FARM_FERT_SOLVES + ' solves instead of ' + FARM_SLOW_SOLVES + '">🪴 Fertilize (faster!)</button>';
     } else {
       fertBit = '<button class="btn btn-ghost farm-mini" disabled title="Buy fertilizer at the market">🪴 Fertilize</button>' +
                 '<div class="farm-why">No fertilizer — get some at the market</div>';
@@ -446,7 +446,7 @@
                '<div class="farm-card-icon">' + info.icon + '</div>' +
                '<div class="farm-card-name">' + info.name + '</div>' +
                '<div class="farm-status farm-status-ready">All grown up!</div>' +
-               '<button class="btn btn-primary farm-mini" onclick="farmSellAnimal(' + i + ')">Sell +' + info.sell + ' 💵</button>' +
+               '<button class="btn btn-primary farm-mini" onclick="farmSellAnimal(' + i + ')" title="Sell — trade this grown animal for Cash and free the stall">Sell +' + info.sell + ' 💵</button>' +
              '</div>';
     }
     if (p.hungry) {
@@ -455,7 +455,7 @@
                '<div class="farm-card-icon">' + info.icon + '</div>' +
                '<div class="farm-card-name">Young ' + info.name + '</div>' +
                '<div class="farm-status farm-status-hungry">Hungry! 🍽️</div>' +
-               '<button class="btn btn-primary farm-mini"' + (canFeed ? '' : ' disabled title="Buy Animal Feed at the market"') +
+               '<button class="btn btn-primary farm-mini"' + (canFeed ? ' title="Feed this animal so it can start growing up"' : ' disabled title="Buy Animal Feed at the market"') +
                  ' onclick="farmFeed(' + i + ')">🌾 Feed</button>' +
                (canFeed ? '' : '<div class="farm-why">No feed — get some at the market</div>') +
              '</div>';
@@ -472,11 +472,12 @@
   // Every card is a farmBuy() button; when a purchase is impossible the button is
   // disabled AND a one-line reason is shown (kids shouldn't have to guess).
   function farmMarketCard(icon, name, sub, priceLabel, onclickStr, reason){
+    var btnTitle = reason ? reason : (name + ' — ' + sub);
     return '<div class="farm-card farm-shopcard' + (reason ? ' farm-cant' : '') + '">' +
              '<div class="farm-card-icon">' + icon + '</div>' +
              '<div class="farm-card-name">' + name + '</div>' +
              '<div class="farm-card-sub">' + sub + '</div>' +
-             '<button class="btn btn-primary farm-mini"' + (reason ? ' disabled' : '') + ' onclick="' + onclickStr + '">' + priceLabel + '</button>' +
+             '<button class="btn btn-primary farm-mini"' + (reason ? ' disabled' : '') + ' title="' + btnTitle + '" onclick="' + onclickStr + '">' + priceLabel + '</button>' +
              (reason ? '<div class="farm-why">' + reason + '</div>' : '') +
            '</div>';
   }

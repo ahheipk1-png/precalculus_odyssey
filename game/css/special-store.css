@@ -1,0 +1,36 @@
+/* ---------- Special Item Store 🏭 (The Odyssey Forge) ----------
+   Builds on item-store.css's istr- layout (same shelf/card structure — reused, not duplicated)
+   and adds only what's genuinely different: a violet "prestige" theme (sstr- prefix) marking
+   this as the late-game, high-value building it is. */
+
+.sstr-title{ color: var(--violet, #9a6cff); text-shadow: 0 0 14px rgba(154,108,255,0.35); }
+
+.sstr-card{
+  border-color: rgba(154,108,255,0.25);
+  background: linear-gradient(160deg, rgba(154,108,255,0.07), rgba(244,241,232,0.05));
+}
+.sstr-card:hover{ border-color: var(--violet, #9a6cff); }
+
+.sstr-count{
+  background: var(--violet, #9a6cff);
+}
+
+/* First-visit congratulations overlay (specialStoreMaybeAnnounce, 42-special-store.js) — reuses
+   the shared .gameover-overlay/.gameover-card modal shell, themed violet + a slightly bigger,
+   glowing emoji so it reads as a genuine milestone, not a routine toast. */
+.sstr-announce-card{
+  border: 2px solid var(--violet, #9a6cff);
+  box-shadow: 0 0 32px rgba(154,108,255,0.4), 0 0 70px rgba(154,108,255,0.18);
+}
+.sstr-announce-emoji{ font-size: 64px; filter: drop-shadow(0 0 12px rgba(154,108,255,0.6)); }
+.sstr-announce-title{
+  color: var(--violet, #9a6cff);
+  font-size: 30px;
+  text-shadow: 0 0 16px rgba(154,108,255,0.5);
+}
+.sstr-announce-text b{ color: var(--violet, #9a6cff); }
+
+@media (max-width: 640px){
+  .sstr-announce-emoji{ font-size: 48px; }
+  .sstr-announce-title{ font-size: 24px; }
+}

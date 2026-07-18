@@ -91,6 +91,8 @@
       bossDefeated: state.bossDefeated,
       perfectArenas: state.perfectArenas,
       trophies: state.trophies,
+      specialStore: state.specialStore,
+      specialStoreAnnounced: state.specialStoreAnnounced,
       savedAt: Date.now()
     };
   }
@@ -196,6 +198,11 @@
     state.arenaStats = (snap.arenaStats && typeof snap.arenaStats === 'object') ? snap.arenaStats : {};
     state.bossDefeated = snap.bossDefeated || {};
     state.perfectArenas = (snap.perfectArenas && typeof snap.perfectArenas === 'object') ? snap.perfectArenas : {};
+    state.specialStore = (snap.specialStore && typeof snap.specialStore === 'object')
+      ? { hp: snap.specialStore.hp || 0, mp: snap.specialStore.mp || 0, ap: snap.specialStore.ap || 0,
+          dp: snap.specialStore.dp || 0, spd: snap.specialStore.spd || 0 }
+      : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+    state.specialStoreAnnounced = !!snap.specialStoreAnnounced;
     // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
     // the Boss Gate button is re-derived from levelSolves/bossDefeated in updatePanelVisibility.
     state.bossGateUnlocked = false;
@@ -243,6 +250,8 @@
     state.playerMp = 20;
     state.defeatedMonsters = {};
     state.trophies = [];
+    state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+    state.specialStoreAnnounced = false;
     if (el.trophiesPanel) el.trophiesPanel.style.display = 'none';
     state.weapons = reconcileGear(WEAPONS, null);
     state.shields = reconcileGear(SHIELDS, null);
