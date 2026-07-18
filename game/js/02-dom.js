@@ -87,6 +87,7 @@
     combatLog: document.getElementById('combatLog'),
     startCombatBtn: document.getElementById('startCombatBtn'),
     combatEscapeBtn: document.getElementById('combatEscapeBtn'),
+    gauntletLockNote: document.getElementById('gauntletLockNote'),
     postCombatBtn: document.getElementById('postCombatBtn'),
     keepFightingBtn: document.getElementById('keepFightingBtn'),
     arenaAdvanceRow: document.getElementById('arenaAdvanceRow'),

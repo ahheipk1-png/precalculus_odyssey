@@ -98,6 +98,15 @@ playthrough (real `startCombatBtn`/`postCombatBtn` clicks, not just `handleBattl
 directly) after the user reported not seeing it — confirmed it still renders correctly; likely a
 stale cache on their end, not a regression.
 
+**Follow-up (2026-07-18, missing-Escape confusion):** removing the card's "No retreat" warning
+(previous entry) left a real UX gap — the user asked "why no escape button" mid-fight, since
+nothing in the combat screen itself explains why `combatEscapeBtn` is hidden during a gauntlet.
+Added a small inline note (`#gauntletLockNote` in `index.html`, mapped in `02-dom.js`, toggled in
+`startCombat` alongside the Escape-button visibility) directly under the Cast&Strike/Spell buttons:
+"🔒 Gauntlet fight — no Escape until the whole chain is cleared" — hidden for solo fights, shown
+only when `activeCombat.gauntletLocked`. Verified live: hidden + Escape visible for the solo Easy
+fight, visible + correct text for a 2-Boss Gauntlet fight, no console errors.
+
 ## Hero & stats
 
 `state.heroLvl / heroXp / playerHp / playerMaxHp / playerMp / playerMaxMp`. XP curve

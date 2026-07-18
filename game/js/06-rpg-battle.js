@@ -709,6 +709,10 @@
       el.combatEscapeBtn.style.display = activeCombat.gauntletLocked ? 'none' : 'inline-block';
       el.combatEscapeBtn.disabled = false;
     }
+    // Small inline note explaining WHY Escape is missing — the card's own "No retreat" warning
+    // was removed per user feedback (too cluttered), so without this the missing button reads as
+    // a bug rather than the intended gauntlet rule.
+    if (el.gauntletLockNote) el.gauntletLockNote.hidden = !activeCombat.gauntletLocked;
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
     el.postCombatBtn.style.display = 'none';
     el.battleFleeBtn.hidden = true;
