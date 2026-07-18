@@ -204,21 +204,22 @@
 
   // ---------- Shared pass economy: every game room costs 1 Wonderland Pass to enter ----------
   function wonderPassCount(){ return (typeof state === 'object' && state) ? (state.wonderPasses || 0) : 0; }
-  function wonderSpendPass(){
-    if (wonderPassCount() < 1){
-      if (typeof showToast === 'function') showToast('You need a Wonderland Pass! 🎟️ Earn some in the planet arenas or Arena Infinity.');
+  function wonderSpendPass(n){
+    n = n || 1;
+    if (wonderPassCount() < n){
+      if (typeof showToast === 'function') showToast('You need ' + n + ' Wonderland Pass' + (n > 1 ? 'es' : '') + '! 🎟️ Earn some in the planet arenas or Arena Infinity.');
       if (typeof playSfx === 'function') playSfx('wrong');
       return false;
     }
-    state.wonderPasses = wonderPassCount() - 1;
+    state.wonderPasses = wonderPassCount() - n;
     if (typeof updateStats === 'function') updateStats();   // HUD + autosave
     return true;
   }
   // Charge a pass, then launch the named global. Non-gambling games route through this via their
   // own welcome screen's Play button (see gameWelcome()) rather than straight from the lobby card,
   // so browsing a game's leaderboard is always free — only clicking Play spends a pass.
-  function wonderPlay(launchName){
-    if (!wonderSpendPass()) return;
+  function wonderPlay(launchName, cost){
+    if (!wonderSpendPass(cost || 1)) return;
     var fn = window[launchName];
     if (typeof fn === 'function') fn();
     if (typeof playSfx === 'function') playSfx('ui-click');
@@ -228,10 +229,12 @@
   // gambling=true keeps the old direct-charge behavior (Star Slots, Pop-a-Tic-Tac-Toe — entering
   // IS the "play"). Every other game is free to browse: launcher is that game's own welcome
   // screen (gameWelcome-based); the pass is only spent when the player clicks Play there.
-  function _wondCard(icon, name, desc, launcher, gambling){
+  function _wondCard(icon, name, desc, launcher, gambling, cost){
+    cost = cost || 1;
+    var tag = '(' + cost + ' 🎟️)';
     var btn = gambling
-      ? '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'' + launcher + '\')" data-tooltip="' + name + ' — costs 1 Wonderland Pass.">Play! (1 🎟️)</button>'
-      : '<button type="button" class="btn btn-primary wond-play" onclick="' + launcher + '()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>';
+      ? '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'' + launcher + '\',' + cost + ')" data-tooltip="' + name + ' — costs ' + cost + ' Wonderland Pass' + (cost > 1 ? 'es' : '') + '.">Play! ' + tag + '</button>'
+      : '<button type="button" class="btn btn-primary wond-play" onclick="' + launcher + '()" data-tooltip="View the leaderboard — Play there costs ' + cost + ' Wonderland Pass' + (cost > 1 ? 'es' : '') + '.">View / Play ' + tag + '</button>';
     return '<div class="wond-card">' +
       '<div class="wond-card-icon">' + icon + '</div>' +
       '<div class="wond-card-name">' + name + '</div>' +
@@ -248,7 +251,7 @@
         '<div class="wond-card-icon">🎣</div>' +
         '<div class="wond-card-name">Gone Fishin’</div>' +
         '<div class="wond-card-desc">Catch only the fish whose number matches the rule! ' + (typeof FISH_MAX_LEVEL !== 'undefined' ? FISH_MAX_LEVEL : 5) + ' levels, rising difficulty.</div>' +
-        '<button type="button" class="btn btn-primary wond-play" onclick="openFishin()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button></div>';
+        '<button type="button" class="btn btn-primary wond-play" onclick="openFishin()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button></div>';
     var locked = carnival;
     return '' +
       '<div class="wond-board">' +
@@ -272,27 +275,27 @@
             '<div class="wond-card-icon">🎲</div>' +
             '<div class="wond-card-name">Hoo Hey How</div>' +
             '<div class="wond-card-desc">Bet Cash on lucky symbols and roll three dice!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openHooHey\')" data-tooltip="Entry costs 1 Wonderland Pass; then bet Cash on symbols.">Play! (1 🎟️)</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openHooHey\',2)" data-tooltip="Entry costs 2 Wonderland Passes; then bet Cash on symbols.">Play! (2 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🧩</div>' +
             '<div class="wond-card-name">Quantum Block Forge</div>' +
             '<div class="wond-card-desc">Drag blocks to fill rows &amp; columns — clear lines for combos! ' + QBF_LEVELS.length + ' levels, shrinking board.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openBlockForge()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openBlockForge()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🃏</div>' +
             '<div class="wond-card-name">Star Match</div>' +
             '<div class="wond-card-desc">Memorise the board, then match every cosmic pair! ' + MEM_LEVELS.length + ' levels, less preview time each round.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openMemory()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openMemory()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
           '</div>' +
           '<div class="wond-card">' +
             '<div class="wond-card-icon">🔢</div>' +
             '<div class="wond-card-name">Mini Sudoku</div>' +
             '<div class="wond-card-desc">Drag numbered tiles so every row, column &amp; box is complete. ' + SUD_LEVELS.length + ' levels — grows from a 4×4 warm-up to a full 9×9!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openSudoku()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openSudoku()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
           '</div>' +
-          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots', true) +
+          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots', true, 2) +
           _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring through dense pillar mazes! ' + CARGO_DIFFS.length + ' freshly-generated levels, harder and harder.', 'openCargo') +
           _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes! ' + GLACIER_DIFFS.length + ' fresh levels every run, harder and harder.', 'openGlacier') +
           _wondCard('🏯', 'Forbidden City', 'Slide matching spirit tiles together to cancel them — beware the same-color decoys! ' + SHIK_DIFFS.length + ' fresh chambers every run.', 'openShikinjou') +
@@ -306,7 +309,7 @@
             '<div class="wond-card-icon">🟦</div>' +
             '<div class="wond-card-name">Astro Drop</div>' +
             '<div class="wond-card-desc">Falling blocks! Fill whole lines to clear them — speed rises every 10 lines. An endless run — how far can you push it?</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play</button>' +
+            '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
           '</div>' +
           _wondCard('💊', 'Virus Lab', 'Drop 2-color capsules; match 4 in a line to zap every virus! ' + VL_LEVELS.length + ' labs, more infected each time.', 'openVirusLab') +
           _wondCard('🔗', 'Circuit Loop', 'Rotate the wires so the power core lights every bulb!', 'openCircuit') +
