@@ -129,7 +129,11 @@
       : '<div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 38% 35%,' + accent + ',' + _shade(accent, -0.4) + ')"></div>';
     var onclk = isEarth ? 'atlasEarthChoice()' : ('atlasTravel(' + a.n + ')');
     var label = 'Enter';
-    return '<div class="atlas-planet ' + (current ? 'current' : '') + (b.real ? '' : ' imagined') + '" style="--astro-accent:' + accent + '">' +
+    // Green shiny star (top-right) if this arena was cleared with a PERFECT (0-mistake) run.
+    var perfect = !!(state.perfectArenas && state.perfectArenas[a.n]);
+    var starBadge = perfect ? '<div class="atlas-perfect-star" title="Perfect clear — no mistakes!">🌟</div>' : '';
+    return '<div class="atlas-planet ' + (current ? 'current' : '') + (perfect ? ' perfect' : '') + (b.real ? '' : ' imagined') + '" style="--astro-accent:' + accent + '">' +
+      starBadge +
       '<div class="atlas-planet-art">' + art + '</div>' +
       '<div class="atlas-planet-name">Arena ' + a.n + ' · ' + b.name + '</div>' +
       '<div class="atlas-planet-kind">' + b.kind + (b.real ? '' : ' · imagined') + '</div>' +

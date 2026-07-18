@@ -414,8 +414,14 @@
   .atlas-sys-meta,.atlas-sys-star-name{ font-size:15px; color:var(--chalk-dim); margin-top:2px; } .atlas-sys-fact{ font-size:15px; color:var(--sky); margin:8px 0; font-style:italic; line-height:1.4; }
   .atlas-sys-status{ font-size:15px; font-weight:700; margin-top:6px; }
   .atlas-planet-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
-  .atlas-planet{ background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-top:4px solid var(--astro-accent,var(--sky)); border-radius:16px; padding:16px 14px; text-align:center; display:flex; flex-direction:column; }
+  .atlas-planet{ position:relative; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-top:4px solid var(--astro-accent,var(--sky)); border-radius:16px; padding:16px 14px; text-align:center; display:flex; flex-direction:column; }
   .atlas-planet.current{ box-shadow:0 0 0 2px var(--yellow); } .atlas-planet-art{ width:104px; height:104px; margin:0 auto 6px; }
+  /* Perfect-clear (0-mistake) green shiny star, pinned top-right, with a soft glow + twinkle. */
+  .atlas-planet.perfect{ border-color:rgba(123,216,143,0.55); box-shadow:0 0 14px rgba(123,216,143,0.25); }
+  .atlas-perfect-star{ position:absolute; top:8px; right:10px; font-size:22px; line-height:1; z-index:2;
+    filter:drop-shadow(0 0 5px #7bd88f) drop-shadow(0 0 10px rgba(123,216,143,0.7)); animation:perfectTwinkle 2.2s ease-in-out infinite; }
+  @keyframes perfectTwinkle{ 0%,100%{ transform:scale(1) rotate(0deg); opacity:1; } 50%{ transform:scale(1.18) rotate(8deg); opacity:0.82; } }
+  @media (prefers-reduced-motion: reduce){ .atlas-perfect-star{ animation:none; } }
   .atlas-planet-name{ font-family:'Patrick Hand',cursive; font-size:22px; color:var(--chalk); } .atlas-planet-kind{ font-size:14px; color:var(--astro-accent,var(--sky)); margin-bottom:6px; }
   .atlas-planet-fact{ font-size:14px; color:var(--chalk-dim); margin-bottom:12px; }
   .atlas-planet-topic{ font-size:15px; color:var(--chalk); margin:4px 0 2px; line-height:1.3; }

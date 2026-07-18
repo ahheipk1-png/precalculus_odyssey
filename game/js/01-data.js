@@ -50,6 +50,7 @@
     bossGateUnlocked: false,
     bossRoomEntered: false,
     bossDefeated: {},
+    perfectArenas: {},   // arenaN -> true for arenas cleared with ZERO wrong answers (green star; all 65 → Galaxy Center)
     equippedWeapon: 'wood_sword',
     equippedShield: 'leather_buckler',
     equippedArmor: 'cloth_tunic',

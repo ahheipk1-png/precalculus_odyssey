@@ -601,6 +601,7 @@
   }
 
   function renderMonsterChoices() {
+    setNavLockForCombat(false);   // back on the select screen — nav is available again
     el.monsterChoices.innerHTML = '';
     // The old checklist just listed monster names as read-only text — not actionable, and
     // superseded now that every past arena renders its own live, clickable cards below.
@@ -626,6 +627,15 @@
 
   var activeCombat = null;
 
+  // During an ACTIVE fight the top nav (Practice / Earth Hub / Space Travel / Boss Gate / …) is
+  // hidden, so the only way out of a battle is the speed-gated Escape button — otherwise "escape"
+  // would be pointless when you could just tap Earth Hub. Restored the moment you're back on the
+  // monster-select screen or leave the boss room (renderMonsterChoices / advance / return paths).
+  function setNavLockForCombat(locked){
+    var hdr = document.querySelector('.header-actions');
+    if (hdr) hdr.style.display = locked ? 'none' : '';
+  }
+
   // queue = remaining monsters to fight after this one (2-Boss/3-Boss gauntlets); locked = true
   // disables Escape for the whole chain (not just while queue is non-empty — the LAST fight in a
   // gauntlet has an empty queue but must stay locked, or fleeing it would still buy a free heal).
@@ -638,6 +648,7 @@
     }
     el.monsterSelectScreen.style.display = 'none';
     el.combatArenaScreen.style.display = 'grid';
+    setNavLockForCombat(true);   // no bailing to Earth/Practice mid-fight — Escape is the only exit
     resetCombatPoses();
 
     // Enter combat at the hero's CURRENT (possibly wounded) HP/MP, not full.
@@ -1450,6 +1461,7 @@
   // temporary Boss Gate access: reset the question counter so the player must earn ARENA_GOAL
   // correct answers again before the gate reopens (section 9 — leave undefeated → gate closes).
   function returnToArenaFromBoss() {
+    setNavLockForCombat(false);
     el.battleView.classList.remove('active');
     el.shopView.classList.remove('active');
     el.equationView.classList.add('active');
@@ -1493,6 +1505,11 @@
         })(passesEarned);
       }
     }
+    // Perfect clear = beat this arena with ZERO wrong answers this visit → a green star on its
+    // atlas card. All 65 stars reveal the hidden Galaxy Center (see galaxyUnlocked / 25-nav.js).
+    if (!state.perfectArenas) state.perfectArenas = {};
+    if ((state.roomFails || 0) === 0) state.perfectArenas[state.level] = true;
+
     state.roomFails = 0;
     var _paBefore = state.level;
     if (state.level < state.maxLevel) {
@@ -1514,6 +1531,7 @@
     updateStats();
     updateLevelProgress(0);
 
+    setNavLockForCombat(false);
     el.battleView.classList.remove('active');
     el.equationView.classList.add('active');
     el.levelGateActions.style.display = 'none';
@@ -1521,6 +1539,17 @@
     activeCombat = null;
     loadProblem();
     if (state.level !== _paBefore && typeof showPlanetArrival === 'function') showPlanetArrival(state.level);
+  }
+
+  // All 65 real arenas cleared with a perfect (0-fail) run → unlock the hidden Galaxy Center.
+  // Admin/test mode always sees it. CURRICULUM_MAX is 65 (the linear cap); arena 66 (Giant Black
+  // Hole) lives OUTSIDE that count so normal advancement never flows into it.
+  function galaxyUnlocked(){
+    if (state.testMode) return true;
+    if (!state.perfectArenas) return false;
+    var max = (typeof CURRICULUM_MAX === 'number') ? CURRICULUM_MAX : 65;
+    for (var i = 1; i <= max; i++){ if (!state.perfectArenas[i]) return false; }
+    return true;
   }
 
   function handleKeepFighting() {

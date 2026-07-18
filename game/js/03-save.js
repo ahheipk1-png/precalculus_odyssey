@@ -89,6 +89,7 @@
       shoes: state.shoes,
       defeatedMonsters: state.defeatedMonsters,
       bossDefeated: state.bossDefeated,
+      perfectArenas: state.perfectArenas,
       trophies: state.trophies,
       savedAt: Date.now()
     };
@@ -194,6 +195,7 @@
     if (typeof applyAudioSettings === 'function') applyAudioSettings();
     state.arenaStats = (snap.arenaStats && typeof snap.arenaStats === 'object') ? snap.arenaStats : {};
     state.bossDefeated = snap.bossDefeated || {};
+    state.perfectArenas = (snap.perfectArenas && typeof snap.perfectArenas === 'object') ? snap.perfectArenas : {};
     // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
     // the Boss Gate button is re-derived from levelSolves/bossDefeated in updatePanelVisibility.
     state.bossGateUnlocked = false;
@@ -227,6 +229,7 @@
     state.bossGateUnlocked = false;
     state.bossRoomEntered = false;
     state.bossDefeated = {};
+    state.perfectArenas = {};
     state.equippedWeapon = 'wood_sword';
     state.equippedShield = 'leather_buckler';
     state.equippedArmor = 'cloth_tunic';
