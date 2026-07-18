@@ -623,6 +623,41 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #24 — Arena 888 moved into Galaxy Center itself** (user, looking at the "Arena
+888 · The Second Chance" card as its own separate star system: "i want this guy sitting next to
+arena 999...not in a new star system"). Batch #23 (below) had given it its own hidden STAR_SYSTEMS
+entry so its atlas card had a clean "Arena 888–888" range; the user wanted it literally alongside
+999 on the SAME system page instead.
+- **`curriculum.config.js`**: arena 888's `worldId`/`systemId`/`origSystem` changed from `'comeback'`
+  to `'galaxy-center'` — it's now the SECOND arena of the SAME system as the Giant Black Hole, not a
+  system of its own.
+- **`worlds.config.js`**: the separate `'comeback'` hidden STAR_SYSTEMS entry removed entirely.
+- **The spoiler problem this created, and its fix**: naively sharing a system means BOTH arenas'
+  `systemId` match from the moment Galaxy Center itself unlocks (all-65-perfect) — Arena 888 would
+  show up immediately, before the player has ever lost the gauntlet, spoiling "when it failed, show
+  up." Fixed with a new **per-arena visibility layer**, independent of the system-level hidden/unlock
+  flag: `_arenaVisible(a)` (`25-nav.js`) returns false for `special:'comeback'` arenas until
+  `comebackUnlocked()`. Applied in TWO places: `_atlasPlanetsHtml`'s arena/planet grid (so the card
+  itself stays hidden), and `renderStarAtlas`'s system-list summary, which now computes
+  `planets`/the arena-range text from the CURRENTLY VISIBLE arenas at render time instead of trusting
+  the static stamped `sys.planets`/`arenaStart`/`arenaEnd` (which can't be state-aware, since they're
+  computed once at script load).
+- **New `_arenaRangeLabel(nums)` helper** (`25-nav.js`): most systems are one contiguous linear
+  chapter ("Arena 1–24"), but Galaxy Center's two arenas (999, 888) are NOT a contiguous range — a
+  naive `rows[0]–rows[last]` dash would either show a confusing descending "999–888" or a misleading
+  "888–999" implying 112 arenas exist in between. The helper sorts the visible arenas' display
+  numbers and only uses a dash for a genuinely contiguous run; otherwise it joins them explicitly
+  ("Arena 888 & 999").
+- **Verified live**: with `comebackUnlocked=false`, opening the Galaxy Center system shows ONLY the
+  "Arena 999 · Giant Black Hole" card, and the system-list card reads "Arena 999 · 1 planets" — no
+  early reveal of 888. Flipping `comebackUnlocked=true` and reopening shows BOTH cards side by side
+  in the SAME system page (screenshot-verified: violet 999 card, gold 888 card, both tagged
+  "✔️ Identify"), and the system-list card updates to "Arena 888 & 999 · 2 planets". A fresh
+  `generateProblem`/`atlasTravel` round-trip into arena 67 confirmed the systemId change has zero
+  effect on question generation (still keyed purely off `.special`, never `.systemId`). Every other
+  (normal, contiguous) system's range text unaffected. Zero console errors throughout. Cache token
+  bumped `20260718r → 20260718s`.
+
 **2026-07-18 batch #23 — Odyssey Forge 1.2× wider + centered; Arena 66 relabeled "Arena 999";
 new Arena 888 "The Second Chance" comeback trial; 2 latent bugs found + fixed along the way.**
 

@@ -36,6 +36,29 @@
     return 'sol';
   }
 
+  // Is this specific arena's card visible right now? Most arenas always are; special arenas can
+  // carry their OWN reveal condition independent of their system's — the comeback trial (Arena
+  // 888) shares the Giant Black Hole's system (galaxy-center) but only shows once its gauntlet has
+  // been LOST (comebackUnlocked, 06e-combat-outcome.js), even though the system itself is already
+  // unlocked. Used to filter both the system-list summary (planets count / arena range) and the
+  // planet-grid itself, so neither ever spoils "Arena 888" before it's actually earned.
+  function _arenaVisible(a){
+    if (a.special === 'comeback') return (typeof comebackUnlocked === 'function') && comebackUnlocked();
+    return true;
+  }
+
+  // "Arena 1–24" for a normal contiguous chapter; "Arena 999" for a single special arena; and
+  // "Arena 888 & 999" for galaxy-center once both its arenas are visible (999 and 888 aren't a
+  // contiguous range, so a dash would misleadingly imply 112 arenas exist in between).
+  function _arenaRangeLabel(nums){
+    if (!nums.length) return '';
+    var sorted = nums.slice().sort(function(a, b){ return a - b; });
+    var contiguous = sorted.every(function(v, i){ return i === 0 || v === sorted[i - 1] + 1; });
+    return contiguous
+      ? ('Arena ' + sorted[0] + (sorted.length > 1 ? ('–' + sorted[sorted.length - 1]) : ''))
+      : ('Arena ' + sorted.join(' & '));
+  }
+
   function renderStarAtlas(){
     var av = document.getElementById('starAtlasView');
     if (!av) return;
@@ -43,30 +66,31 @@
     var cur = _currentSystemId();
     // TEST MODE (admin) unlocks every star system so the tester can browse them all.
     var testUnlockAll = !!state.testMode;
-    // Hidden systems each have their OWN reveal condition: Galaxy Center (Arena 999) needs all 65
-    // arenas perfect (galaxyUnlocked); the comeback trial (Arena 888) needs the black hole gauntlet
-    // to have been LOST first (comebackUnlocked) — see 06e-combat-outcome.js for both.
+    // Hidden systems (Galaxy Center) only appear once galaxyUnlocked() — all 65 arenas perfect, or admin.
     var galaxyOn = (typeof galaxyUnlocked === 'function') && galaxyUnlocked();
-    var comebackOn = (typeof comebackUnlocked === 'function') && comebackUnlocked();
-    function _hiddenOn(s){ return s.id === 'comeback' ? comebackOn : galaxyOn; }
     var cards = (typeof STAR_SYSTEMS !== 'undefined' ? STAR_SYSTEMS : []).filter(function(s){
-      return !s.hidden || _hiddenOn(s);
+      return !s.hidden || galaxyOn;
     }).map(function(s){
       var here = s.id === cur;
-      var unlocked = s.unlocked || testUnlockAll || (s.hidden && _hiddenOn(s));
+      var unlocked = s.unlocked || testUnlockAll || (s.hidden && galaxyOn);
       var star = (typeof starSVG === 'function' && s.id === 'sol') ? starSVG('atlas-' + s.id) : '<div class="atlas-star-dot" style="background:radial-gradient(circle,#fff,#ffb347)"></div>';
       // Maths topic (world title) + arena range for this system, e.g. "Numbers · Arena 1–24".
       // Math theme for this system, from `chapters` (worlds.config.js) — the old MATH_WORLDS global
       // this referenced never existed, so the topic label was always empty.
       var world = (typeof chapters !== 'undefined') ? chapters.filter(function(c){ return c.worldId === s.worldId; })[0] : null;
       var topic = world ? world.subtitle : '';
-      var range = (s.arenaStart != null) ? ('Arena ' + s.arenaStart + '–' + s.arenaEnd) : '';
+      // Computed from the CURRENTLY VISIBLE arenas (not the static stamped planets/arenaStart/
+      // arenaEnd) so galaxy-center reads "1 planets · Arena 999" before the comeback trial unlocks,
+      // and "2 planets · Arena 888 & 999" after — never spoiling 888 early.
+      var visibleArenas = (typeof arenasForSystem === 'function') ? arenasForSystem(s.id).filter(_arenaVisible) : [];
+      var nums = visibleArenas.map(function(a){ return (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(a.n) : a.n; });
+      var range = _arenaRangeLabel(nums);
       return '<div class="atlas-sys ' + (unlocked ? 'unlocked' : 'locked') + (here ? ' here' : '') + '"' +
         (unlocked ? ' onclick="atlasOpenSystem(\'' + s.id + '\')"' : '') + '>' +
         '<div class="atlas-sys-star">' + star + '</div>' +
         '<div class="atlas-sys-name">' + s.name + (here ? ' <span class="atlas-here">◉ you are here</span>' : '') + '</div>' +
         '<div class="atlas-sys-topic">📚 ' + topic + (topic && range ? ' · ' : '') + range + '</div>' +
-        '<div class="atlas-sys-meta">' + (s.distanceLy != null ? ('📏 ' + s.distanceLy + ' ly · ') : '') + '🪐 ' + s.planets + ' planets</div>' +
+        '<div class="atlas-sys-meta">' + (s.distanceLy != null ? ('📏 ' + s.distanceLy + ' ly · ') : '') + '🪐 ' + visibleArenas.length + ' planets</div>' +
         '<div class="atlas-sys-star-name">⭐ ' + s.star + '</div>' +
         '<div class="atlas-sys-fact">' + s.fact + '</div>' +
         '<div class="atlas-sys-status">' + (s.unlocked ? '✅ Travelable' : (testUnlockAll ? '🔓 Test-mode preview (not charted yet)' : '🔒 Unlocks in a future chapter')) + '</div>' +
@@ -113,7 +137,9 @@
           ((curArena && curArena.body) ? ' · ' + curArena.body.name : '') + '</button>'
       : '<button class="btn btn-ghost" onclick="atlasBackToSystems()">← All systems</button>';
     var html = '<div class="rpg-header"><h2 class="rpg-title">🪐 ' + name + '</h2>' + backBtn + '</div>';
-    var arenas = (typeof arenasForSystem === 'function') ? arenasForSystem(sysId) : [];
+    // Filter out any arena whose OWN reveal condition isn't met yet (Arena 888 stays hidden inside
+    // an already-unlocked galaxy-center until comebackUnlocked() — see _arenaVisible above).
+    var arenas = (typeof arenasForSystem === 'function') ? arenasForSystem(sysId).filter(_arenaVisible) : [];
     if (!arenas.length){
       return html + '<p class="atlas-intro">This system is not charted yet.</p>';
     }

@@ -218,13 +218,17 @@ Three linked additions (user request):
 User: rename arena 66's display to "Arena 999"; on LOSING its gauntlet, reveal a new "Arena 888"
 next to it — a pure 10-question MC quiz (derivatives, tangent slope, integration, integration by
 parts, differential equations) that grants +10 hero levels on a perfect run. Full design/build notes
-in `docs/world-and-hubs.md` batch #23; summary here since it directly extends this section:
+in `docs/world-and-hubs.md` batches #23-24; summary here since it directly extends this section:
 
 - **The internal id (`n:66`, room 66, `state.level`) never changed** — only a new `displayN:999`
   field + `arenaDisplayNumber(n)` helper drive what's shown as text, everywhere.
-- **New Arena 888 "The Second Chance"** (`n:67, special:'comeback'`) — its own hidden system, no
-  combat, no Boss Gate; `handleComebackComplete()` grants the reward directly. One-time only
-  (`state.comebackCleared`), matching this project's existing anti-farming pattern.
+- **New Arena 888 "The Second Chance"** (`n:67, special:'comeback'`) — shares the SAME
+  `systemId:'galaxy-center'` as Arena 999 (batch #24: originally its own hidden system, moved to sit
+  literally alongside 999 per user follow-up request), no combat, no Boss Gate;
+  `handleComebackComplete()` grants the reward directly. One-time only (`state.comebackCleared`),
+  matching this project's existing anti-farming pattern. Its atlas card stays hidden within the
+  already-unlocked system until `comebackUnlocked()` (`_arenaVisible()`, 25-nav.js) — sharing a
+  system doesn't mean sharing an unlock condition.
 - **Two bugs in the ORIGINAL 66 implementation were found and fixed** while building this (see
   world-and-hubs.md batch #23 for full detail): the atlas tag was mislabelled "Compute" instead of
   "Identify" (a legacy `G[66]` generator, unrelated leftover from the old 187-arena numbering,

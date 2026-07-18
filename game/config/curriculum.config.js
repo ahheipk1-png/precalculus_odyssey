@@ -36,15 +36,17 @@
       body: { name: 'Giant Black Hole', kind: 'Supermassive Black Hole', real: true,
         fact: 'Sagittarius A* — 4 million times the Sun’s mass, at the heart of the galaxy.' }
     });
-    // Arena 888 "The Second Chance" — appears once the Giant Black Hole gauntlet (Arena 999) is
-    // LOST (js/06e-combat-outcome.js sets state.comebackUnlocked on that defeat). A pure 10-question
-    // MC quiz (COMEBACK_QUESTIONS, comeback.config.js; served via generateProblem's special==='comeback'
-    // branch, 04-logic.js) — no combat, no Boss Gate. A ZERO-mistake run grants +10 hero levels,
-    // ONCE ever (state.comebackCleared — anti-farming, js/52-comeback-arena.js). Its own hidden
-    // system ('comeback') so its atlas card shows a clean "Arena 888–888", right next to Galaxy
-    // Center's "Arena 999–999" once both are unlocked.
+    // Arena 888 "The Second Chance" — appears next to Arena 999 (SAME systemId: 'galaxy-center',
+    // user request 2026-07-18: "i want this guy sitting next to arena 999...not in a new star
+    // system") once the Giant Black Hole gauntlet is LOST (js/06e-combat-outcome.js sets
+    // state.comebackUnlocked on that defeat). A pure 10-question MC quiz (COMEBACK_QUESTIONS,
+    // comeback.config.js; served via generateProblem's special==='comeback' branch, 04-logic.js) —
+    // no combat, no Boss Gate. A ZERO-mistake run grants +10 hero levels, ONCE ever
+    // (state.comebackCleared — anti-farming, js/52-comeback-arena.js). Its planet-grid CARD is
+    // hidden until comebackUnlocked() even though the system itself is already unlocked — see
+    // _arenaVisible() in 25-nav.js, which filters arenasForSystem('galaxy-center') per-arena.
     CURRICULUM.push({
-      n: 67, worldId: 'comeback', systemId: 'comeback', origSystem: 'comeback',
+      n: 67, worldId: 'galaxy-center', systemId: 'galaxy-center', origSystem: 'galaxy-center',
       topic: 'A Second Chance: the Calculus Gauntlet', mechanic: 'mcOnly', code: 'HOPE',
       phaseId: null, gen: null, special: 'comeback', displayN: 888,
       body: { name: 'The Second Chance', kind: 'Comeback Trial', real: false,
@@ -54,6 +56,10 @@
     });
     if (typeof STAR_SYSTEMS !== 'undefined'){
       STAR_SYSTEMS.forEach(function(sys){
+        // Static content summary (every authored arena for this system, regardless of any
+        // per-arena unlock state) — galaxy-center's 2 arenas (999, 888) aren't a contiguous range,
+        // so 25-nav.js recomputes the DISPLAYED planets-count/label dynamically at render time
+        // (only counting arenas _arenaVisible() currently allows) instead of trusting these fields.
         var rows=CURRICULUM.filter(function(a){ return a.systemId===sys.id; });
         sys.planets=rows.length;
         sys.arenaStart=rows.length?(rows[0].displayN||rows[0].n):null;
