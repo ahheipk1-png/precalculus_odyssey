@@ -1431,6 +1431,9 @@
   .shop-sec-title{font-family:'Quicksand',sans-serif;font-size:17px;color:#77e6ff}.shop-item{border-radius:13px;background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.08);padding:11px 13px}.shop-item-name{font-family:'Quicksand',sans-serif;font-size:16px;font-weight:800}
 
   .monster-choices-grid{grid-template-columns:0.75fr 1.35fr 1.9fr;gap:14px}
+  .arena-card-row{margin-bottom:22px}
+  .arena-card-row:not(:first-child){padding-top:18px;border-top:1px dashed rgba(151,170,231,.18)}
+  .arena-row-header{font-family:'Quicksand',sans-serif;font-weight:800;font-size:16px;color:#ffcf6b;margin-bottom:10px}
   .monster-card-select{
     position:relative;overflow:hidden;
     background:linear-gradient(165deg,rgba(255,255,255,.08),rgba(255,255,255,.025));

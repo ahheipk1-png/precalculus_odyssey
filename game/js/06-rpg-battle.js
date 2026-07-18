@@ -548,73 +548,76 @@
     startCombat(remaining[0], remaining.slice(1), true);
   }
 
+  // Builds the solo Easy-fight card for a given monster (unchanged behavior/markup either way).
+  function buildEasyCard(easy) {
+    var lockReason = getMonsterLockReason(easy);
+    var isLocked = !!lockReason;
+    var isDefeated = isMonsterDefeated(monsterKey(easy));
+    var card = document.createElement('div');
+    card.className = 'monster-card-select' + (isDefeated ? ' defeated' : '') + (isLocked ? ' locked' : '');
+    if (isDefeated) {
+      card.style.opacity = '0.4';
+      card.style.pointerEvents = 'none';
+      card.style.borderStyle = 'dotted';
+    }
+    card.innerHTML = `
+      <div class="monster-card-art">${getMonsterArtMarkup(easy)}</div>
+      <div class="monster-select-name">${easy.name} ${isDefeated ? '💀' : ''}</div>
+      <div class="monster-select-el">${elementBadgeHtml(easy.element)}</div>
+      <div class="monster-select-stat" style="color:var(--yellow)">Arena ${easy.room} · ${easy.difficulty}</div>
+      <div class="monster-select-stat">${isDefeated ? '☠️ DEFEATED (Gone Forever)' : ('HP: ' + easy.maxHp + ' · MP: ' + easy.maxMp)}</div>
+      <div class="monster-select-stat">ATK: ${easy.attack} &nbsp;|&nbsp; DEF: ${easy.defense}</div>
+      <div class="monster-select-stat">Needs Hero Lv. ${easy.requiredHeroLvl}</div>
+      <div class="monster-select-reward">Reward: ${easy.reward} 💵</div>
+      <div class="monster-select-stat monster-drops" title="Chip drops scale with the monster's strength — ? = not guaranteed">🎁 Drops: ${typeof monsterDropPreview === 'function' ? monsterDropPreview(easy) : ''}</div>
+      ${isLocked ? `<div class="monster-lock-note">🔒 Locked: ${lockReason}</div>` : ''}
+    `;
+    if (!isDefeated && !isLocked) {
+      card.addEventListener('click', function(){ startCombat(easy); });
+    }
+    return card;
+  }
+
+  // One arena's full row: an "Arena N" header + its 3 cards (Easy / 2-Boss / 3-Boss). Reusable so
+  // every past arena can show its own live, clickable cards — not just the current one.
+  function buildArenaCardRow(ar) {
+    var roomMonsters = getRoomMonsters(ar);
+    var easy = roomMonsters.find(function(m){ return m.rank === 1; });
+    var chain2 = getGauntletChain(ar, 2);
+    var chain3 = getGauntletChain(ar, 3);
+
+    var wrap = document.createElement('div');
+    wrap.className = 'arena-card-row';
+
+    var header = document.createElement('div');
+    header.className = 'arena-row-header';
+    var topic = (typeof getArena === 'function') ? getArena(ar) : null;
+    header.textContent = 'Arena ' + ar + (topic && topic.topic ? ' · ' + topic.topic : '');
+    wrap.appendChild(header);
+
+    var grid = document.createElement('div');
+    grid.className = 'monster-choices-grid';
+    if (easy) grid.appendChild(buildEasyCard(easy));
+    grid.appendChild(buildGauntletCard(chain2, '2-Boss Gauntlet', '⚔️⚔️', 2));
+    grid.appendChild(buildGauntletCard(chain3, '3-Boss Gauntlet', '⚔️⚔️⚔️', 5));
+    wrap.appendChild(grid);
+
+    return wrap;
+  }
+
   function renderMonsterChoices() {
     el.monsterChoices.innerHTML = '';
+    // The old checklist just listed monster names as read-only text — not actionable, and
+    // superseded now that every past arena renders its own live, clickable cards below.
+    var bountyBox = document.getElementById('bountyListContainer');
+    if (bountyBox) bountyBox.style.display = 'none';
 
-    var currentRoomMonsters = getRoomMonsters(state.level);
-    var easy = currentRoomMonsters.find(function(m){ return m.rank === 1; });
-    var chain2 = getGauntletChain(state.level, 2);
-    var chain3 = getGauntletChain(state.level, 3);
-
-    if (el.bountyChecklist) {
-      // Show the full monster history across EVERY cleared/current arena (1..state.level), not
-      // just the current one — grouped by arena so a 65-arena-deep list stays scannable.
-      var bHTML = '';
-      for (var ar = 1; ar <= state.level; ar++) {
-        var arEasy = getRoomMonsters(ar).find(function(m){ return m.rank === 1; });
-        var arChain3 = getGauntletChain(ar, 3);
-        var arMonsters = arEasy ? [arEasy].concat(arChain3) : arChain3;
-        bHTML += '<div style="flex-basis:100%; font-weight:700; color:var(--yellow); margin-top:' +
-          (ar === 1 ? '0' : '6px') + ';">Arena ' + ar + '</div>';
-        arMonsters.forEach(function(m) {
-          var lockReason = getMonsterLockReason(m);
-          var isDefeated = isMonsterDefeated(monsterKey(m));
-          var checkSymbol = isDefeated ? '☑️' : (lockReason ? '🔒' : '⬜');
-          var textColor = isDefeated ? 'var(--chalk-dim)' : 'var(--chalk)';
-          var textStyle = isDefeated ? 'text-decoration: line-through; opacity: 0.65;' : '';
-          bHTML += `<div style="display:flex; align-items:center; gap:6px; color:${textColor}; ${textStyle}">${checkSymbol} <strong>${m.name}</strong> (${m.difficulty}${lockReason ? ', ' + lockReason : ''})</div>`;
-        });
-      }
-      el.bountyChecklist.innerHTML = bHTML;
+    // Every arena from the current one down to Arena 1 gets its own row of 3 real, clickable
+    // cards — not just a summary. Most recent first so the arena you're actually in isn't buried
+    // under 64 rows of history.
+    for (var ar = state.level; ar >= 1; ar--) {
+      el.monsterChoices.appendChild(buildArenaCardRow(ar));
     }
-    if (el.bountyLvlText) el.bountyLvlText.textContent = (state.level > 1 ? ('1-' + state.level) : '1');
-
-    // Card 1: the solo Easy fight — unchanged behavior, narrower layout (see CSS).
-    if (easy) {
-      var lockReason = getMonsterLockReason(easy);
-      var isLocked = !!lockReason;
-      var isDefeated = isMonsterDefeated(monsterKey(easy));
-      var card = document.createElement('div');
-      card.className = 'monster-card-select' + (isDefeated ? ' defeated' : '') + (isLocked ? ' locked' : '');
-      if (isDefeated) {
-        card.style.opacity = '0.4';
-        card.style.pointerEvents = 'none';
-        card.style.borderStyle = 'dotted';
-      }
-      card.innerHTML = `
-        <div class="monster-card-art">${getMonsterArtMarkup(easy)}</div>
-        <div class="monster-select-name">${easy.name} ${isDefeated ? '💀' : ''}</div>
-        <div class="monster-select-el">${elementBadgeHtml(easy.element)}</div>
-        <div class="monster-select-stat" style="color:var(--yellow)">Arena ${easy.room} · ${easy.difficulty}</div>
-        <div class="monster-select-stat">${isDefeated ? '☠️ DEFEATED (Gone Forever)' : ('HP: ' + easy.maxHp + ' · MP: ' + easy.maxMp)}</div>
-        <div class="monster-select-stat">ATK: ${easy.attack} &nbsp;|&nbsp; DEF: ${easy.defense}</div>
-        <div class="monster-select-stat">Needs Hero Lv. ${easy.requiredHeroLvl}</div>
-        <div class="monster-select-reward">Reward: ${easy.reward} 💵</div>
-        <div class="monster-select-stat monster-drops" title="Chip drops scale with the monster's strength — ? = not guaranteed">🎁 Drops: ${typeof monsterDropPreview === 'function' ? monsterDropPreview(easy) : ''}</div>
-        ${isLocked ? `<div class="monster-lock-note">🔒 Locked: ${lockReason}</div>` : ''}
-      `;
-      if (!isDefeated && !isLocked) {
-        card.addEventListener('click', function(){ startCombat(easy); });
-      }
-      el.monsterChoices.appendChild(card);
-    }
-
-    // Card 2: 2-Boss Gauntlet · Card 3: 3-Boss Gauntlet (finale = the real arena Boss).
-    // Bonus hero levels ON TOP of the members' own requirement — the 3-Boss card in particular is
-    // meant to be a real stretch goal that straight-through play doesn't casually reach; the intended
-    // path is grinding Arena Infinity (the only repeatable combat-XP source) for the extra levels.
-    el.monsterChoices.appendChild(buildGauntletCard(chain2, '2-Boss Gauntlet', '⚔️⚔️', 2));
-    el.monsterChoices.appendChild(buildGauntletCard(chain3, '3-Boss Gauntlet', '⚔️⚔️⚔️', 5));
 
     var boss = getRoomBoss(state.level);
     var isLevelClear = boss && state.defeatedMonsters[monsterKey(boss)];

@@ -60,6 +60,18 @@ that chains fights with Escape/Flee/Shop hidden for the whole run. Death mid-cha
 state — each kill already marks `state.defeatedMonsters`, so resuming just filters to
 not-yet-defeated members. Card grid is `0.75fr 1.35fr 1.9fr` (narrow/medium/wide).
 
+**Follow-up (same day):** the monster-select screen initially only showed the CURRENT arena's 3
+cards — a read-only "Bounty Checklist" text summary was added to cover history, but that wasn't
+actionable (couldn't click it to fight). Replaced both with the real thing: `renderMonsterChoices`
+now loops every arena from `state.level` down to 1 and renders each one's own live, clickable
+3-card row (`buildArenaCardRow`/`buildEasyCard`), most-recent-arena-first. The checklist container
+is hidden (`#bountyListContainer` display:none) — fully superseded. Note: `#monsterChoices` in
+`index.html` had to drop its own `monster-choices-grid` class (it used to BE the 3-column grid;
+now each arena row creates its own inner grid, so the outer container must be a plain block or the
+browser force-packs whole arena rows into 3 columns side-by-side). Verified at arena 65: 65 rows /
+195 cards render in ~11ms, no console errors, clicking an older arena's card starts a real fight
+against that arena's monster.
+
 ## Hero & stats
 
 `state.heroLvl / heroXp / playerHp / playerMaxHp / playerMp / playerMaxMp`. XP curve
