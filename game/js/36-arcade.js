@@ -423,13 +423,13 @@
   var POP_CELLS = 9, POP_BALLS = 4, POP_MAX_ROLLS = 3;
   var POP_CORNERS = [0, 2, 6, 8];
   var POP_DIAMOND = [1, 3, 5, 7];   // the four edge-midpoints — a plus/diamond (user 2026-07-18: "a good pattern too")
+  // Rows AND columns both count as a "line" (POP_LINES holds all 3 rows, 3 cols, 2 diagonals) —
+  // do not drop the column entries when editing this list.
   var POP_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  var POP_BLOCKS = [[0,1,3,4],[1,2,4,5],[3,4,6,7],[4,5,7,8]];
   var POP_PAYTABLE = [
     { tier: 'jackpot', label: '🎆 FOUR CORNERS!',     mult: 72 },
     { tier: 'diamond', label: '◆ DIAMOND!',           mult: 36 },
-    { tier: 'big',     label: '🟦 SQUARE BLOCK!',     mult: 20 },
-    { tier: 'win',     label: '✨ THREE IN A LINE!',  mult: 10 },
+    { tier: 'win',     label: '✨ THREE IN A LINE!',  mult: 3 },
     { tier: 'small',   label: '⭐ Centre held!',       mult: 2 },
     { tier: 'none',    label: 'No pattern this round.', mult: 0 }
   ];
@@ -443,14 +443,11 @@
     var four = Object.keys(set).length === 4;
     if (four && POP_CORNERS.every(function(c){ return set[c]; })) return POP_PAYTABLE[0];
     if (four && POP_DIAMOND.every(function(c){ return set[c]; })) return POP_PAYTABLE[1];
-    for (var b = 0; b < POP_BLOCKS.length; b++){
-      if (POP_BLOCKS[b].every(function(c){ return set[c]; })) return POP_PAYTABLE[2];
-    }
     for (var L = 0; L < POP_LINES.length; L++){
-      if (POP_LINES[L].every(function(c){ return set[c]; })) return POP_PAYTABLE[3];
+      if (POP_LINES[L].every(function(c){ return set[c]; })) return POP_PAYTABLE[2];
     }
-    if (set[4]) return POP_PAYTABLE[4];
-    return POP_PAYTABLE[5];
+    if (set[4]) return POP_PAYTABLE[3];
+    return POP_PAYTABLE[4];
   }
 
   function _popTotalBet(){ return POP.bet; }

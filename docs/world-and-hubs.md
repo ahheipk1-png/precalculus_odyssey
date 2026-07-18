@@ -168,10 +168,11 @@ sequential level systems on 3 more games, and 3 new games (Bowling, Cosmic Rhyth
   border + 🔒); rolling again only re-randomizes the UNFIXED balls, onto cells none of the OTHER
   balls (fixed or not) occupy. 3 rolls per round, or bank early with **✅ Score Now**
   (`popScoreNow`). The final 4-cell pattern is paid out (`popEvaluate`, pure, priority-ordered):
-  **Four Corners** (exact `{0,2,6,8}`) = jackpot ×50; a **2×2 block** (any of the 4) = ×20; a
-  **complete tic-tac-toe line** (3 of the 4 cells forming one of the 8 lines) = ×10; **holding the
-  centre** = ×2; otherwise nothing. Cash-betting like Star Slots (10/50/100 chips,
-  `_wondCard`/`wonderPlay` charges 1 pass to enter, replay is free once in).
+  **Four Corners** (exact `{0,2,6,8}`) = jackpot ×72; **Diamond** (exact `{1,3,5,7}`, the four
+  edge-midpoints) = ×36; a **complete tic-tac-toe line** (3 of the 4 cells forming one of the 8
+  lines — all 3 rows, all 3 columns, both diagonals) = ×3; **holding the centre** = ×2; otherwise
+  nothing. There is no 2×2-block tier (removed 2026-07-18 batch #16 — see below). Cash-betting like
+  Star Slots (10/50/100 chips, `_wondCard`/`wonderPlay` charges 1 pass to enter, replay is free once in).
 - **🎳 Star Lanes Bowling (`js/40-action.js`, new).** A real 10-frame game. Each throw is set by
   **stopping 3 moving markers yourself** — aim → power → spin, in sequence (`_bowlStop()` advances the
   phase; the RAF loop (`_bowlLoop`) continuously writes the live marker value into `BOWL.angle/power/spin`
@@ -544,6 +545,34 @@ same-colour decoy tiles at the gates (Forbidden City).
   0 fallbacks, every returned level independently BFS-confirmed solvable, ~90-370ms real per level.
   Forbidden City: 0 fallbacks, ≤3ms/level. No console errors; render path (`_glToRows`/`_skParse`/
   `_skGridHtml`/`_shikToRows`) unchanged.
+
+**2026-07-18 batch #16 — Pop-a-Tic-Tac-Toe: removed the 2×2 SQUARE BLOCK tier, cut the THREE-IN-A-LINE
+payout, confirmed columns already count as lines.** Player feedback: "remove square pattern...and pay
+out less for line...btw vertical should count."
+- **Root cause (money-printer, [[project_bible_curriculum_rebuild]]-adjacent economy note)**:
+  simulating all C(9,4)=126 possible final 4-ball hands through the real `popEvaluate()` (in-browser,
+  not hand math) showed the OLD paytable (jackpot ×72, diamond ×36, block ×20, line ×10, centre ×2)
+  paid an average **5.68× the bet** per round. `POP_LINES` (3 rows + 3 cols + 2 diagonals) already
+  matched columns correctly — verified live that `popEvaluate([0,3,6,1])` etc. all return the LINE
+  tier — the player's "vertical should count" was a check, not a bug report; no line-detection change
+  was needed. The actual inflators were **THREE IN A LINE** (any 3 of the 4 balls forming a line — 48
+  of 126 hands, 38%, essentially the expected outcome not a jackpot) at mult ×10, and the **SQUARE
+  BLOCK** 2×2-block tier (4 exact hands) at mult ×20.
+- **Fix (`js/36-arcade.js`)**: deleted `POP_BLOCKS` and its `popEvaluate` check entirely — the 4
+  former block hands now fall through to **Centre held** (×2), since all 4 blocks include cell 4.
+  Cut **THREE IN A LINE** `mult` 10 → **3**. Left `POP_LINES`, `POP_CORNERS`, `POP_DIAMOND`, and their
+  mults (jackpot ×72 / diamond ×36 / centre ×2, all set by prior explicit user request) unchanged.
+  Added a code comment on `POP_LINES` warning not to drop the column entries in a future edit.
+- **New RTP** (same 126-hand in-browser simulation against the live `popEvaluate`): tally
+  `{jackpot:1, diamond:1, win:48, small:28, none:48}` → **308/126 ≈ 2.44×**, down from 5.68×. Note
+  this is still generous — corners(72)+diamond(36)+centre(2×28=56) alone sum to ≈1.30× before any
+  line payout, since those three mults were kept as the player explicitly set them; hitting a lower
+  target RTP would need revisiting those, not just the line tier.
+- **Verified live** (no-password session, `resetPlayerState()`+`startGame()`, real UI clicks): the
+  paytable chip row now shows exactly 4 tiers (Four Corners / Diamond / Three in a Line / Centre
+  held) with no Square Block chip; a real ✅ Score Now on a centre-held hand paid 💵20 on a 💵10 bet
+  (×2, exact).
+- Cache token bumped `20260718i → 20260718j`.
 
 **2026-07-18 batch #15 — Undo in Cargo Bay / Glacier Push / Block Forge (+ adversarial review
 fixes); Wonderland pass + chips pills on the arena top bar; green atlas star.** (Combat-side items
