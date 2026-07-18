@@ -616,6 +616,35 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #20 — Item Store: removed the separate "Backpack" list, folded everything into
+one unified card shelf with Buy AND Use together.** User, looking at a screenshot of the old
+Backpack row-list: "remove this table and add the missing one to the list above and provide ways
+to use them like special items (except the ones that can only be used in farm and battle)."
+- **`js/20-item-store.js`** — `ISTR_SHELF` now lists all 6 relevant items (`potion`, `ether`,
+  `moon_herb`, `star_dew`, `super_medicine`, `poison_vial`); `istrShelfHtml()` renders ONE card per
+  item with an owned-count badge, a Buy row (only if `it.price > 0` — `ISTR_STOCK`) or a
+  "🧪 Craft-only — visit the Laboratory" note, and a Use row (only if `useItem()` has a real effect
+  for it — `ISTR_USABLE = ['potion','ether','super_medicine','poison_vial']`) or an ingredient note.
+  `istrBackpackHtml()` and the "🎒 Your Backpack" section are gone entirely; `istrRenderView()` no
+  longer calls them.
+- **feed/fertilizer excluded on purpose** — the "except the ones that can only be used in farm"
+  clause: they're Farm-market items with their own buy/use UI there (`18-farm.js`) and never had a
+  sensible Buy or Use action in this store; the old Backpack list only showed them because it
+  listed everything owned regardless of context.
+- **Moon Herb/Star Dew fix**: previously these got a "Use" button that silently called `useItem()`
+  and fell through to its generic default case, showing the WRONG message ("Moon Herb is used at
+  the Farm" — they're Laboratory ingredients, not Farm items). Now they get an honest
+  "Used at the Laboratory 🧪" note instead (same idea as feed/fertilizer's note, different
+  destination) — no more broken click.
+- **CSS**: removed the now-dead `.istr-section-title`/`.istr-backpack`/`.istr-pack-*` rules from
+  `item-store.css` (the row-list layout no longer exists); kept `.istr-use`/`.istr-note`/
+  `.istr-armed`/`.istr-empty` (still used inside the unified cards).
+- **Verified live**: all 6 cards render with the right Buy/Use/note combination (checked via
+  `get_page_text`); a real click on Potion's rendered Use button restored +50 HP and spent one
+  potion; Acid Vial's Use correctly swapped to the "☠️ prepared for next battle" note once armed;
+  the Farm's own feed/fertilizer UI is untouched and still opens with zero errors. Cache token
+  bumped `20260718l → 20260718m`.
+
 **2026-07-18 batch #19 — Odyssey Forge: split Buy from Use (matches the Item Store's buy-then-use
 pattern).** User, after seeing the store live: "just add a use button below each of them."
 - **Buy now only acquires** a machine into an uninstalled stockpile (`state.specialStoreOwned =

@@ -4,20 +4,31 @@
   // its own, so store prices/icons/descriptions always stay in sync with the one ITEMS table.
   //
   // Design decisions:
+  // * ONE unified card shelf (no separate "Backpack" list — removed 2026-07-18, user: "remove this
+  //   table and add the missing one to the list above and provide ways to use them like special
+  //   items"). Every card shows what you own, a Buy row (if it's sold — `ISTR_STOCK`) or a
+  //   craft-only note, and a Use row (if `useItem()` has a real effect for it — `ISTR_USABLE`) or
+  //   an ingredient note. feed/fertilizer are Farm-market items with their own UI there and are
+  //   deliberately NOT shown here at all (the "except the ones that can only be used in farm"
+  //   exclusion) — they never had a Buy or Use action that made sense in this store anyway.
   // * The whole view is re-rendered into #itemStoreView on every open AND after every buy/use.
-  //   The UI is small, state lives entirely in `state`, and a full re-render keeps counts, cash,
-  //   disabled buttons and the backpack list correct with zero bookkeeping.
-  // * Stock is a fixed whitelist (ISTR_STOCK). feed/fertilizer belong to the Farm's market and
-  //   super_medicine/poison_vial are craft-only (price 0), so they are NOT sold here — but every
-  //   owned item still shows in the Backpack section below the shelf.
+  //   The UI is small, state lives entirely in `state`, and a full re-render keeps counts, cash
+  //   and disabled buttons correct with zero bookkeeping.
   // * buyStoreItem(id, qty) is the testable transaction core: it validates via the PURE
   //   storeBuyQuote() (no mutation) and returns { ok, msg }. The click wrappers add the toast +
   //   re-render on top, so console tests don't spam toasts.
   // * Every cross-module call is guarded (typeof ... === 'function') so the store degrades
   //   gracefully if another module is missing or renamed.
 
-  // The four items on Trader Nova's shelf (must exist in ITEMS with price > 0).
+  // Every item this store's shelf shows a card for (Farm-only feed/fertilizer excluded on purpose).
+  var ISTR_SHELF = ['potion', 'ether', 'moon_herb', 'star_dew', 'super_medicine', 'poison_vial'];
+  // The subset actually sold here (must exist in ITEMS with price > 0) — the rest are craft-only.
   var ISTR_STOCK = ['potion', 'ether', 'moon_herb', 'star_dew'];
+  // The subset useItem() has a REAL effect for — these get a working Use button. Everything else
+  // on the shelf (moon_herb/star_dew) is a pure Laboratory ingredient with no direct "use" of its
+  // own, so it gets an informational note instead (matching how feed/fertilizer used to read
+  // "Used at the Farm" — same idea, different destination).
+  var ISTR_USABLE = ['potion', 'ether', 'super_medicine', 'poison_vial'];
 
   // PURE: the list of ids actually sellable right now (stocked + present in ITEMS + priced).
   function getStoreStock(){
@@ -91,7 +102,7 @@
     if (res.ok) {
       if (typeof playSfx === 'function') playSfx('ui-click');
       if (typeof updateStats === 'function') updateStats();
-    }
+    } else if (typeof playSfx === 'function') playSfx('wrong');
     istrRenderView();
   }
 
@@ -115,59 +126,52 @@
           '<span class="istr-cash-chip" title="Your Cash">💵 ' + state.coins + '</span>' +
         '</div>' +
         '<div class="istr-shelf">' + istrShelfHtml() + '</div>' +
-        '<h3 class="istr-section-title">🎒 Your Backpack</h3>' +
-        '<div class="istr-backpack">' + istrBackpackHtml() + '</div>' +
       '</div>';
   }
 
   function istrShelfHtml(){
-    var stock = getStoreStock();
-    if (!stock.length) return '<p class="istr-empty">The shelves are empty today. Come back soon!</p>';
-    return stock.map(function(id){
+    return ISTR_SHELF.map(function(id){
       var it = ITEMS[id];
+      if (!it) return '';
       var owned = (typeof countItem === 'function') ? countItem(id) : (state.inventory[id] || 0);
-      var canBuy1 = state.coins >= it.price;
-      var canBuy5 = state.coins >= it.price * 5;
+      var sold = it.price > 0;   // craft-only items (price 0) have no Buy row
+      var canBuy1 = sold && state.coins >= it.price;
+      var canBuy5 = sold && state.coins >= it.price * 5;
       var short = it.price - state.coins;
+
+      var buyRow = sold
+        ? ('<div class="istr-buy-row">' +
+            '<button class="btn btn-primary istr-buy" onclick="istrBuyClick(\'' + id + '\',1)"' +
+              (canBuy1 ? '' : ' disabled') + ' title="' + (canBuy1 ? ('Buy 1× ' + it.name + ' for 💵' + it.price) : ('Not enough Cash — need 💵' + short + ' more')) + '">Buy 💵' + it.price + '</button>' +
+            (canBuy5 ? '<button class="btn btn-ghost istr-buy5" onclick="istrBuyClick(\'' + id + '\',5)" title="Buy 5× ' + it.name + ' for 💵' + (it.price * 5) + '">×5 💵' + (it.price * 5) + '</button>' : '') +
+          '</div>' +
+          (canBuy1 ? '' : '<span class="istr-short">Need 💵' + short + ' more!</span>'))
+        : '<span class="istr-note" title="Not sold — brewed at the Alchemy Lab from ingredients + chips">🧪 Craft-only — visit the Laboratory</span>';
+
+      var useRow;
+      if (ISTR_USABLE.indexOf(id) !== -1) {
+        if (id === 'poison_vial' && state.poisonArmed) {
+          useRow = '<span class="istr-note istr-armed" title="Will douse the next monster you fight in acid">☠️ prepared for next battle</span>';
+        } else {
+          useRow = '<button class="btn btn-ghost istr-use" onclick="istrUseClick(\'' + id + '\')"' +
+            (owned > 0 ? '' : ' disabled') + ' title="' + (owned > 0 ? it.desc : ('You don’t have any ' + it.name + ' — buy or craft one first.')) + '">Use</button>';
+        }
+      } else {
+        // Pure Laboratory ingredient (moon_herb/star_dew) — no direct "use" of its own; it's
+        // consumed automatically by the Alchemy Lab's recipes, same idea as the old
+        // "Used at the Farm" note for feed/fertilizer, just a different destination.
+        useRow = '<span class="istr-note" title="Not used from here — spent automatically when you Mix a recipe at the Laboratory">Used at the Laboratory 🧪</span>';
+      }
+
       return (
         '<div class="istr-card">' +
           (owned > 0 ? '<span class="istr-owned" title="How many you own">x' + owned + '</span>' : '') +
           '<span class="istr-icon">' + it.icon + '</span>' +
           '<span class="istr-name">' + it.name + '</span>' +
           '<span class="istr-desc">' + it.desc + '</span>' +
-          '<div class="istr-buy-row">' +
-            '<button class="btn btn-primary istr-buy" onclick="istrBuyClick(\'' + id + '\',1)"' +
-              (canBuy1 ? '' : ' disabled') + ' title="' + (canBuy1 ? ('Buy 1× ' + it.name + ' for 💵' + it.price) : ('Not enough Cash — need 💵' + short + ' more')) + '">Buy 💵' + it.price + '</button>' +
-            (canBuy5 ? '<button class="btn btn-ghost istr-buy5" onclick="istrBuyClick(\'' + id + '\',5)" title="Buy 5× ' + it.name + ' for 💵' + (it.price * 5) + '">×5 💵' + (it.price * 5) + '</button>' : '') +
-          '</div>' +
-          (canBuy1 ? '' : '<span class="istr-short">Need 💵' + short + ' more!</span>') +
+          buyRow +
+          '<div class="istr-buy-row">' + useRow + '</div>' +
         '</div>'
       );
     }).join('');
-  }
-
-  function istrBackpackHtml(){
-    var rows = ITEM_ORDER.filter(function(id){
-      return ((typeof countItem === 'function') ? countItem(id) : (state.inventory[id] || 0)) > 0;
-    }).map(function(id){
-      var it = ITEMS[id];
-      var owned = (typeof countItem === 'function') ? countItem(id) : (state.inventory[id] || 0);
-      var action;
-      if (id === 'feed' || id === 'fertilizer') {
-        action = '<span class="istr-note" title="Not used from here — bring it up at the Farm\'s market instead">Used at the Farm 🌾</span>';
-      } else if (id === 'poison_vial' && state.poisonArmed) {
-        action = '<span class="istr-note istr-armed" title="Will douse the next monster you fight in acid">☠️ prepared for next battle</span>';
-      } else {
-        action = '<button class="btn btn-ghost istr-use" onclick="istrUseClick(\'' + id + '\')" title="' + it.desc + '">Use</button>';
-      }
-      return (
-        '<div class="istr-pack-row">' +
-          '<span class="istr-pack-icon">' + it.icon + '</span>' +
-          '<span class="istr-pack-name">' + it.name + ' <b class="istr-pack-count" title="How many you own">x' + owned + '</b></span>' +
-          action +
-        '</div>'
-      );
-    });
-    if (!rows.length) return '<p class="istr-empty">Your backpack is empty. Grab a potion for the road!</p>';
-    return rows.join('');
   }
