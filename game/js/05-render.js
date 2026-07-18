@@ -123,19 +123,27 @@
     // the tester can buy/upgrade anything freely. Re-pinned on every stats refresh, so spending
     // never actually runs it down.
     if (state.testMode) {
-      state.coins = 999999;
-      state.gems = 999999;
+      var TEST_TOPUP = 999999999;   // user 2026-07-18: "increase the amount of cash for admin to
+                                     // 999,999,999, same for other materials and items"
+      state.coins = TEST_TOPUP;
+      state.gems = TEST_TOPUP;
       // top up every currency + chip so the tester can buy/upgrade/craft freely
       if (!state.currencies) state.currencies = { gold: 0, silver: 0 };
-      if ((state.currencies.gold || 0) < 999) state.currencies.gold = 999;
-      if ((state.currencies.silver || 0) < 999) state.currencies.silver = 999;
+      if ((state.currencies.gold || 0) < TEST_TOPUP) state.currencies.gold = TEST_TOPUP;
+      if ((state.currencies.silver || 0) < TEST_TOPUP) state.currencies.silver = TEST_TOPUP;
       if (typeof CHIP_ORDER !== 'undefined') {
-        CHIP_ORDER.forEach(function(k){ if ((state.chips[k] || 0) < 999) state.chips[k] = 999; });
+        CHIP_ORDER.forEach(function(k){ if ((state.chips[k] || 0) < TEST_TOPUP) state.chips[k] = TEST_TOPUP; });
       }
-      // …and Wonderland passes + every consumable/ingredient (minigames, alchemy, farm)
-      if ((state.wonderPasses || 0) < 999) state.wonderPasses = 999;
+      // …and Wonderland passes + every consumable/ingredient (minigames, alchemy, farm) + every
+      // crafting material (essence/silver/gold/gem — Alchemy Lab recipes, 19-alchemy.js; this one
+      // was missing from the test top-up entirely before — a real gap, not just a smaller number).
+      if ((state.wonderPasses || 0) < TEST_TOPUP) state.wonderPasses = TEST_TOPUP;
       if (typeof ITEM_ORDER !== 'undefined') {
-        ITEM_ORDER.forEach(function(k){ if ((state.inventory[k] || 0) < 99) state.inventory[k] = 99; });
+        ITEM_ORDER.forEach(function(k){ if ((state.inventory[k] || 0) < TEST_TOPUP) state.inventory[k] = TEST_TOPUP; });
+      }
+      if (typeof MATERIAL_ORDER !== 'undefined') {
+        if (!state.materials) state.materials = {};
+        MATERIAL_ORDER.forEach(function(k){ if ((state.materials[k] || 0) < TEST_TOPUP) state.materials[k] = TEST_TOPUP; });
       }
     }
     if (el.level) el.level.textContent = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(state.level) : state.level;

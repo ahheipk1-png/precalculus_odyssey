@@ -623,6 +623,23 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #26 — Admin/test-mode top-up raised to 999,999,999; crafting materials were
+missing from it entirely.** User: "increase the amount of cash for admin to 999,999,999, same for
+other materials and items."
+- **`js/05-render.js`**, `updateStats()`'s `state.testMode` block: every resource it re-pins on
+  every stats refresh (Cash, gems, Gold, Silver, every AI chip type, Wonderland Passes, every
+  inventory item) raised from its old floor (999999 Cash; 999 for currencies/chips/passes; 99 for
+  items) to a single shared `TEST_TOPUP = 999999999` constant.
+- **Gap found and closed**: `state.materials` (essence/silver/gold/gem — the Alchemy Lab's crafting
+  ingredients, `09-items.js`/`19-alchemy.js`) was **never topped up at all** for admin/test accounts
+  before this — the block simply didn't mention it. Added a `MATERIAL_ORDER.forEach(...)` pass
+  alongside the existing chip/item loops, so admin accounts can now craft freely too.
+- **Verified live**: a fresh test-mode profile shows Cash/Gold/Silver/every chip type/Wonderland
+  Passes/every inventory item/all 4 materials at exactly 999999999 (confirmed both via direct state
+  inspection and the real rendered currency bar — "🧩 All Chips: 6999999993" = 999999999 × 7 chip
+  types, correctly summed); a regular (non-test-mode) profile is completely unaffected (starts at 0,
+  as before). Zero console errors. Cache token bumped `20260718t → 20260718u`.
+
 **2026-07-18 batch #25 — Odyssey Forge gains a 6th machine: the Ascension Core (buy a whole hero
 level).** User: "add a special item to level up in special items store... make it 100,000 and add
 10,000,20,000,30,000 for more levels."
