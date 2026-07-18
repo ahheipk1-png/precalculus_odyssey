@@ -162,10 +162,15 @@ easily beatable so the player needs to go to Arena Infinity"):
   2-Boss = members' own requirement +2, 3-Boss = +5. This means reaching the arena's normal boss
   gate is NOT enough to even attempt the 3-Boss card — a deliberate extra barrier, not just harder
   combat math. The locked-card message explicitly points at Arena Infinity.
-- **Death mid-chain**: no new state needed. Each kill marks that specific monster in
-  `state.defeatedMonsters` (same one-time-kill system every monster already uses), independent of
-  how the fight or chain later ends. Re-entering a gauntlet card (`startGauntletCard`) filters to
-  not-yet-defeated members and resumes there — dying on link 2 of 3 doesn't erase link 1's kill.
+- **Death/escape mid-chain (UPDATED 2026-07-18 — the gauntlet is now ATOMIC).** The original design
+  (below) committed each kill immediately so death resumed from a checkpoint. That was **replaced**:
+  gauntlet kills now BANK their rewards/defeated-marks on `activeCombat` and commit only when the
+  whole chain is cleared, so escaping OR dying mid-chain forfeits everything and re-entry restarts
+  from the first monster (user request: "escape on the 2nd monster → next time start from the 1st";
+  also closes a kill-one→escape→repeat farm). See rpg-combat-economy.md's 2026-07-18 "gauntlets are
+  now ATOMIC" entry. ~~(original: each kill marked `state.defeatedMonsters` immediately, so
+  `startGauntletCard` resumed from the first not-yet-defeated member — dying on link 2 of 3 kept
+  link 1's kill.)~~
 - **Verified**: live-fought both gauntlets in the real UI at arena 4. Minimum-gate hero level +
   bare on-schedule gear (iron_broadsword, no upgrades) → 2-Boss cost ~46% HP, 3-Boss cost ~60%+ HP
   (real risk of death on a bad-luck run, as intended). A generously over-invested loadout (maxed

@@ -111,12 +111,12 @@ fight, visible + correct text for a 2-Boss Gauntlet fight, no console errors.
 1. **Escape is now ALWAYS available** (superseding the "gauntlets hide Escape" rule above). The
    user wanted the button present everywhere but with a **speed-based success chance**. New
    `attemptEscape()`/`escapeSuccessChance()`/`monsterFreeHit()` in `06-rpg-battle.js`: chance =
-   `clamp(55 + (playerSpeed − monsterSpeed)·3.5, 20, 90)%`. Success → back to monster select (a
-   gauntlet resumes from its defeated map); failure → the monster lands one free ratio-damage hit
-   (player dodge still applies) and you stay in the fight. `startCombat` always shows
-   `combatEscapeBtn`; the gauntlet `#gauntletLockNote` was repurposed from "no Escape" to
-   "escaping mid-chain is a speed gamble; failing costs a free hit." Verified live: chance 73% at
-   spd 9 vs 4; forced-fail took 32 dmg and stayed in combat; forced-success returned to select.
+   `clamp(55 + (playerSpeed − monsterSpeed)·3.5, 20, 90)%`. Success → back to monster select;
+   failure → the monster lands one free ratio-damage hit (player dodge still applies) and you stay
+   in the fight. `startCombat` always shows `combatEscapeBtn`; the gauntlet `#gauntletLockNote` was
+   repurposed from "no Escape" to "escaping mid-chain is a speed gamble; failing costs a free hit."
+   Verified live: chance 73% at spd 9 vs 4; forced-fail took 32 dmg and stayed in combat;
+   forced-success returned to select.
 2. **Beaten monsters show CLEARED + non-clickable even in admin.** `isMonsterDefeated` dropped its
    `if (state.testMode) return false` re-fight bypass — it now reads the real `defeatedMonsters`
    map for everyone, so an admin who beats a monster sees the greyed "☑️ CLEARED" card (the Easy
@@ -128,6 +128,22 @@ fight, visible + correct text for a 2-Boss Gauntlet fight, no console errors.
 3. **Boss Gate always open in admin.** `setGateButton` now forces `open = true` when
    `state.testMode` — a single choke point so no caller (openBattle, arena-advance reset) can close
    it for admin. Verified: gate reads "⚔️ Boss Gate Open!" / enabled at 0 solves in test mode.
+
+**Follow-up (2026-07-18, gauntlets are now ATOMIC — user: "escape on the 2nd monster → next time
+start from the 1st"):** a gauntlet is all-or-nothing. `handleBattleVictory` no longer commits each
+gauntlet kill's rewards/defeated-mark immediately — it **banks** them on `activeCombat`
+(`chainCash`/`chainXp`/`chainLoot`/`chainKills`, carried across links by `continueGauntlet`) and
+commits the entire batch only when the FINAL link falls (one `showVictoryChest`, all `defeatedMonsters`
+marks, the boss's rank≥3 trophy/lore, `addHeroXp` of the summed XP). Escaping or dying mid-chain
+nulls `activeCombat` → nothing was persisted → re-entering `startGauntletCard` starts from the first
+monster again. **This supersedes the earlier "death resumes from checkpoint" design** — death now
+also forfeits the chain (consistent with escape; death already costs the revival fee). Bonus: it
+closes a kill-one → escape → repeat reward-farm hole (rewards only land on completion). Solo (Easy)
+fights are unchanged — they commit immediately. Verified live (admin + non-admin): links 1–2 commit
+nothing (coins/XP/defeated all unchanged); escape from link 2 → chain restarts from monster 1 with
+0 members marked; full completion commits exactly once (2-Boss → +234 coins = 117+117, both marked;
+3-Boss → all 3 marked, 1 trophy, 1 chest of 351, Advance button); solo Easy still credits its 18
+coins + mark immediately. No console errors.
 
 ## Hero & stats
 

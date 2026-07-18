@@ -826,14 +826,18 @@
     updateCombatHpBars();
     if (activeCombat.playerHp <= 0) handleBattleDefeat();
   }
-  // Attempt to flee: roll the speed-based chance. Success → back to monster select (a gauntlet
-  // resumes from its defeated map). Failure → the monster gets a free hit and you stay in the fight.
+  // Attempt to flee: roll the speed-based chance. Success → back to monster select. Failure → the
+  // monster gets a free hit and you stay in the fight. Fleeing a gauntlet FORFEITS the whole chain —
+  // its rewards/defeats were only banked (never committed), so re-entering restarts from monster 1.
   function attemptEscape(){
     if (!activeCombat) return;
     if (el.startCombatBtn && el.startCombatBtn.disabled) return;   // mid-round animation; ignore
     var chance = escapeSuccessChance();
     if (Math.random() * 100 < chance){
       appendCombatLog('💨 You slipped away! (escape chance ' + chance + '%)', 'system');
+      if (activeCombat.gauntletLocked && (activeCombat.chainKills && activeCombat.chainKills.length)){
+        appendCombatLog('⚠️ You fled the gauntlet — banked rewards forfeit; the chain restarts from the first foe.', 'system');
+      }
       if (typeof showToast === 'function') showToast('Escaped from combat! 🏃');
       if (typeof playSfx === 'function') playSfx('click');
       activeCombat = null;
@@ -1199,62 +1203,78 @@
     el.playerSprite.classList.add('victory');
     el.monsterSprite.classList.add('defeated');
     appendCombatLog(`Victory! You defeated ${activeCombat.monster.name}!`, 'system');
-    var reward = activeCombat.monster.reward;
-    state.coins += reward;
-
-    state.defeatedMonsters[monsterKey(activeCombat.monster)] = true;
-
+    var monster = activeCombat.monster;
+    var reward = monster.reward;
     // Loot: "part of the body and any precious thing" → real materials into the pouch (R1).
-    var loot = rollMonsterLoot(activeCombat.monster);
-    addMaterials(loot);
-    var lootStr = lootSummary(loot);
-
-    // Bosses (rank 3) still leave a keepsake trophy.
-    if (activeCombat.monster.rank >= 3) {
-      var rewardTrophy = `👑 ${activeCombat.monster.name}'s Ancient Soul`;
-      state.trophies.push(rewardTrophy);
-      appendCombatLog(`Obtained Trophy: ${rewardTrophy}!`, 'system');
-
-      // Story: defeating a room boss recovers its memory fragment (14-lore.js).
-      // Many guardians were never evil — the fragment reveals why.
-      if (typeof unlockMemoryFragment === 'function') {
-        var frag = unlockMemoryFragment(activeCombat.monster.room);
-        if (frag) {
-          appendCombatLog(`📖 Memory recovered — ${frag.title}. Read it in your Star Log.`, 'system');
-          showToast('📖 Memory fragment recovered! Open the Star Log.');
-        }
-      }
-    }
-
+    var loot = rollMonsterLoot(monster);
     // XP scales with arena + rank (BAL.killXp) — the old flat 100 made hero level grow like
     // √kills and soft-locked the requiredHeroLvl gate around arena 40 (docs/balance-design.md).
-    var victoryXp = (activeCombat && activeCombat.monster && activeCombat.monster.xp) ? activeCombat.monster.xp : 100;
-    addHeroXp(victoryXp);
+    var victoryXp = monster.xp || 100;
+    var isGauntlet = !!activeCombat.gauntletLocked;
+    var moreToCome = isGauntlet && activeCombat.queue && activeCombat.queue.length > 0;
 
-    updateStats();
-    appendCombatLog(`Gained ${reward} 💵 Cash & +${victoryXp} XP!`, 'system');
-    appendCombatLog(`Looted: ${lootStr}`, 'system');
     burst(10);
     if (typeof playSfx === 'function') playSfx('victory');
 
-    // Gauntlet fights: the loot/cash are already credited above (every kill counts), but only
-    // ONE combined chest shows — at the very end of the chain, not after each individual kill,
-    // so a 2/3-Boss run feels like one continuous fight instead of a chest popup every link.
-    if (activeCombat.gauntletLocked) {
+    if (moreToCome) {
+      // ATOMIC gauntlet: BANK this kill's rewards + a pending defeat, but commit NOTHING to state
+      // yet. Escaping or dying before the final link forfeits the whole chain — nothing was
+      // persisted, so re-entering starts over from the FIRST monster (user 2026-07-18). This also
+      // blocks a "kill one → escape → repeat" reward farm, since rewards only land on completion.
       activeCombat.chainCash = (activeCombat.chainCash || 0) + reward;
+      activeCombat.chainXp   = (activeCombat.chainXp || 0) + victoryXp;
       activeCombat.chainLoot = _mergeLoot(activeCombat.chainLoot, loot);
-      if (activeCombat.queue && activeCombat.queue.length > 0) {
-        // Mid-chain: no chest, just a quick toast so the kill still feels acknowledged.
-        if (typeof showToast === 'function') showToast(`💰 +${reward} 💵 · Looted ${lootStr}`);
-      } else if (typeof showVictoryChest === 'function') {
-        showVictoryChest(activeCombat.chainLoot, activeCombat.chainCash);
-      } else {
-        showToast(`💰 +${activeCombat.chainCash} Cash · Looted ${lootSummary(activeCombat.chainLoot)}`);
+      activeCombat.chainKills = (activeCombat.chainKills || []).concat([monster]);
+      appendCombatLog('Defeated ' + monster.name + '! (rewards bank until the whole chain is cleared)', 'system');
+      if (typeof showToast === 'function') showToast('⚔️ ' + monster.name + ' down — on to the next!');
+      el.startCombatBtn.style.display = 'none';
+      if (el.openSpellsBtn) el.openSpellsBtn.style.display = 'none';
+      if (el.combatEscapeBtn) el.combatEscapeBtn.style.display = 'none';
+      if (el.spellsPanel) el.spellsPanel.style.display = 'none';
+      el.battleFleeBtn.hidden = true;
+      var nextFoe = activeCombat.queue[0];
+      el.postCombatBtn.style.display = 'inline-block';
+      el.postCombatBtn.textContent = '⚔️ Next: ' + nextFoe.name + ' →';
+      if (el.keepFightingBtn) el.keepFightingBtn.style.display = 'none';
+      return;
+    }
+
+    // Solo fight OR the FINAL link of a gauntlet → COMMIT everything at once (this kill + any
+    // banked from earlier links).
+    var kills = isGauntlet ? (activeCombat.chainKills || []).concat([monster]) : [monster];
+    var totalCash = (isGauntlet ? (activeCombat.chainCash || 0) : 0) + reward;
+    var totalXp   = (isGauntlet ? (activeCombat.chainXp || 0) : 0) + victoryXp;
+    var totalLoot = isGauntlet ? _mergeLoot(activeCombat.chainLoot, loot) : loot;
+
+    state.coins += totalCash;
+    addMaterials(totalLoot);
+
+    kills.forEach(function(m){
+      state.defeatedMonsters[monsterKey(m)] = true;
+      // Bosses (rank 3) leave a keepsake trophy + recover a story memory fragment (14-lore.js).
+      if (m.rank >= 3) {
+        var rewardTrophy = '👑 ' + m.name + '\'s Ancient Soul';
+        state.trophies.push(rewardTrophy);
+        appendCombatLog('Obtained Trophy: ' + rewardTrophy + '!', 'system');
+        if (typeof unlockMemoryFragment === 'function') {
+          var frag = unlockMemoryFragment(m.room);
+          if (frag) {
+            appendCombatLog('📖 Memory recovered — ' + frag.title + '. Read it in your Star Log.', 'system');
+            showToast('📖 Memory fragment recovered! Open the Star Log.');
+          }
+        }
       }
-    } else if (typeof showVictoryChest === 'function') {
-      showVictoryChest(loot, reward);
+    });
+
+    addHeroXp(totalXp);
+    updateStats();
+    appendCombatLog('Gained ' + totalCash + ' 💵 Cash & +' + totalXp + ' XP!', 'system');
+    appendCombatLog('Looted: ' + lootSummary(totalLoot), 'system');
+
+    if (typeof showVictoryChest === 'function') {
+      showVictoryChest(totalLoot, totalCash);
     } else {
-      showToast(`💰 +${reward} Cash · Looted ${lootStr}`);
+      showToast('💰 +' + totalCash + ' Cash · Looted ' + lootSummary(totalLoot));
     }
 
     el.startCombatBtn.style.display = 'none';
@@ -1262,16 +1282,6 @@
     if (el.combatEscapeBtn) el.combatEscapeBtn.style.display = 'none';
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
     el.battleFleeBtn.hidden = true;
-
-    // Mid-gauntlet victory: more foes queued in this chain — go straight to the next one, no
-    // Advance/Return/Keep-Fighting options yet (those only apply once the whole chain is clear).
-    if (activeCombat.queue && activeCombat.queue.length > 0) {
-      var nextFoe = activeCombat.queue[0];
-      el.postCombatBtn.style.display = 'inline-block';
-      el.postCombatBtn.textContent = '⚔️ Next: ' + nextFoe.name + ' →';
-      if (el.keepFightingBtn) el.keepFightingBtn.style.display = 'none';
-      return;
-    }
 
     // Show Advance button if we can advance (level is clear)
     var boss = getRoomBoss(state.level);
@@ -1400,10 +1410,14 @@
     // forward so the final chest (handleBattleVictory) can sum every kill in the run, not just
     // the last one.
     var chainCash = activeCombat.chainCash || 0;
+    var chainXp = activeCombat.chainXp || 0;
     var chainLoot = activeCombat.chainLoot || null;
+    var chainKills = activeCombat.chainKills || [];
     startCombat(q[0], q.slice(1), true);
     activeCombat.chainCash = chainCash;
+    activeCombat.chainXp = chainXp;
     activeCombat.chainLoot = chainLoot;
+    activeCombat.chainKills = chainKills;
   }
 
   function handlePostCombatRedirect() {
