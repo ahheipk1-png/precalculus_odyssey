@@ -866,11 +866,16 @@
   var BU = { W: 480, H: 352, plats: [], player: null, foes: [], bubbles: [],
              lives: 3, popped: 0, total: 4, over: false, keys: {}, inv: 0, shootCool: 0, level: 0, waiting: true };
   // Sequential levels (no selection): more gremlins, faster, and eventually starting angry.
+  // Spawn x's are kept over a platform tier so each gremlin lands on solid ground:
+  //   ground y332 (any x) · y250 left x40-190 / right x290-440 · y168 x140-340 · y92 left x20-150 / right x330-460.
   var BU_LEVELS = [
-    { spd: 1.0,  angry: false, spots: [[300,300,1],[100,220,-1]] },
-    { spd: 1.15, angry: false, spots: [[300,300,1],[100,220,-1],[220,140,1]] },
-    { spd: 1.3,  angry: false, spots: [[300,300,1],[100,220,-1],[220,140,1],[380,60,-1]] },
-    { spd: 1.5,  angry: true,  spots: [[300,300,1],[100,220,-1],[220,140,1],[380,60,-1],[60,140,1]] }
+    { spd: 1.0,  angry: false, spots: [[300,300,1],[100,220,-1]] },                                                        // 2
+    { spd: 1.15, angry: false, spots: [[300,300,1],[100,220,-1],[220,140,1]] },                                            // 3
+    { spd: 1.3,  angry: false, spots: [[300,300,1],[100,220,-1],[220,140,1],[380,60,-1]] },                                // 4
+    { spd: 1.45, angry: false, spots: [[120,300,1],[360,300,-1],[100,220,-1],[380,220,1],[220,140,1]] },                   // 5
+    { spd: 1.6,  angry: true,  spots: [[120,300,1],[360,300,-1],[100,220,-1],[380,220,1],[220,140,1],[60,60,1]] },         // 6
+    { spd: 1.75, angry: true,  spots: [[120,300,1],[360,300,-1],[80,220,-1],[400,220,1],[200,140,1],[60,60,1],[420,60,-1]] }, // 7
+    { spd: 1.9,  angry: true,  spots: [[120,300,1],[360,300,-1],[80,220,-1],[400,220,1],[180,140,1],[300,140,-1],[60,60,1],[420,60,-1]] } // 8
   ];
   function _buSetup(){
     var cfg = BU_LEVELS[BU.level] || BU_LEVELS[BU_LEVELS.length - 1];

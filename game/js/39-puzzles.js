@@ -39,15 +39,19 @@
   // pieces felt "not draggable" before. Pointer events unify mouse, touch and pen, so this
   // works everywhere. One drag at a time; onDrop(el, payload) receives the element under the
   // pointer at release (matched via [data-dropzone]) and whatever payload a2DragStart was given.
-  var A2_DRAG = { ghost: null, payload: null, onDrop: null };
-  function a2DragStart(e, payload, ghostHtml, onDrop){
+  // onHover(dz|null) is an OPTIONAL per-game preview hook, called every pointer move with the
+  // dropzone under the cursor (or null when off any zone / on release). Games whose dragged piece
+  // spans MORE than the single cell under the pointer (Block Forge) use it to highlight the piece's
+  // full multi-cell footprint, so the drop preview matches the size of the block being dragged.
+  var A2_DRAG = { ghost: null, payload: null, onDrop: null, onHover: null };
+  function a2DragStart(e, payload, ghostHtml, onDrop, onHover){
     if (e.cancelable) e.preventDefault();
     a2DragCancel();
     var g = document.createElement('div');
     g.className = 'a2-drag-ghost';
     g.innerHTML = ghostHtml;
     document.body.appendChild(g);
-    A2_DRAG.ghost = g; A2_DRAG.payload = payload; A2_DRAG.onDrop = onDrop;
+    A2_DRAG.ghost = g; A2_DRAG.payload = payload; A2_DRAG.onDrop = onDrop; A2_DRAG.onHover = onHover || null;
     _a2DragMove(e);
     document.addEventListener('pointermove', _a2DragMove);
     document.addEventListener('pointerup', _a2DragEnd);
@@ -62,6 +66,7 @@
     var prev = document.querySelector('.a2-drop-hover');
     if (prev && prev !== dz) prev.classList.remove('a2-drop-hover');
     if (dz) dz.classList.add('a2-drop-hover');
+    if (A2_DRAG.onHover) A2_DRAG.onHover(dz);
   }
   function _a2DragEnd(e){
     document.removeEventListener('pointermove', _a2DragMove);
@@ -77,7 +82,8 @@
     if (A2_DRAG.ghost && A2_DRAG.ghost.parentNode) A2_DRAG.ghost.parentNode.removeChild(A2_DRAG.ghost);
     A2_DRAG.ghost = null;
     var prev = document.querySelector('.a2-drop-hover'); if (prev) prev.classList.remove('a2-drop-hover');
-    A2_DRAG.payload = null; A2_DRAG.onDrop = null;
+    if (A2_DRAG.onHover) A2_DRAG.onHover(null);              // let the game wipe its footprint preview
+    A2_DRAG.payload = null; A2_DRAG.onDrop = null; A2_DRAG.onHover = null;
     document.removeEventListener('pointermove', _a2DragMove);
     document.removeEventListener('pointerup', _a2DragEnd);
     document.removeEventListener('pointercancel', _a2DragEnd);
@@ -300,17 +306,24 @@
   // 18-deep scramble. Crates stay capped at 3 (see the cap note above) — late difficulty comes from
   // board size + wall density + scramble depth, which the backstop-aware reverse construction
   // handles reliably.
+  // 2026-07-18: harder per user — MORE ice cubes (3 → ramp to 5) and much deeper scrambles (8→30);
+  // _skGenerateOne also now rejects any level that starts with a cube already on a target. Ice is
+  // BFS-verified (10k→18k state cap, 24 attempts) so unmakeable candidates fall back to a preset.
+  // Ice is BFS-verified and the state space explodes fast, so cube count stays at 3 to keep
+  // generation snappy (>3 pushed the top tier to multi-second hangs). Difficulty ramps via deeper
+  // scrambles (10→24, up from 8→18), bigger/denser boards, the icy look, and the new no-cube-starts-
+  // on-a-target rule — a harder Glacier without the freeze risk of more cubes.
   var GLACIER_DIFFS = [
-    { W: 9,  H: 8,  carves: 4,  crates: 3, scramble: 8 },
-    { W: 9,  H: 8,  carves: 5,  crates: 3, scramble: 9 },
-    { W: 9,  H: 9,  carves: 5,  crates: 3, scramble: 10 },
-    { W: 10, H: 9,  carves: 6,  crates: 3, scramble: 11 },
-    { W: 10, H: 9,  carves: 6,  crates: 3, scramble: 12 },
-    { W: 10, H: 10, carves: 7,  crates: 3, scramble: 13 },
-    { W: 10, H: 10, carves: 8,  crates: 3, scramble: 14 },
-    { W: 11, H: 10, carves: 8,  crates: 3, scramble: 15 },
-    { W: 11, H: 10, carves: 9,  crates: 3, scramble: 16 },
-    { W: 11, H: 11, carves: 10, crates: 3, scramble: 18 }
+    { W: 9,  H: 8,  carves: 4,  crates: 3, scramble: 10 },
+    { W: 9,  H: 8,  carves: 5,  crates: 3, scramble: 12 },
+    { W: 9,  H: 9,  carves: 5,  crates: 3, scramble: 14 },
+    { W: 10, H: 9,  carves: 6,  crates: 3, scramble: 16 },
+    { W: 10, H: 9,  carves: 6,  crates: 3, scramble: 17 },
+    { W: 10, H: 10, carves: 7,  crates: 3, scramble: 18 },
+    { W: 10, H: 10, carves: 8,  crates: 3, scramble: 20 },
+    { W: 11, H: 10, carves: 8,  crates: 3, scramble: 21 },
+    { W: 11, H: 10, carves: 9,  crates: 3, scramble: 22 },
+    { W: 11, H: 11, carves: 10, crates: 3, scramble: 24 }
   ];
   // Classic PUSH Sokoban (Cargo Bay). Push is guaranteed-solvable by the reverse-pull (no BFS), so
   // wall density can go much higher than Glacier — dense pillars + deep scrambles are the difficulty.
@@ -318,17 +331,23 @@
   // whole ramp shifted UP: L1 starts where the old L4 was (3 crates in a pillar maze) and the top
   // end pushes to 8 crates / 26 walls / 46-deep scrambles. Push is replay-proven solvable and cheap
   // to generate, so this is safe; board width stays ≤11 (fixed 56px cells must fit the panel).
+  // 2026-07-18: harder per user — MORE boxes (3 → ramp to 10) and deeper scrambles (12→62). Push is
+  // guaranteed-solvable by the reverse-pull + replay proof (cheap, no BFS freeze), and _skGenerateOne
+  // now rejects any level that starts with a box already on a target, so every run is a real puzzle.
+  // crates cap 5: the no-pre-solved guard (every box must START off its ring) plus dense pillar mazes
+  // makes 6+ fall back to a preset, so difficulty ramps via wall density + deep scrambles (16→54)
+  // instead of raw box count. Push generation is cheap (guaranteed-solvable by replay, no BFS).
   var CARGO_DIFFS = [
-    { W: 8,  H: 8,  carves: 8,  crates: 3, scramble: 12 },
-    { W: 9,  H: 8,  carves: 10, crates: 4, scramble: 15 },
-    { W: 9,  H: 9,  carves: 12, crates: 4, scramble: 18 },
-    { W: 10, H: 9,  carves: 14, crates: 5, scramble: 22 },
-    { W: 10, H: 9,  carves: 16, crates: 5, scramble: 26 },
-    { W: 10, H: 10, carves: 18, crates: 6, scramble: 30 },
-    { W: 11, H: 10, carves: 20, crates: 6, scramble: 34 },
-    { W: 11, H: 10, carves: 22, crates: 7, scramble: 38 },
-    { W: 11, H: 11, carves: 24, crates: 7, scramble: 42 },
-    { W: 11, H: 11, carves: 26, crates: 8, scramble: 46 }
+    { W: 8,  H: 8,  carves: 8,  crates: 4, scramble: 16 },
+    { W: 9,  H: 8,  carves: 10, crates: 4, scramble: 20 },
+    { W: 9,  H: 9,  carves: 12, crates: 4, scramble: 24 },
+    { W: 10, H: 9,  carves: 14, crates: 5, scramble: 28 },
+    { W: 10, H: 10, carves: 16, crates: 5, scramble: 32 },
+    { W: 10, H: 10, carves: 18, crates: 5, scramble: 36 },
+    { W: 11, H: 10, carves: 20, crates: 5, scramble: 42 },
+    { W: 11, H: 11, carves: 22, crates: 5, scramble: 44 },
+    { W: 11, H: 11, carves: 23, crates: 5, scramble: 46 },
+    { W: 11, H: 11, carves: 24, crates: 5, scramble: 48 }
   ];
 
   function _glFloorCount(grid, W, H){ var n = 0; for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) if (grid[y][x]) n++; return n; }
@@ -548,7 +567,7 @@
     // confirms every good level with margin while letting a genuinely-UNsolvable candidate bail ~6×
     // sooner than a huge cap would — keeping per-level generation snappy. Push confirms via
     // _skReplayPush and never reaches this BFS, so its cap can stay small.
-    var q = [{ crates: crates, norm: r0.min }], iter = 0, CAP = slide ? 10000 : 5000;
+    var q = [{ crates: crates, norm: r0.min }], iter = 0, CAP = slide ? 7000 : 5000;
     while (q.length){
       if (iter++ > CAP) return false;
       var cur = q.pop();
@@ -684,7 +703,7 @@
     // more often, so give them a big retry budget. Ice levels are BFS-verified (each attempt costs
     // real time) but are tuned sparse enough to hit on the first few tries, so a smaller budget keeps
     // worst-case generation snappy.
-    var maxAttempts = slide ? 14 : 60, minFloorFrac = slide ? 0.60 : 0.46;
+    var maxAttempts = slide ? 12 : 420, minFloorFrac = slide ? 0.60 : 0.46;
     for (var attempt = 0; attempt < maxAttempts; attempt++){
       var grid = _glCarveRegion(diff.W, diff.H, diff.carves, minFloorFrac);
       var targets = _glPickTargets(grid, diff.W, diff.H, diff.crates, slide);
@@ -692,11 +711,12 @@
       var ent = slide ? _glReversePlace(grid, diff.W, diff.H, targets, diff.scramble)
                       : _skReversePull(grid, diff.W, diff.H, targets, diff.scramble);
       if (!ent || !_glLooksSane(grid, diff.W, diff.H, ent)) continue;
-      // Already-solved (every TARGET already covered — crates are interchangeable, so compare SETS,
-      // not same-index pairs) isn't a real puzzle.
-      var crateSet = {}; ent.crates.forEach(function(c){ crateSet[c[0] + ',' + c[1]] = 1; });
-      var moved = targets.some(function(t){ return !crateSet[t[0] + ',' + t[1]]; });
-      if (!moved) continue;
+      // NO crate/cube may START on a target (user 2026-07-18: "no box/ice cube should already be in
+      // the target at the beginning") — every one must be pushed there. Rejecting any pre-covered
+      // target also guarantees it's not already (partly) solved.
+      var targetSet = {}; targets.forEach(function(t){ targetSet[t[0] + ',' + t[1]] = 1; });
+      var noPreSolved = ent.crates.every(function(c){ return !targetSet[c[0] + ',' + c[1]]; });
+      if (!noPreSolved) continue;
       var rows = _glToRows(grid, diff.W, diff.H, ent);
       // Slide: BFS-verify (multi-crate ice isn't guaranteed solvable by construction). Push: replay
       // the reverse-pull's OWN recorded solution — an actual proof this exact level is solvable.
@@ -736,7 +756,7 @@
   }
 
   function _skGridHtml(){
-    var h = '<div class="a2-grid" style="grid-template-columns:repeat(' + SOKO.W + ',56px)">';
+    var h = '<div class="a2-grid' + (SOKO.slide ? ' soko-ice' : '') + '" style="grid-template-columns:repeat(' + SOKO.W + ',56px)">';
     for (var y = 0; y < SOKO.H; y++){
       for (var x = 0; x < SOKO.W; x++){
         var k = x + ',' + y, cls = 'a2-cell', body = '';
@@ -869,17 +889,22 @@
   // at 2 gates with a same-colour mirror decoy already in play, and the top end is 6 gates on an
   // 11-tall palace with 4 unique decoys + 6 mirrors. Label budget: 6 gates + 4 decoys = 10 of the
   // 13 SHIK_TILE types (mirrors reuse gate labels), so no exhaustion.
+  // 2026-07-18: MUCH more confusing per user ("add 5× more tiles"). Barriers set the board width
+  // (=3·barriers+4) and the label budget, so they stay in range; the ~5× extra tiles come from
+  // `mirrors` — same-colour decoys placed OFF the gate rows (they never block the guaranteed
+  // solution), which is exactly the "which identical block do I push?" confusion. Taller boards (H)
+  // give the swarm of mirrors somewhere to live. Gates(≤6)+decoys(≤7)=13 = the full SHIK_TILE budget.
   var SHIK_DIFFS = [
-    { barriers: 2, H: 8,  decoys: 1, mirrors: 1 },
-    { barriers: 2, H: 8,  decoys: 2, mirrors: 2 },
-    { barriers: 3, H: 8,  decoys: 2, mirrors: 2 },
-    { barriers: 3, H: 9,  decoys: 2, mirrors: 3 },
-    { barriers: 4, H: 9,  decoys: 3, mirrors: 3 },
-    { barriers: 4, H: 10, decoys: 3, mirrors: 4 },
-    { barriers: 5, H: 10, decoys: 3, mirrors: 4 },
-    { barriers: 5, H: 10, decoys: 4, mirrors: 5 },
-    { barriers: 6, H: 11, decoys: 4, mirrors: 5 },
-    { barriers: 6, H: 11, decoys: 4, mirrors: 6 }
+    { barriers: 2, H: 9,  decoys: 2, mirrors: 5 },
+    { barriers: 2, H: 9,  decoys: 3, mirrors: 7 },
+    { barriers: 3, H: 10, decoys: 3, mirrors: 9 },
+    { barriers: 3, H: 10, decoys: 4, mirrors: 11 },
+    { barriers: 4, H: 11, decoys: 4, mirrors: 13 },
+    { barriers: 4, H: 11, decoys: 5, mirrors: 15 },
+    { barriers: 5, H: 12, decoys: 5, mirrors: 18 },
+    { barriers: 5, H: 12, decoys: 6, mirrors: 21 },
+    { barriers: 6, H: 13, decoys: 6, mirrors: 24 },
+    { barriers: 6, H: 13, decoys: 7, mirrors: 28 }
   ];
   var SHIK_LEVELS = [
     // 1 — slide one tile across the gap into its twin to open the way out.

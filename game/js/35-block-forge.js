@@ -199,6 +199,25 @@
       if (isNaN(r) || isNaN(c) || !QBF.tray[idx]) return;
       QBF.sel = idx;
       qbfCellClick(r, c);
+    }, function(dz){ qbfPreviewFootprint(p, dz); });   // live full-block drop preview
+  }
+
+  // Highlight EVERY grid cell the dragged piece would fill (anchored at the hovered cell), so the
+  // drop preview is the same shape/size as the block being dragged — green when it fits, red when
+  // it doesn't. dz===null (drag ended / off-grid) just clears the preview.
+  function qbfPreviewFootprint(piece, dz){
+    var grid = document.getElementById('qbfGrid');
+    if (grid){
+      var old = grid.querySelectorAll('.qbf-preview, .qbf-preview-bad');
+      for (var j = 0; j < old.length; j++) old[j].classList.remove('qbf-preview', 'qbf-preview-bad');
+    }
+    if (!grid || !dz || !dz.classList.contains('qbf-cell') || !piece) return;
+    var ar = parseInt(dz.getAttribute('data-r'), 10), ac = parseInt(dz.getAttribute('data-c'), 10);
+    if (isNaN(ar) || isNaN(ac)) return;
+    var ok = qbfCanPlace(QBF.board, piece.cells, ar, ac, QBF.size);
+    piece.cells.forEach(function(o){
+      var cell = grid.querySelector('.qbf-cell[data-r="' + (ar + o[0]) + '"][data-c="' + (ac + o[1]) + '"]');
+      if (cell) cell.classList.add(ok ? 'qbf-preview' : 'qbf-preview-bad');
     });
   }
 

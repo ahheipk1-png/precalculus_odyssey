@@ -545,6 +545,41 @@ same-colour decoy tiles at the gates (Forbidden City).
   Forbidden City: 0 fallbacks, ≤3ms/level. No console errors; render path (`_glToRows`/`_skParse`/
   `_skGridHtml`/`_shikToRows`) unchanged.
 
+**2026-07-18 batch #14 — puzzle trio harder + "no pre-solved" rule + icy Glacier look; Block Forge
+full-block drop preview; Bubble Blast more gremlins.** Player feedback on three screenshots.
+- **📦 Cargo Bay & ❄️ Glacier Push — no crate/cube may START on its target ring** (`_skGenerateOne`,
+  `39-puzzles.js`). The old "did anything move?" acceptance check was replaced by a `noPreSolved`
+  guard: build the target set, reject any candidate level where a crate spawns on a target
+  (`ent.crates.every(c => !targetSet[...])`). Because the reverse-pull/reverse-place construction can
+  leave a crate stuck on its ring, push generation's retry budget was raised (`maxAttempts` push
+  `140 → 420`; each push attempt is BFS-free, ~0.6ms) and crate counts were **capped** where the
+  guard + guaranteed-solvability start forcing fallbacks: **Cargo ≤5, Glacier ≤3** (ice BFS explodes
+  past 3 cubes). Difficulty instead ramps via **more walls + deeper scrambles** — Cargo
+  `CARGO_DIFFS` crates 4→5, carves 8→26, scramble 16→54; Glacier `GLACIER_DIFFS` all `crates: 3`,
+  carves 4→10, scramble 10→24. Verified in-browser against the served file: **Cargo all 10 tiers 0
+  fallback / 0 boxes-on-target / ≤155ms; Glacier all 10 tiers 0 fallback / 0 cubes-on-target /
+  ≤450ms.**
+- **❄️ Glacier Push now LOOKS icy** — `_skGridHtml` adds a `soko-ice` class to `.a2-grid` when
+  `SOKO.slide`, and `wonderland.css` `.soko-ice` gives cells a frosty blue gradient, icy-blue walls,
+  and a glowing frost ring on targets (so the "tiles slide because it's ice" rule reads visually).
+- **🏯 Forbidden City — ~5× more tiles** (player: "add 5 times more tiles to make it more
+  confusing"). `SHIK_DIFFS` mirrors bumped `5 → 28`, decoys `2 → 7`, boards taller (`H 9 → 13`);
+  live tile counts now ramp **11 → 47** per chamber (was ~2–6), boards up to 22×13. Still
+  solver-verified: 0 fallbacks, ≤3ms/level.
+- **🧩 Quantum Block Forge — the drop preview now highlights the WHOLE block footprint**, at board-
+  cell size (player: "the yellow highlighted bricks should be the same size as the block dragging…
+  not sure there is [why there's] no one brick"). The shared pointer-drag helper gained an optional
+  5th arg `onHover(dz)` (`a2DragStart`/`_a2DragMove`/`a2DragCancel` in `39-puzzles.js`); Block Forge
+  passes `qbfPreviewFootprint(piece, dz)` which lights every cell the piece would occupy —
+  `.qbf-preview` (green) when it fits, `.qbf-preview-bad` (red) when blocked/off-board — instead of
+  the single `.a2-drop-hover` cell under the pointer. New CSS declared after `.a2-drop-hover` so the
+  footprint colour wins on the anchor cell too. Verified live: a 5-cell I-piece lit exactly its 5
+  cells green in-bounds, 3 red when run off the edge, cleared on release.
+- **🫧 Bubble Blast — more gremlins** (`BU_LEVELS`, `40-action.js`): 4 levels → **7**, gremlins per
+  level **2 → 8** (2,3,4,5,6,7,8), speed 1.0 → 1.9, angry from level 5. Every spawn x is kept over a
+  platform tier so each gremlin lands on solid ground (verified: 0 bad spots).
+- Cache token bumped `20260718g → 20260718h`.
+
 **2026-07-17 batch #13 — CRITICAL HOTFIX: batch #12's wall-clustering change crashed `_glCarveRegion`
 on every single call, taking Cargo Bay and Glacier Push completely offline in production.** Found
 during a real human-style playthrough (not simulation) — every "Play!" click silently burned a
