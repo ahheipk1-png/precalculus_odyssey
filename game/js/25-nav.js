@@ -43,9 +43,13 @@
     var cur = _currentSystemId();
     // TEST MODE (admin) unlocks every star system so the tester can browse them all.
     var testUnlockAll = !!state.testMode;
-    var cards = (typeof STAR_SYSTEMS !== 'undefined' ? STAR_SYSTEMS : []).map(function(s){
+    // Hidden systems (Galaxy Center) only appear once galaxyUnlocked() — all 65 arenas perfect, or admin.
+    var galaxyOn = (typeof galaxyUnlocked === 'function') && galaxyUnlocked();
+    var cards = (typeof STAR_SYSTEMS !== 'undefined' ? STAR_SYSTEMS : []).filter(function(s){
+      return !s.hidden || galaxyOn;
+    }).map(function(s){
       var here = s.id === cur;
-      var unlocked = s.unlocked || testUnlockAll;
+      var unlocked = s.unlocked || testUnlockAll || (s.hidden && galaxyOn);
       var star = (typeof starSVG === 'function' && s.id === 'sol') ? starSVG('atlas-' + s.id) : '<div class="atlas-star-dot" style="background:radial-gradient(circle,#fff,#ffb347)"></div>';
       // Maths topic (world title) + arena range for this system, e.g. "Numbers · Arena 1–24".
       // Math theme for this system, from `chapters` (worlds.config.js) — the old MATH_WORLDS global

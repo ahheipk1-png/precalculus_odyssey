@@ -226,7 +226,9 @@
   // by the monster's Wu Xing element. Bosses/elites render larger.
   function getMonsterArtMarkup(monster) {
     var m = monster || {};
-    var emoji = MONSTER_ART[_monsterBaseId(m)] || '👾';
+    var emoji = (m.blackHole && typeof BLACKHOLE_ART !== 'undefined')
+      ? (BLACKHOLE_ART[(m.gauntletSlot || 1) - 1] || '⚫')
+      : (MONSTER_ART[_monsterBaseId(m)] || '👾');
     var col = (typeof elementColor === 'function') ? elementColor(m.element || 'metal') : '#8fd6ff';
     var big = m.difficulty === 'Boss' ? 120 : (m.difficulty === 'Elite' ? 98 : 84);
     return '<div class="monster-emoji-art" style="--elcol:' + col + '">' +
@@ -453,6 +455,41 @@
     return boss ? subs.concat([boss]) : subs;
   }
 
+  // ---- Giant Black Hole (arena 66): a 10-monster gauntlet, each one harder than the last.
+  var BLACKHOLE_NAMES = ['Event Horizon Wraith', 'Gravity Warden', 'Photon Serpent', 'Accretion Behemoth',
+    'Singularity Shade', 'Tidal Leviathan', 'Void Colossus', 'Quasar Tyrant', 'Relativity Reaper',
+    'Sagittarius A* — The Core'];
+  var BLACKHOLE_ART = ['🌑','🕳️','☄️','🌀','👁️','🐙','🪐','💫','☠️','⚫'];
+  // Monster i (1..10) scales from ~0.7× to ~1.5× the arena-65 boss line, so it starts brutal and
+  // ends beyond anything in the linear game. Full boss-tier stats; last one is rank 3 (a trophy).
+  function buildBlackHoleMonster(i) {
+    var mult = 0.6 + 0.09 * i;   // i=1 → 0.69, i=10 → 1.50
+    var r = 65;
+    return {
+      id: 'bh_' + i, room: 66, rank: (i === 10 ? 3 : 2), gauntletSlot: i, blackHole: true,
+      name: BLACKHOLE_NAMES[i - 1] || ('Void Horror ' + i),
+      maxHp: Math.max(5, Math.round(BAL.bossHp(r) * mult)),
+      maxMp: monsterRanks[2].mp + r * 2,
+      attack: Math.max(1, Math.round(BAL.bossAtk(r) * mult)),
+      defense: Math.max(0, Math.round(BAL.bossDef(r) * mult)),
+      speed: BAL.monsterSpeed(r),
+      reward: Math.max(5, Math.round(BAL.bossCash(r) * mult)),
+      xp: BAL.killXp(r, 3),
+      difficulty: 'Boss',
+      element: ELEMENT_ORDER[i % ELEMENT_ORDER.length],
+      requiredHeroLvl: 1
+    };
+  }
+  function getBlackHoleChain() {
+    var chain = [];
+    for (var i = 1; i <= 10; i++) chain.push(buildBlackHoleMonster(i));
+    return chain;
+  }
+  function isBlackHoleArena(room) {
+    var a = (typeof getArena === 'function') ? getArena(room) : null;
+    return !!(a && a.special === 'blackhole');
+  }
+
   function getMonsterLockReason(monster) {
     if (state.testMode) return '';   // admin/test account: every monster is unlocked (non-persistent, re-derived each session)
     if (monster.room > state.level) return 'Reach Arena ' + monster.room;
@@ -607,6 +644,22 @@
     // superseded now that every past arena renders its own live, clickable cards below.
     var bountyBox = document.getElementById('bountyListContainer');
     if (bountyBox) bountyBox.style.display = 'none';
+
+    // Giant Black Hole (arena 66): a single 10-monster gauntlet, no per-arena rows.
+    if (isBlackHoleArena(state.level)) {
+      var chain = getBlackHoleChain();
+      var wrap = document.createElement('div');
+      wrap.className = 'arena-card-row';
+      wrap.innerHTML = '<div class="arena-row-header">⚫ Giant Black Hole — 10-monster gauntlet, each harder than the last. No retreat is easy here.</div>';
+      var grid = document.createElement('div');
+      grid.className = 'monster-choices-grid';
+      grid.style.gridTemplateColumns = '1fr';   // one wide card for the 10-chain
+      grid.appendChild(buildGauntletCard(chain, '☠️ THE SINGULARITY — 10-Boss Gauntlet', '⚫', 0));
+      wrap.appendChild(grid);
+      el.monsterChoices.appendChild(wrap);
+      if (el.arenaAdvanceRow) el.arenaAdvanceRow.style.display = 'none';
+      return;
+    }
 
     // Every arena from the current one down to Arena 1 gets its own row of 3 real, clickable
     // cards — not just a summary. Most recent first so the arena you're actually in isn't buried
@@ -1293,6 +1346,17 @@
     if (el.combatEscapeBtn) el.combatEscapeBtn.style.display = 'none';
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
     el.battleFleeBtn.hidden = true;
+
+    // Giant Black Hole cleared — the true end of the Odyssey. No arena to advance to; the button
+    // just returns to the (now-CLEARED) gauntlet screen, and nav is restored so you can travel out.
+    if (isBlackHoleArena(state.level)) {
+      appendCombatLog('🏆 THE SINGULARITY IS CONQUERED. You have beaten the whole galaxy.', 'system');
+      if (typeof showToast === 'function') showToast('🏆 Galaxy Center conquered — you are a Precalculus Master!');
+      el.postCombatBtn.style.display = 'inline-block';
+      el.postCombatBtn.textContent = '🏆 Victory — Return';
+      if (el.keepFightingBtn) el.keepFightingBtn.style.display = 'none';
+      return;
+    }
 
     // Show Advance button if we can advance (level is clear)
     var boss = getRoomBoss(state.level);

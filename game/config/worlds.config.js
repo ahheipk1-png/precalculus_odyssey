@@ -38,5 +38,8 @@
     { id: 'barnards-star',      name: "Barnard's Star",        worldId: 'barnards-star',      distanceLy: 6,    star: "Barnard's Star (red dwarf)",         fact: 'The second-closest star system to the Sun — a fast-moving red dwarf.', unlocked: false },
     { id: 'kepler-90',          name: 'Kepler-90',             worldId: 'kepler-90',          distanceLy: 2800, star: 'Kepler-90 (Sun-like star)',          fact: 'An eight-planet system — as many planets as our own Sun, 2,800 light-years away.', unlocked: false },
     { id: 'kepler-11',          name: 'Kepler-11',             worldId: 'kepler-11',          distanceLy: 2100, star: 'Kepler-11 (Sun-like star)',          fact: 'Six low-density planets packed closer to their star than Mercury is to ours.', unlocked: false },
-    { id: 'hd-40307',           name: 'HD 40307',              worldId: 'hd-40307',           distanceLy: 42,   star: 'HD 40307 (orange dwarf)',            fact: 'A chain of super-Earths, one in the habitable zone — the Odyssey’s final frontier.', unlocked: false }
+    { id: 'hd-40307',           name: 'HD 40307',              worldId: 'hd-40307',           distanceLy: 42,   star: 'HD 40307 (orange dwarf)',            fact: 'A chain of super-Earths, one in the habitable zone — the Odyssey’s final frontier.', unlocked: false },
+    // HIDDEN endgame system — only shows in the atlas once ALL 65 arenas have a perfect (0-mistake)
+    // green star (galaxyUnlocked() in 06-rpg-battle.js). Holds the single "Giant Black Hole" arena.
+    { id: 'galaxy-center',      name: 'Galaxy Center',         worldId: 'galaxy-center',      distanceLy: 26000, star: 'Sagittarius A* (supermassive black hole)', fact: 'The 4-million-solar-mass monster at the heart of the Milky Way — the Odyssey’s ultimate trial.', unlocked: false, hidden: true }
   ];

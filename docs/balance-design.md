@@ -183,6 +183,36 @@ easily beatable so the player needs to go to Arena Infinity"):
   revisit if real play shows it's either a brick wall even with heavy Arena Infinity grinding, or
   still too easy.
 
+## Galaxy Center & the Giant Black Hole (2026-07-18 — hidden endgame)
+
+Three linked additions (user request):
+- **Combat nav-lock**: during an active fight (`#combatArenaScreen`) the top `.header-actions` nav
+  is hidden (`setNavLockForCombat`), so the speed-gated Escape is the only exit — you can't bail to
+  Earth/Practice mid-fight. Restored on return-to-select / advance / leave-boss-room.
+- **Perfect-clear stars**: `state.perfectArenas[n]=true` when arena n is cleared with `roomFails===0`
+  (set in `advanceToNextLevel`, persisted in the save snapshot). A green shiny 🌟 pins to the
+  top-right of that arena's atlas card (`_atlasArenaCard`, `.atlas-perfect-star`).
+- **Hidden Galaxy Center**: when ALL 65 arenas have a perfect star (`galaxyUnlocked()`, or admin),
+  a hidden star system `galaxy-center` ("Sagittarius A*") appears in the Star Atlas
+  (`STAR_SYSTEMS` entry with `hidden:true`, filtered in `renderStarAtlas`). It holds ONE arena:
+  **Giant Black Hole** = CURRICULUM arena **66**, appended AFTER the 65 authored rows with
+  `special:'blackhole'`. `CURRICULUM_MAX` stays 65 and galaxy-center is NOT a `chapters` entry, so
+  `state.maxLevel` stays 65 and normal advancement never flows into it — it's reached only via the
+  atlas card.
+  - **Questions**: `generateProblem(66)` → `_blackHoleProblem()` serves a random hardest (difficulty
+    ≥4) template from ANY phase across the whole curriculum.
+  - **Combat**: `getBlackHoleChain()` = a 10-monster gauntlet, monster i scaling `0.6+0.09·i`
+    (≈0.69× → 1.5×) of the arena-65 boss line — each harder than the last, the 10th (Sagittarius A*
+    — The Core, rank 3) beyond anything in the linear game. Reuses the atomic-gauntlet machinery
+    (`buildGauntletCard`/`startGauntletCard`): one combined chest + a capstone trophy only on full
+    clear; escaping/dying restarts from monster 1. Distinct cosmic art via `BLACKHOLE_ART`.
+  - Verified live: gating (hidden until all-perfect), enter arena 66, hard-MC questions, the 10-card
+    gauntlet renders, and a full 10-link clear commits exactly one chest + one trophy with
+    "🏆 Victory — Return". No console errors.
+  - **Tuning note**: the 10-monster scaling (0.69×–1.5× the r65 boss, full boss-tier, no heal) is a
+    first pass — it's meant to be beatable only with maxed odyssey gear + high hero level. Revisit
+    if real play shows it's impossible or trivial.
+
 ## Out of scope this pass (follow-ups)
 
 - ~~Wonderland `a2Reward` Cash amounts (flat 20–100)~~ — **fixed 2026-07-17**: added

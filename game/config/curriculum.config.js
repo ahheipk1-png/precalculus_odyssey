@@ -22,6 +22,18 @@
       });
     }
     ['SEED','GROW','ROOT','WIND','LAKE','FIRE','SAND','VOID','HERO','STAR'].forEach(function(c,i){ if(CURRICULUM[i]) CURRICULUM[i].code=c; });
+    // Arena 66 — the hidden "Giant Black Hole" endgame. Appended AFTER the 65 linear arenas and
+    // NOT counted in CURRICULUM_MAX (below) or in any chapter, so normal advancement never flows
+    // into it (arena 65 clear → "Return to Quest"). Reached only via the Galaxy Center atlas card,
+    // which itself only appears once all 65 arenas are perfect-starred. special:'blackhole' drives
+    // its hardest-review questions (04-logic.js) and 10-monster gauntlet (06-rpg-battle.js).
+    CURRICULUM.push({
+      n: 66, worldId: 'galaxy-center', systemId: 'galaxy-center', origSystem: 'galaxy-center',
+      topic: 'The hardest review from every arena', mechanic: 'mcOnly', code: 'HOLE',
+      phaseId: null, gen: null, special: 'blackhole',
+      body: { name: 'Giant Black Hole', kind: 'Supermassive Black Hole', real: true,
+        fact: 'Sagittarius A* — 4 million times the Sun’s mass, at the heart of the galaxy.' }
+    });
     if (typeof STAR_SYSTEMS !== 'undefined'){
       STAR_SYSTEMS.forEach(function(sys){
         var rows=CURRICULUM.filter(function(a){ return a.systemId===sys.id; });
@@ -43,4 +55,6 @@
   function getArena(n){ return CURRICULUM[n-1] || null; }
   function arenasForSystem(id){ return CURRICULUM.filter(function(a){ return a.systemId===id; }); }
   function arenaByCode(code){ var up=(code||'').toUpperCase(); for(var i=0;i<CURRICULUM.length;i++) if(CURRICULUM[i].code===up) return CURRICULUM[i]; return null; }
-  var CURRICULUM_MAX = CURRICULUM.length;
+  // The LINEAR progression cap = the 65 authored rows. Arena 66 (Giant Black Hole) is intentionally
+  // excluded so advancement/maxLevel stop at 65 and the black hole is an optional off-path challenge.
+  var CURRICULUM_MAX = CURRICULUM_ROWS.length;
