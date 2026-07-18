@@ -398,6 +398,7 @@
           _wondCard('🎵', 'Cosmic Rhythm', 'Hit the falling notes on the beat — ' + RHY_LEVELS.length + ' levels, faster and denser as you climb!', 'openRhythm') +
           _wondCard('🐍', 'Snake', 'Steer the classic snake — eat food to grow, avoid the walls and your own tail! ' + SN_LEVELS.length + ' levels, faster each time.', 'openSnake') +
           _wondCard('💎', 'Crystal Cascade', 'Drop columns of 3 gems, cycle their colors, and chain cascading matches for huge combos!', 'openCrystal') +
+          _wondCard('☁️', 'Cloudberry Squadron', 'Ten stages of homing-missile mayhem! Shoot down smart missiles, collect power-ups, and face an escalating final boss.', 'openCloudberry') +
           carnival +
         '</div>' +
         '<div class="wond-footer">' +

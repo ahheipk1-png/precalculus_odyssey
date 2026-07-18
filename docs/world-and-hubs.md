@@ -623,6 +623,59 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #27 — Added a new Arcade game: ☁️ Cloudberry Squadron (10-stage homing-missile
+shooter).** User pasted a complete standalone HTML5 canvas game ("Cloudberry Squadron — Homing
+Missile Mayhem") and said: "add this game to wonderland."
+- **`js/53-cloudberry.js` (new)**: the user's pasted game logic (10 `STAGES` configs, ~11 enemy
+  types with unique canvas art, homing "smart missiles" that steer toward the player but can be shot
+  down, per-stage bosses culminating in a 3-phase final boss with shield→armor→core bars, a particle
+  system, and the "Giant Piko Rush" special attack) kept essentially **verbatim inside its own IIFE**
+  — the closure gives it collision-proof isolation from the rest of this ~50-file shared-global-scope
+  codebase without needing to rename any of its many generic identifiers (`player`, `keys`, `bullets`,
+  `update`, `draw`, etc.). Only the SHELL was rewritten to fit this project's Wonderland conventions
+  (researched via an Explore agent before writing any code — see prior session's findings on
+  `gameWelcome`/`wonderPlay`/`a2Shell`/`a2Keys`/`A2.raf`/`a2Result`):
+  - `openCloudberry()` → `gameWelcome('cloudberry', ...)` for the free leaderboard/Play screen
+    (Play charges 1 Wonderland Pass via `wonderPlay`, matching every other Arcade game).
+  - `_cbStartRun()` → `a2Shell(...)` builds the in-game topbar+canvas+touch-pad chrome; canvas/ctx
+    are re-queried fresh on every run (they're `let`-bound, not `const`) since `a2Shell` replaces
+    `#wonderlandView`'s innerHTML on every (re)play — a stale cached canvas reference from a prior
+    run would otherwise be a detached node.
+  - Input goes through `a2Keys(_cbKeyDown, _cbKeyUp)` (binds on `document`, auto-unbound by
+    `a2StopAll()`) instead of the pasted game's own `window.addEventListener`, and the game loop uses
+    `A2.raf = requestAnimationFrame(loop)` (not a private raf variable) with the standard
+    `if (!a2Active()) { a2StopAll(); return; }` guard at the top of `loop()` — this is the exact
+    key-leak prevention pattern used by every other A2 game; verified live that exiting mid-run via
+    the topbar's "← Back" clears `A2.raf`/`A2.kd`/`A2.ku` and removes the canvas.
+  - `gameOver(victory)` → `wgRecordScore('cloudberry', player.score, currentStage+1)` for the
+    leaderboard, then `a2Result(...)` with `frac = victory ? 1 : clamp(currentStage/10, .05, .95)` —
+    `a2Result` handles the Cash/materials reward (`a2Reward`) and the "↻ Play Again" (→ the free
+    `openCloudberry` welcome screen, never double-charging) / "← Lobby" buttons, replacing the pasted
+    game's own `#overlay`/`#card` restart UI entirely.
+  - No new CSS file needed — HUD/score/pause/boss-bars are all drawn directly on the canvas by the
+    pasted game's own `drawHUD()`; only the shared `.wond-canvas-wrap`/`.a2-canvas`/`.a2-pad`/
+    `.a2-keylegend` classes are reused (auto-scaling, touch D-pad + Fire/Giant buttons already
+    styled).
+  - `js/17-wonderland.js`: new `_wondCard('☁️', 'Cloudberry Squadron', ...)` entry in
+    `wondArcadeHtml()`. `game/index.html`: new `<script src="js/53-cloudberry.js?v=...">` after
+    `52-comeback-arena.js`.
+- **Verified live** (bridged past cloud-auth login locally, since this static dev server has no
+  backend): card renders in the Arcade grid; welcome screen shows correctly with no console errors;
+  Play starts the run, canvas renders (background/HUD/entities) once real `requestAnimationFrame`
+  ticking is confirmed — the Browser preview tab runs in a backgrounded/`document.hidden` state that
+  natively throttles rAF, so a temporary `setTimeout`-based rAF shim was used *only* for this
+  verification session to drive frames, never touching the shipped code. With the shim: full loss
+  run confirmed `hurtPlayer→gameOver→wgRecordScore→a2Result→a2Reward` end-to-end (score/level shown,
+  Gold/Silver/materials paid out correctly); "↻ Play Again" correctly re-opens the free welcome
+  screen (`wonderPasses` unchanged, confirming no double-charge); on-screen D-pad/Fire/Giant buttons'
+  `onpointerdown`/`onpointerup` markup confirmed wired to the exposed `_cbTouchKey`/`_cbUseSpecial`
+  globals with no errors on a real pointer-event dispatch. Real automated keyboard dispatch in this
+  browser-automation harness doesn't populate `KeyboardEvent.code` (only `.key`) — a pre-existing
+  limitation of the tool, not this game (every other A2 game reads `e.code` the same way) — so
+  keyboard controls rely on real human input for full end-to-end proof, same as the rest of the
+  Arcade's canvas games. Zero console errors across every run. Cache token bumped
+  `20260718u → 20260718v`.
+
 **2026-07-18 batch #26 — Admin/test-mode top-up raised to 999,999,999; crafting materials were
 missing from it entirely.** User: "increase the amount of cash for admin to 999,999,999, same for
 other materials and items."
