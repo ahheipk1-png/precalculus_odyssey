@@ -742,6 +742,9 @@
   // open = the gold pulsing button. Every call site that used to show/hide it goes through here so
   // the visual state can never drift out of sync with the actual gate state.
   function setGateButton(open){
+    // Admin/test account: the Boss Gate is ALWAYS open (skip the 10-questions requirement) — single
+    // choke point so no other caller (openBattle, arena-advance reset) can close it for admin.
+    if (state && state.testMode) open = true;
     var b = el.gateEnterBtn; if (!b) return;
     b.style.display = 'inline-block';
     b.classList.toggle('gate-closed', !open);

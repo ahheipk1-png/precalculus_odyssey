@@ -459,11 +459,12 @@
     if (state.heroLvl < monster.requiredHeroLvl) return 'Hero Lv. ' + monster.requiredHeroLvl;
     return '';
   }
-  // The admin/test account can also RE-FIGHT any monster (the normal "defeated = gone forever" rule
-  // is a per-save progression gate; for testing we ignore it). Pure read of state.testMode + the
-  // defeated map — never persists anything, always false for real players.
+  // Reads the REAL per-save defeated map for EVERYONE, including admin — a monster you've actually
+  // beaten shows its cleared/greyed state and stops being re-clickable (user 2026-07-18: "I beat it
+  // but no CLEARED banner and it's still clickable"). Admin keeps its OTHER conveniences —
+  // getMonsterLockReason still bypasses the arena/hero-level gates, and the Boss Gate is always open
+  // (setGateButton) — so admin can fight ahead-of-level foes, just not re-fight cleared ones.
   function isMonsterDefeated(key) {
-    if (state.testMode) return false;
     return !!(state.defeatedMonsters && state.defeatedMonsters[key]);
   }
 
@@ -554,15 +555,16 @@
     var card = document.createElement('div');
     card.className = 'monster-card-select' + (isDefeated ? ' defeated' : '') + (isLocked ? ' locked' : '');
     if (isDefeated) {
-      card.style.opacity = '0.4';
+      card.style.opacity = '0.45';
       card.style.pointerEvents = 'none';
       card.style.borderStyle = 'dotted';
+      card.style.filter = 'grayscale(0.6)';
     }
     card.innerHTML = `
       <div class="monster-card-art">${getMonsterArtMarkup(easy)}</div>
-      <div class="monster-select-name">${easy.name} ${isDefeated ? '💀' : ''}</div>
+      <div class="monster-select-name">${easy.name} ${isDefeated ? '✅' : ''}</div>
       <div class="monster-select-el">${elementBadgeHtml(easy.element)}</div>
-      ${isDefeated ? `<div class="monster-select-stat">☠️ DEFEATED (Gone Forever)</div>` : ''}
+      ${isDefeated ? `<div class="gauntlet-cleared-banner">☑️ CLEARED</div>` : ''}
       ${isLocked ? `<div class="monster-lock-note">🔒 Locked: ${lockReason}</div>` : ''}
     `;
     if (!isDefeated && !isLocked) {
@@ -704,15 +706,17 @@
       el.openSpellsBtn.disabled = false;
     }
     if (el.combatEscapeBtn) {
-      // Gauntlet fights disable Escape entirely — that's the "no chance to go to Hotel" rule;
-      // letting the player flee mid-chain would just buy a free heal before resuming.
-      el.combatEscapeBtn.style.display = activeCombat.gauntletLocked ? 'none' : 'inline-block';
+      // Escape is ALWAYS available now (user 2026-07-18) — but success is a speed-based gamble
+      // (attemptEscape), so gauntlet fights are no longer a guaranteed no-retreat wall; a slow hero
+      // can still fail and eat a free hit. The lock note below explains the odds during gauntlets.
+      el.combatEscapeBtn.style.display = 'inline-block';
       el.combatEscapeBtn.disabled = false;
     }
-    // Small inline note explaining WHY Escape is missing — the card's own "No retreat" warning
-    // was removed per user feedback (too cluttered), so without this the missing button reads as
-    // a bug rather than the intended gauntlet rule.
-    if (el.gauntletLockNote) el.gauntletLockNote.hidden = !activeCombat.gauntletLocked;
+    if (el.gauntletLockNote) {
+      el.gauntletLockNote.hidden = !activeCombat.gauntletLocked;
+      if (activeCombat.gauntletLocked) el.gauntletLockNote.textContent =
+        '⚠️ Gauntlet chain — escaping mid-chain is a speed-based gamble; failing costs a free hit.';
+    }
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
     el.postCombatBtn.style.display = 'none';
     el.battleFleeBtn.hidden = true;
@@ -786,6 +790,63 @@
     var chance = Math.min(BAL.DODGE_MAX, Math.max(BAL.DODGE_MIN,
       BAL.DODGE_BASE + (defSpd - atkSpd) * BAL.DODGE_PER_SPD));
     return Math.random() * 100 < chance;
+  }
+
+  // Escape is a speed-based gamble (user 2026-07-18: always show the button, but success scales
+  // with the hero's speed vs the monster's). 55% base, ±3.5%/speed-point, clamped 20–90 so it's
+  // never a sure thing either way.
+  function escapeSuccessChance(){
+    var pSpd = (typeof getPlayerSpeed === 'function') ? getPlayerSpeed() : 5;
+    var mSpd = (activeCombat && activeCombat.monster && activeCombat.monster.speed) || 5;
+    return Math.round(Math.min(90, Math.max(20, 55 + (pSpd - mSpd) * 3.5)));
+  }
+  // One free enemy swing (the cost of a failed escape) — same ratio-damage formula + player-dodge
+  // roll as the normal enemy turn, just standalone.
+  function monsterFreeHit(){
+    if (!activeCombat) return;
+    var m = activeCombat.monster;
+    var mAp = m.attack * ((typeof monsterAttackFactor === 'function') ? monsterAttackFactor() : 1);
+    var pDef = getPlayerDp();
+    var mwx = (typeof elementMultiplier === 'function' && typeof getShieldElement === 'function') ? elementMultiplier(m.element, getShieldElement()) : 1;
+    var pInc = (typeof playerIncomingFactor === 'function') ? playerIncomingFactor() : 1;
+    var pSpd = (typeof getPlayerSpeed === 'function') ? getPlayerSpeed() : 5;
+    if (rollDodge(pSpd, m.speed || 5)){
+      triggerFloatingNote('player', 'MISS 💨');
+      appendCombatLog('💨 …but you dodge ' + m.name + '\'s parting blow!', 'p-attack');
+    } else {
+      var dmg = Math.max(1, Math.round(BAL.ENEMY_COEFF * mAp * mAp / (mAp + pDef) * mwx * pInc));
+      activeCombat.playerHp = Math.max(0, activeCombat.playerHp - dmg);
+      triggerFloatingDmg('player', dmg, false);
+      showImpactEffect('player', '💥');
+      battleImpactAt(el.playerSprite);
+      el.playerSprite.classList.add('hit-shake');
+      setTimeout(function(){ el.playerSprite.classList.remove('hit-shake'); }, 400);
+      appendCombatLog(m.name + ' catches you for ' + dmg + ' damage as you try to flee!', 'm-attack');
+    }
+    updateCombatHpBars();
+    if (activeCombat.playerHp <= 0) handleBattleDefeat();
+  }
+  // Attempt to flee: roll the speed-based chance. Success → back to monster select (a gauntlet
+  // resumes from its defeated map). Failure → the monster gets a free hit and you stay in the fight.
+  function attemptEscape(){
+    if (!activeCombat) return;
+    if (el.startCombatBtn && el.startCombatBtn.disabled) return;   // mid-round animation; ignore
+    var chance = escapeSuccessChance();
+    if (Math.random() * 100 < chance){
+      appendCombatLog('💨 You slipped away! (escape chance ' + chance + '%)', 'system');
+      if (typeof showToast === 'function') showToast('Escaped from combat! 🏃');
+      if (typeof playSfx === 'function') playSfx('click');
+      activeCombat = null;
+      el.combatArenaScreen.style.display = 'none';
+      el.monsterSelectScreen.style.display = 'block';
+      renderMonsterChoices();
+      el.battleFleeBtn.hidden = false;
+      if (el.battleShopBtn) el.battleShopBtn.hidden = false;
+    } else {
+      appendCombatLog('❌ Escape failed! (only ' + chance + '% — too slow) ' + activeCombat.monster.name + ' blocks your retreat!', 'm-attack');
+      if (typeof showToast === 'function') showToast('❌ Escape failed — too slow!');
+      monsterFreeHit();
+    }
   }
 
   function showImpactEffect(target, emoji) {

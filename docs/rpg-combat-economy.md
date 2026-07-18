@@ -107,6 +107,28 @@ Added a small inline note (`#gauntletLockNote` in `index.html`, mapped in `02-do
 only when `activeCombat.gauntletLocked`. Verified live: hidden + Escape visible for the solo Easy
 fight, visible + correct text for a 2-Boss Gauntlet fight, no console errors.
 
+**Follow-up (2026-07-18, three combat/admin fixes — user feedback):**
+1. **Escape is now ALWAYS available** (superseding the "gauntlets hide Escape" rule above). The
+   user wanted the button present everywhere but with a **speed-based success chance**. New
+   `attemptEscape()`/`escapeSuccessChance()`/`monsterFreeHit()` in `06-rpg-battle.js`: chance =
+   `clamp(55 + (playerSpeed − monsterSpeed)·3.5, 20, 90)%`. Success → back to monster select (a
+   gauntlet resumes from its defeated map); failure → the monster lands one free ratio-damage hit
+   (player dodge still applies) and you stay in the fight. `startCombat` always shows
+   `combatEscapeBtn`; the gauntlet `#gauntletLockNote` was repurposed from "no Escape" to
+   "escaping mid-chain is a speed gamble; failing costs a free hit." Verified live: chance 73% at
+   spd 9 vs 4; forced-fail took 32 dmg and stayed in combat; forced-success returned to select.
+2. **Beaten monsters show CLEARED + non-clickable even in admin.** `isMonsterDefeated` dropped its
+   `if (state.testMode) return false` re-fight bypass — it now reads the real `defeatedMonsters`
+   map for everyone, so an admin who beats a monster sees the greyed "☑️ CLEARED" card (the Easy
+   card got the same banner treatment as the gauntlet cards) and can't re-click it. Admin keeps its
+   other powers: `getMonsterLockReason` still bypasses arena/hero-level gates (fight ahead-of-level
+   foes), and the Boss Gate is always open. **Trade-off:** admin can no longer RE-fight a cleared
+   monster for testing (was task #66's convenience) — if that's needed later, add a dedicated
+   "reset arena progress" admin action rather than restoring the silent bypass.
+3. **Boss Gate always open in admin.** `setGateButton` now forces `open = true` when
+   `state.testMode` — a single choke point so no caller (openBattle, arena-advance reset) can close
+   it for admin. Verified: gate reads "⚔️ Boss Gate Open!" / enabled at 0 solves in test mode.
+
 ## Hero & stats
 
 `state.heroLvl / heroXp / playerHp / playerMaxHp / playerMp / playerMaxMp`. XP curve

@@ -144,9 +144,11 @@ easily beatable so the player needs to go to Arena Infinity"):
 
 - **2-Boss Gauntlet** (middle card): 2 brand-new named sub-bosses per room (`gauntletCatalog` in
   `06-rpg-battle.js`, era-cycled across all 65 arenas the same way the base 30-monster roster is),
-  fought back-to-back with the Escape/Flee/Weapon-Store buttons hidden for the WHOLE chain (not
-  just while a fight is in progress — `activeCombat.gauntletLocked` stays true across every link,
-  including the last one, so fleeing right before the final fight can't buy a free Hotel heal).
+  fought back-to-back. (**2026-07-18 update:** the original "Escape hidden for the whole chain"
+  no-retreat rule was replaced — Escape is now always available but a **speed-based gamble**
+  (`attemptEscape`); a failed flee costs a free enemy hit. `activeCombat.gauntletLocked` still
+  drives the chain/queue logic and the "escaping mid-chain is a gamble" note, it just no longer
+  hides the button. See rpg-combat-economy.md's 2026-07-18 entry.)
 - **3-Boss Gauntlet** (right card): the SAME 2 sub-bosses, then the arena's real Boss as the
   finale — so the existing arena-advance gate, trophy, and Star Log lore-fragment logic (all keyed
   off `rank>=3` / `getRoomBoss`) are completely untouched; sub-bosses use `rank:2` so they never

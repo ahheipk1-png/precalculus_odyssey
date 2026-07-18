@@ -410,15 +410,10 @@
     el.openSpellsBtn.addEventListener('click', openSpellsMenu);
   }
   if (el.combatEscapeBtn) {
+    // Escape is a speed-based gamble now (attemptEscape in 06-rpg-battle.js) — always available,
+    // even mid-gauntlet, but a failed roll costs a free enemy hit.
     el.combatEscapeBtn.addEventListener('click', function() {
-      if (activeCombat && activeCombat.gauntletLocked) return;   // no retreat mid-gauntlet
-      activeCombat = null;
-      el.combatArenaScreen.style.display = 'none';
-      el.monsterSelectScreen.style.display = 'block';
-      renderMonsterChoices();
-      el.battleFleeBtn.hidden = false;
-      if (el.battleShopBtn) el.battleShopBtn.hidden = false;
-      showToast("Escaped from combat! 🏃");
+      if (typeof attemptEscape === 'function') attemptEscape();
     });
   }
   el.postCombatBtn.addEventListener('click', handlePostCombatRedirect);
