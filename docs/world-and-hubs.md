@@ -616,7 +616,7 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
-**2026-07-18 batch #16 — Earth Hub tooltip audit + new Special Item Store (Odyssey Forge).**
+**2026-07-18 batch #17 — Earth Hub tooltip audit + new Special Item Store (Odyssey Forge).**
 Player feedback: a screenshot of the Alchemy Lab showing zero tooltips anywhere, plus a request
 for a late-game "buy permanent stats" building gated behind Arena 44.
 - **Tooltip audit** — every Earth Hub page (Weapon Store shop section in `06-rpg-battle.js`, Item
