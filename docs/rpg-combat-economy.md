@@ -1,6 +1,7 @@
 # RPG: Combat & Economy
 
-← [docs orchestra](README.md) · code: `js/06-rpg-battle.js`, `js/09-items.js`, `js/16-chest.js`
+← [docs orchestra](README.md) · code: `js/06-gear-shop.js` + siblings (06b/06c/06d/06e — split
+2026-07-18, see world-and-hubs.md), `js/09-items.js`, `js/16-chest.js`
 
 > ⚠️ **2026-07-17: the combat/economy system was REBALANCED end-to-end** — ratio damage, designer
 > stat curves, dodge/power-hit/spell-reliability, scaled XP & Cash. The authoritative design (all

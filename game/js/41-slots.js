@@ -1,5 +1,5 @@
   // ============================================================================
-  // 🎰 Star Slots (module 41; uses the A2 shell from 39-puzzles.js)
+  // 🎰 Star Slots (module 41; uses the A2 shell from 39-a2-shell.js)
   // A 3-row × 5-column reel machine. Entry costs 1 Wonderland Pass (wonderPlay);
   // one pass buys SL_MAX_SPINS (3) spins, then the pass is spent — play again to
   // buy another 3. Reels spin FOREVER (no auto-stop) until the player stops them,

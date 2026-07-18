@@ -16,7 +16,7 @@ issues in casual language; **you** are responsible for engineering rigor.
 | Local project root | `C:\PythonProject\AlgebraGame` (Windows 11, PowerShell + Git Bash available, no Node/Python installed) |
 | Game entry point | `game/index.html` |
 | Server code | `functions/api/**` (Cloudflare Pages Functions: `auth/`, `cloud/`, `admin/`) |
-| Current cache token | `?v=20260718j` (see "Cache-busting" below — bump it EVERY deploy) |
+| Current cache token | `?v=20260718k` (see "Cache-busting" below — bump it EVERY deploy) |
 
 ---
 
@@ -94,8 +94,10 @@ edit files → bump ?v= cache token in game/index.html → git commit → git pu
   works on pages.dev and locally.
 - **Saves**: local profiles + cloud saves (D1) with a migration rule — never silently reset a
   profile; new `state` fields need the 4-place persistence treatment (see `docs/save-and-audio.md`).
-- Minigames: `17-wonderland.js` (lobby) + `34-40` + `41-slots.js`. Shared shells: `a2*` helpers in
-  `39-puzzles.js` (A2 shell), `wg*`/`ag*` helpers in `34/36`. Leaderboards via `wgRecordScore` +
+- Minigames: `17-wonderland.js` (lobby) + `34-36`, `38` + `41-slots.js` + the `43-51` arcade split
+  (was `40-action.js`) + `39b-39e` puzzle split (was `39-puzzles.js`). Shared shells: `a2*` helpers
+  in `39-a2-shell.js` (A2 shell — must load before every game built on it), `wg*`/`ag*` helpers in
+  `34/36`. Leaderboards via `wgRecordScore` +
   `functions/api/cloud` (top-10 per game).
 
 ---
@@ -191,7 +193,7 @@ edit files → bump ?v= cache token in game/index.html → git commit → git pu
   card is even attemptable. Verified live at arena 4 only (bare on-schedule gear costs ~46%/60%+
   HP; over-invested gear trivializes it) — **not yet verified across the full 65-arena range**;
   if a future session finds it's a brick wall or trivially easy at other arenas, tune
-  `BAL.GAUNTLET_SUB_MULT` / the `cardLockReason` bonus in `06-rpg-battle.js`, not the base curves.
+  `BAL.GAUNTLET_SUB_MULT` / the `cardLockReason` bonus in `06c-monster-select.js`, not the base curves.
 - **NEW 2026-07-17 — Fixed: wrong parabola graph on compound-factor polynomial questions.**
   `_parseParabolasFromPrompt` in `04-logic.js` (used to auto-draw a graph when a prompt names a
   parabola directly, e.g. "y=(x-4)^2+6") matched just the "(x+2)^2" PREFIX of prompts like

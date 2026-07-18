@@ -616,10 +616,52 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #18 — Housekeeping: split the three oversized modules into per-feature files
+(ZERO logic changes — pure file-boundary moves, verified end-to-end live).** User: "make sure
+functions/files are not too big...make sure they are modular easy to maintain...things are
+organized well...no logical should be changed! all docs are up to day."
+- **`js/40-action.js` (2041 lines, 9 unrelated games crammed into one file) → 9 files**, split at
+  each game's own existing section-header comment (verbatim code move, nothing rewritten):
+  `43-astro-drop.js`, `44-virus-lab.js`, `45-comet-muncher.js`, `46-blast-bot.js`,
+  `47-bubble-blast.js`, `48-bowling.js`, `49-cosmic-rhythm.js`, `50-snake.js`,
+  `51-crystal-cascade.js`. Each game already used its own unique function-name prefix (`_ad*`,
+  `_vl*`, `_cm*`, `_bb*`, `_bu*`, `_bowl*`, `_rhy*`, `_sn*`, `_cc*`) with zero cross-game calls, so
+  the split was a clean line-slice — verified by summing split-file line counts back to the
+  original 2041 (exact match) and diffing section boundaries before deleting the source.
+- **`js/06-rpg-battle.js` (1645 lines, the core combat file) → 5 files** along natural seams:
+  `06-gear-shop.js` (hero stat helpers + Weapon Store, 190 lines), `06b-monster-roster.js` (monster
+  art/build/roster/gauntlet generation, 321 lines), `06c-monster-select.js` (battle screen +
+  gauntlet/easy/arena cards, 187 lines), `06d-combat-round.js` (the live combat round + spell
+  casting, 576 lines), `06e-combat-outcome.js` (victory/defeat/progression, 371 lines). Highest-risk
+  split in this batch (dense cross-function calls within the old file) — verified with a REAL
+  fought-to-completion combat round via the actual UI functions (`openBattle` → `buildMonster` →
+  `startCombat` → repeated `executeCombatRound()` → `handleBattleVictory` fired correctly from
+  06d calling into 06e → `handlePostCombatRedirect` returned to monster-select cleanly), not just
+  function-existence checks.
+- **`js/39-puzzles.js` (1555 lines) → 5 files**: `39-a2-shell.js` (the SHARED A2 framework —
+  a2Shell/a2Result/a2Keys/a2DragStart/etc. — used by every game in this split AND all 9 of the
+  40-action.js split files, so it must load first; 140 lines), `39b-cargo-glacier.js` (Cargo Bay +
+  Glacier Push shared Sokoban engine, 744 lines), `39c-forbidden-city.js` (Shikinjou, 399 lines),
+  `39d-circuit-loop.js` (117 lines), `39e-sky-stacker.js` (155 lines). Verified the shared shell
+  survived intact: undo (`sokoUndo`) and the cross-module key-leak fix (`a2StopAll` wired into
+  `wgStopAll`, both from earlier same-day batches) still work correctly post-split.
+- **Numbering convention**: 40-action.js's split used the free 43-51 slots (nothing occupied them);
+  06 and 39's splits used lettered suffixes (06b/c/d/e, 39b/c/d/e) since 07-09 were already taken —
+  avoids renumbering every later module. `index.html`'s script tags were reordered in place (same
+  relative position, load order preserved) and every stale `06-rpg-battle.js`/`39-puzzles.js`/
+  `40-action.js` reference in code comments and docs was corrected to point at the actual new file
+  (dated historical batch entries describing PAST states were deliberately left referencing the
+  old filename — that's what was true then, same as a git commit message isn't rewritten).
+- **Verified live** (real dev-server reload, zero console errors both before and after): all 9
+  arcade games open cleanly; all 5 puzzle/A2 games open cleanly; a full real combat round through
+  victory; Shop/Item Store/Farm/Alchemy/Trading/Special Store/Block Forge/Slots/Hoo Hey How/Gone
+  Fishin' all open with zero errors. Cache token bumped `20260718j → 20260718k`.
+
 **2026-07-18 batch #17 — Earth Hub tooltip audit + new Special Item Store (Odyssey Forge).**
 Player feedback: a screenshot of the Alchemy Lab showing zero tooltips anywhere, plus a request
 for a late-game "buy permanent stats" building gated behind Arena 44.
-- **Tooltip audit** — every Earth Hub page (Weapon Store shop section in `06-rpg-battle.js`, Item
+- **Tooltip audit** — every Earth Hub page (Weapon Store shop section in `06-rpg-battle.js` — split
+  into `06-gear-shop.js` + siblings later the same day, see batch #18 below, Item
   Store, Farm, Laboratory/Alchemy, Trading Room, the map's building icons) had near-zero `title=`
   coverage (the Alchemy Lab the user screenshotted had literally none). Ran a 6-file parallel
   audit-and-fix pass (one agent per file, each independently verified by a second pass reading the
@@ -641,7 +683,7 @@ for a late-game "buy permanent stats" building gated behind Arena 44.
   indefinitely up to `SPECIAL_STORE_MAX_PURCHASES = 999` per stat, at `10000 + 1000×purchases`
   Cash (rises forever, no purchase-count discount). AP/DP/Speed bonuses are read live via
   `specialStoreBonus(id)`, an additive term added to `getPlayerAp()`/`getPlayerDp()`
-  (06-rpg-battle.js) and `getPlayerSpeed()` (21-catalogue.js) — same pattern as the existing
+  (06-gear-shop.js, after the split in batch #18) and `getPlayerSpeed()` (21-catalogue.js) — same pattern as the existing
   `socketBonusTotal`, so a purchase is felt in combat immediately. HP/MP have no such "effective
   stat" layer in this codebase (combat reads `state.playerMaxHp`/`playerMaxMp` directly, and
   `getEffectiveMaxHp()` is dead code only read by the profile display — pre-existing, NOT touched

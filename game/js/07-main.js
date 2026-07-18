@@ -415,7 +415,7 @@
     });
   }
   if (el.combatEscapeBtn) {
-    // Escape is a speed-based gamble now (attemptEscape in 06-rpg-battle.js) — always available,
+    // Escape is a speed-based gamble now (attemptEscape in 06d-combat-round.js) — always available,
     // even mid-gauntlet, but a failed roll costs a free enemy hit.
     el.combatEscapeBtn.addEventListener('click', function() {
       if (typeof attemptEscape === 'function') attemptEscape();
