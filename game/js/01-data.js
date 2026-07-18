@@ -72,11 +72,13 @@
     defeatedMonsters: {},
     trophies: [],
     // Special Item Store (unlocks after clearing Arena 44 — see js/42-special-store.js): INSTALLED
-    // machine counts per stat (hp/mp/ap/dp/spd) — these actually grant their stat bonus.
-    specialStore: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 },
+    // machine counts per stat (hp/mp/ap/dp/spd) — these actually grant their stat bonus. `level`
+    // (Ascension Core) is the 6th machine — installing one grants a full hero level directly
+    // (grantHeroLevels) rather than a single stat, on its own steeper price ladder.
+    specialStore: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 },
     // Bought but not yet installed (Buy acquires; Use installs — matches the Item Store's
-    // buy-then-use pattern). Same 5 keys; installed + owned share one price/cap ladder.
-    specialStoreOwned: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 },
+    // buy-then-use pattern). Same keys; installed + owned share one price/cap ladder per machine.
+    specialStoreOwned: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 },
     specialStoreAnnounced: false,  // has the one-time "Special Item Store is open!" modal fired yet
     // Arena 888 "The Second Chance" (js/52-comeback-arena.js): appears next to the Giant Black
     // Hole (Arena 999) once its gauntlet is LOST. comebackUnlocked reveals its atlas card forever

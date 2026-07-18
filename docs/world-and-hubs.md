@@ -623,6 +623,33 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #25 — Odyssey Forge gains a 6th machine: the Ascension Core (buy a whole hero
+level).** User: "add a special item to level up in special items store... make it 100,000 and add
+10,000,20,000,30,000 for more levels."
+- **`js/42-special-store.js`**: new `SPECIAL_STORE_MACHINES` entry `{ id:'level', icon:'🌟',
+  name:'Ascension Core', gain:1 }`. Unlike the 5 stat machines (flat `10000 + 1000×count`), this one
+  runs its OWN price ladder — `specialStoreCost('level')` = `100000 + 10000×t×(t+1)/2` where `t` is
+  the total already owned+installed — giving exactly the sequence the user specified: 100000 →
+  110000 (+10000) → 130000 (+20000) → 160000 (+30000) → 200000 (+40000) → ... (verified live for the
+  first 5 purchases, exact match).
+- **Use → `grantHeroLevels(1)`** (the same helper built for the Arena 888 reward, `05-render.js`) —
+  a full hero level: +20 HP / +10 MP capacity directly, plus AP/DP/Speed (which auto-follow
+  `state.heroLvl` live via `heroStatBonus`) and the existing Lv 3/6 "Learned Spells" toasts if
+  crossed. Follows the same Buy-then-Use pattern as every other machine (Buy only stockpiles;
+  Use applies the permanent effect) and shares the same 999 cap for consistency, though the cost
+  curve alone makes that cap practically unreachable.
+- **4-place persistence**: `state.specialStore.level`/`state.specialStoreOwned.level` added
+  alongside the existing hp/mp/ap/dp/spd keys in `01-data.js` defaults, `03-save.js` restore +
+  reset, and the lazy-init guard in `specialStoreBuy`.
+- **Verified live**: 5 real purchases produced costs `[100000, 110000, 130000, 160000, 200000]`
+  exactly; a real UI click on "Use" took the test profile from Lv 2 → Lv 3 (100 → 120 → 140 max HP
+  across two installs, matching +20/level) and correctly fired the existing Lv-3 spell-learn toast;
+  save-snapshot round-trip confirmed for both new keys (via a proper JSON serialize/deserialize —
+  the naive first attempt at this check shared object references between "live state" and
+  "snapshot" and falsely looked broken; not a real bug, just a test-script mistake, caught and
+  corrected before shipping); the 5 original stat machines still cost their unchanged flat 10000
+  each — no regression. Zero console errors. Cache token bumped `20260718s → 20260718t`.
+
 **2026-07-18 batch #24 — Arena 888 moved into Galaxy Center itself** (user, looking at the "Arena
 888 · The Second Chance" card as its own separate star system: "i want this guy sitting next to
 arena 999...not in a new star system"). Batch #23 (below) had given it its own hidden STAR_SYSTEMS

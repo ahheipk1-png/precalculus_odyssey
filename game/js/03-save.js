@@ -203,12 +203,12 @@
     state.perfectArenas = (snap.perfectArenas && typeof snap.perfectArenas === 'object') ? snap.perfectArenas : {};
     state.specialStore = (snap.specialStore && typeof snap.specialStore === 'object')
       ? { hp: snap.specialStore.hp || 0, mp: snap.specialStore.mp || 0, ap: snap.specialStore.ap || 0,
-          dp: snap.specialStore.dp || 0, spd: snap.specialStore.spd || 0 }
-      : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+          dp: snap.specialStore.dp || 0, spd: snap.specialStore.spd || 0, level: snap.specialStore.level || 0 }
+      : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
     state.specialStoreOwned = (snap.specialStoreOwned && typeof snap.specialStoreOwned === 'object')
       ? { hp: snap.specialStoreOwned.hp || 0, mp: snap.specialStoreOwned.mp || 0, ap: snap.specialStoreOwned.ap || 0,
-          dp: snap.specialStoreOwned.dp || 0, spd: snap.specialStoreOwned.spd || 0 }
-      : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+          dp: snap.specialStoreOwned.dp || 0, spd: snap.specialStoreOwned.spd || 0, level: snap.specialStoreOwned.level || 0 }
+      : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
     state.specialStoreAnnounced = !!snap.specialStoreAnnounced;
     state.comebackUnlocked = !!snap.comebackUnlocked;
     state.comebackCleared = !!snap.comebackCleared;
@@ -259,8 +259,8 @@
     state.playerMp = 20;
     state.defeatedMonsters = {};
     state.trophies = [];
-    state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
-    state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+    state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
+    state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
     state.specialStoreAnnounced = false;
     state.comebackUnlocked = false;
     state.comebackCleared = false;

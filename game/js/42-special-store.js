@@ -26,9 +26,18 @@
   var SPECIAL_STORE_BASE_COST = 10000;   // first purchase of any machine
   var SPECIAL_STORE_COST_STEP = 1000;    // +1000 Cash per purchase already made of that machine
 
-  // One machine per stat. `gain` intentionally matches the existing per-hero-level bonus
-  // (heroStatBonus / addHeroXp) so the tooltip's "worth one hero level" claim stays true if that
-  // formula ever changes — update both places together.
+  // The Ascension Core (user 2026-07-18: "add a special item to level up... make it 100,000 and
+  // add 10,000, 20,000, 30,000 for more levels") is far more valuable than any single stat machine
+  // — it grants a WHOLE hero level — so it runs its OWN, steeper price ladder instead of the shared
+  // flat one above: 100000, then +10000, +20000, +30000, ... (the STEP ITSELF grows by 10000 each
+  // purchase). See specialStoreCost's id==='level' branch for the exact formula.
+  var SPECIAL_STORE_LEVEL_BASE_COST = 100000;
+  var SPECIAL_STORE_LEVEL_COST_STEP = 10000;
+
+  // One machine per stat, plus the Ascension Core (a whole hero level at once). `gain`
+  // intentionally matches the existing per-hero-level bonus (heroStatBonus / addHeroXp) so the
+  // tooltip's "worth one hero level" claim stays true if that formula ever changes — update both
+  // places together.
   var SPECIAL_STORE_MACHINES = [
     { id: 'hp',  icon: '❤️', name: 'Vitality Chamber', statLabel: 'Max HP', gain: 20,
       desc: 'Permanently raises your maximum HP by 20 — the same boost as one hero level.' },
@@ -39,7 +48,9 @@
     { id: 'dp',  icon: '🛡️', name: 'Aegis Forge',       statLabel: 'DP',     gain: 1,
       desc: 'Permanently raises your Defense by 1 — the same boost as one hero level.' },
     { id: 'spd', icon: '💨', name: 'Velocity Core',     statLabel: 'Speed',  gain: 1,
-      desc: 'Permanently raises your Speed by 1 (better dodge & crit chance) — the same boost as one hero level.' }
+      desc: 'Permanently raises your Speed by 1 (better dodge & crit chance) — the same boost as one hero level.' },
+    { id: 'level', icon: '🌟', name: 'Ascension Core',  statLabel: 'Hero Level', gain: 1,
+      desc: 'Instantly grants one full hero level — the same HP/MP/AP/DP/Speed boost as leveling up through XP.' }
   ];
 
   function specialStoreMachine(id){
@@ -59,7 +70,16 @@
   function specialStoreCount(id){ return (state.specialStore && state.specialStore[id]) || 0; }
   function specialStoreOwned(id){ return (state.specialStoreOwned && state.specialStoreOwned[id]) || 0; }
   function specialStoreTotalCount(id){ return specialStoreCount(id) + specialStoreOwned(id); }
-  function specialStoreCost(id){ return SPECIAL_STORE_BASE_COST + SPECIAL_STORE_COST_STEP * specialStoreTotalCount(id); }
+  // The Ascension Core prices its k-th purchase (k=1,2,3,...) as 100000 + 10000·(1+2+...+(k-1)) —
+  // i.e. the price climbs by 10000, then 20000, then 30000, ... each additional purchase (100000 →
+  // 110000 → 130000 → 160000 → 200000 → ...). Every other machine keeps the flat shared ladder.
+  function specialStoreCost(id){
+    if (id === 'level'){
+      var t = specialStoreTotalCount(id);
+      return SPECIAL_STORE_LEVEL_BASE_COST + SPECIAL_STORE_LEVEL_COST_STEP * t * (t + 1) / 2;
+    }
+    return SPECIAL_STORE_BASE_COST + SPECIAL_STORE_COST_STEP * specialStoreTotalCount(id);
+  }
   // The live additive bonus a stat function should add — see getPlayerAp/getPlayerDp
   // (06-gear-shop.js) and getPlayerSpeed (21-catalogue.js). HP/MP don't use this (see file header).
   // Only INSTALLED machines count — an unused one in the stockpile grants nothing yet.
@@ -74,8 +94,8 @@
     if (!specialStoreUnlocked()) return { ok: false, msg: 'The Odyssey Forge isn’t open yet.' };
     var m = specialStoreMachine(id);
     if (!m) return { ok: false, msg: 'Unknown machine.' };
-    if (!state.specialStore) state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
-    if (!state.specialStoreOwned) state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
+    if (!state.specialStore) state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
+    if (!state.specialStoreOwned) state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
     var total = specialStoreTotalCount(id);
     if (total >= SPECIAL_STORE_MAX_PURCHASES) return { ok: false, msg: m.name + ' is already maxed at ' + SPECIAL_STORE_MAX_PURCHASES + '!' };
     var cost = specialStoreCost(id);
@@ -97,14 +117,19 @@
     if (specialStoreOwned(id) < 1) return { ok: false, msg: 'You don’t have a ' + m.name + ' to install — buy one first!' };
     state.specialStoreOwned[id] = specialStoreOwned(id) - 1;
     state.specialStore[id] = specialStoreCount(id) + 1;
+    var msg = '⚙️ ' + m.name + ' installed! +' + m.gain + ' ' + m.statLabel + ' — permanent.';
     // HP/MP have no live "effective stat" reader in combat (see file header) — bump the base
     // directly, exactly like a hero level-up (05-render.js addHeroXp): grant the new capacity AND
     // the current value, so installing it is felt immediately, not just as extra headroom.
     if (id === 'hp'){ state.playerMaxHp += m.gain; state.playerHp = Math.min(state.playerMaxHp, state.playerHp + m.gain); }
-    if (id === 'mp'){ state.playerMaxMp += m.gain; state.playerMp = Math.min(state.playerMaxMp, state.playerMp + m.gain); }
+    else if (id === 'mp'){ state.playerMaxMp += m.gain; state.playerMp = Math.min(state.playerMaxMp, state.playerMp + m.gain); }
+    // Ascension Core: grants a WHOLE hero level via the shared helper (05-render.js) — HP/MP
+    // capacity + AP/DP/Speed (derived live from heroLvl) all move together, exactly like an
+    // XP-driven level-up. grantHeroLevels shows its own "+1 HERO LEVELS!" toast on top of this one.
+    else if (id === 'level'){ if (typeof grantHeroLevels === 'function') grantHeroLevels(m.gain); msg = '🌟 ' + m.name + ' activated!'; }
     if (typeof updateStats === 'function') updateStats();
     if (typeof saveGame === 'function') saveGame();
-    return { ok: true, msg: '⚙️ ' + m.name + ' installed! +' + m.gain + ' ' + m.statLabel + ' — permanent.' };
+    return { ok: true, msg: msg };
   }
 
   // ---------- View controllers (mirrors openItemStore/closeItemStore) ----------
