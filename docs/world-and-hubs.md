@@ -616,6 +616,22 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #21 — Odyssey Forge: wider cards.** User, after seeing the Buy/Use cards live:
+"make each of them wider."
+- The Special Store's shelf div carries both `istr-shelf` and `sstr-shelf` classes; it inherited
+  `item-store.css`'s `.istr-shelf{ grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }`
+  unchanged, which was too narrow for these cards' longer descriptions ("the same boost as one hero
+  level", "better dodge & crit chance") — they were wrapping into 4+ cramped lines above the Buy/Use
+  buttons.
+- Added a `.sstr-shelf` override in `special-store.css`:
+  `grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));` — a `sstr-` rule loaded after
+  `istr-` in the cascade, so it wins without touching the Item Store's own narrower grid.
+- **Verified live**: reloaded, opened the Odyssey Forge (`openSpecialStore()`, `state.bossDefeated[44]
+  = true`), confirmed via screenshot all 5 cards (Vitality Chamber/Mana Reactor/Power Amplifier/Aegis
+  Forge/Velocity Core) render at the new 220px minimum — descriptions now fit on 2-3 relaxed lines
+  instead of wrapping, Buy + Use buttons both sit comfortably inside each card. Cache token bumped
+  `20260718m → 20260718n`.
+
 **2026-07-18 batch #20 — Item Store: removed the separate "Backpack" list, folded everything into
 one unified card shelf with Buy AND Use together.** User, looking at a screenshot of the old
 Backpack row-list: "remove this table and add the missing one to the list above and provide ways
