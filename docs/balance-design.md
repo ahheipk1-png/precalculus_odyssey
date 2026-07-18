@@ -136,6 +136,46 @@ def .80 / cash .50 · **Boss** 1 / 1 / 1 / 1. `requiredHeroLvl = ceil(arena/2) +
 | Weak spell | "✨ fizzles — only partly works!" journal + floating text |
 | Failed spell | "💨 the spell fizzles out!" (MP still spent) |
 
+## 2-Boss / 3-Boss Gauntlets (2026-07-17)
+
+Every arena's monster-select screen keeps its Easy card as a single low-stakes fight, but the
+other two cards are chained, no-retreat gauntlets (user request: "make the 3rd monster room not
+easily beatable so the player needs to go to Arena Infinity"):
+
+- **2-Boss Gauntlet** (middle card): 2 brand-new named sub-bosses per room (`gauntletCatalog` in
+  `06-rpg-battle.js`, era-cycled across all 65 arenas the same way the base 30-monster roster is),
+  fought back-to-back with the Escape/Flee/Weapon-Store buttons hidden for the WHOLE chain (not
+  just while a fight is in progress — `activeCombat.gauntletLocked` stays true across every link,
+  including the last one, so fleeing right before the final fight can't buy a free Hotel heal).
+- **3-Boss Gauntlet** (right card): the SAME 2 sub-bosses, then the arena's real Boss as the
+  finale — so the existing arena-advance gate, trophy, and Star Log lore-fragment logic (all keyed
+  off `rank>=3` / `getRoomBoss`) are completely untouched; sub-bosses use `rank:2` so they never
+  trigger that branch themselves.
+- **Sub-boss stats are DELIBERATELY full Boss-tier** (`BAL.GAUNTLET_SUB_MULT` = 1.0/1.0/1.0/1.0,
+  economy.config.js) — not a nerfed Elite. Chaining 2-3 full Boss-tier fights with no heal is
+  intentionally NOT reliably winnable at just-met on-schedule gear/hero-level; the design leans on
+  Arena Infinity (the only REPEATABLE combat-XP source, since regular monster kills are one-time)
+  as the intended path to over-level enough to clear it.
+- **Elevated hero-level gate on top of the normal boss gate** (`cardLockReason`'s `bonus` param):
+  2-Boss = members' own requirement +2, 3-Boss = +5. This means reaching the arena's normal boss
+  gate is NOT enough to even attempt the 3-Boss card — a deliberate extra barrier, not just harder
+  combat math. The locked-card message explicitly points at Arena Infinity.
+- **Death mid-chain**: no new state needed. Each kill marks that specific monster in
+  `state.defeatedMonsters` (same one-time-kill system every monster already uses), independent of
+  how the fight or chain later ends. Re-entering a gauntlet card (`startGauntletCard`) filters to
+  not-yet-defeated members and resumes there — dying on link 2 of 3 doesn't erase link 1's kill.
+- **Verified**: live-fought both gauntlets in the real UI at arena 4. Minimum-gate hero level +
+  bare on-schedule gear (iron_broadsword, no upgrades) → 2-Boss cost ~46% HP, 3-Boss cost ~60%+ HP
+  (real risk of death on a bad-luck run, as intended). A generously over-invested loadout (maxed
+  legendary weapon+shield) cleared the 3-Boss chain trivially (4 HP lost) — confirms it rewards
+  real investment rather than being a flat wall. No console errors; card layout uses
+  `grid-template-columns: 0.75fr 1.35fr 1.9fr` (narrow Easy / medium 2-Boss / wide 3-Boss, so the
+  widest card has room for 3 monster portraits).
+- **Follow-up**: the exact "+2 / +5" hero-level bonus and full-Boss-tier sub-stats are a first pass
+  based on formula simulation + one live arena's fights, not a full r=1..65 live playthrough —
+  revisit if real play shows it's either a brick wall even with heavy Arena Infinity grinding, or
+  still too easy.
+
 ## Out of scope this pass (follow-ups)
 
 - ~~Wonderland `a2Reward` Cash amounts (flat 20–100)~~ — **fixed 2026-07-17**: added

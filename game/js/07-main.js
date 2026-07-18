@@ -406,6 +406,7 @@
   }
   if (el.combatEscapeBtn) {
     el.combatEscapeBtn.addEventListener('click', function() {
+      if (activeCombat && activeCombat.gauntletLocked) return;   // no retreat mid-gauntlet
       activeCombat = null;
       el.combatArenaScreen.style.display = 'none';
       el.monsterSelectScreen.style.display = 'block';

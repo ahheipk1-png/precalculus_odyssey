@@ -183,6 +183,15 @@ edit files → bump ?v= cache token in game/index.html → git commit → git pu
   shoes existed — the stated endgame tier was unpurchasable). Added one capstone item per
   category in `gear.config.js`: Infinity Vector, Eternity Bastion, Singularity Plate, Quantum
   Striders.
+- **NEW 2026-07-17 — 2-Boss/3-Boss Gauntlet cards** (user request, replacing the arena's old solo
+  Elite/Boss fight buttons): full detail in `docs/balance-design.md`'s "2-Boss / 3-Boss Gauntlets"
+  section. Chained no-retreat fights (Escape/Flee/Shop hidden the whole run), 2 new named
+  sub-bosses per room at deliberately full Boss-tier stats, an elevated hero-level gate ABOVE the
+  normal boss requirement (+2 / +5) meant to force real Arena Infinity grinding before the 3-Boss
+  card is even attemptable. Verified live at arena 4 only (bare on-schedule gear costs ~46%/60%+
+  HP; over-invested gear trivializes it) — **not yet verified across the full 65-arena range**;
+  if a future session finds it's a brick wall or trivially easy at other arenas, tune
+  `BAL.GAUNTLET_SUB_MULT` / the `cardLockReason` bonus in `06-rpg-battle.js`, not the base curves.
 - **NEW 2026-07-17 — Bible-curriculum (arenas 7-65) question/distractor quality still unverified by
   a human-style pass.** Only arena 1 (hand-authored pre-algebra) was played through this session and
   its distractors are genuinely good; the Bible-template phases' `_perturbDistractors`/

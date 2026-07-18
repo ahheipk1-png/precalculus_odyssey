@@ -202,11 +202,24 @@
     r7_1: '👿', r7_2: '🧙', r7_3: '🐲',
     r8_1: '🥷', r8_2: '🦇', r8_3: '🦉',
     r9_1: '🐺', r9_2: '🌋', r9_3: '😈',
-    r10_1: '💫', r10_2: '🪐', r10_3: '👑'
+    r10_1: '💫', r10_2: '🪐', r10_3: '👑',
+    // Gauntlet sub-bosses (module: 2-boss / 3-boss chained fights) — one pair per room, distinct
+    // from the regular Easy/Elite/Boss art above so a chain never shows a repeated portrait.
+    r1_g1: '🎃', r1_g2: '🧟',
+    r2_g1: '🦂', r2_g2: '⛏️',
+    r3_g1: '⚰️', r3_g2: '🧟‍♂️',
+    r4_g1: '🐪', r4_g2: '🏜️',
+    r5_g1: '🦈', r5_g2: '🐋',
+    r6_g1: '⚡', r6_g2: '🌩️',
+    r7_g1: '🔥', r7_g2: '🧨',
+    r8_g1: '🌑', r8_g2: '🕷️',
+    r9_g1: '🌡️', r9_g2: '☄️',
+    r10_g1: '🌟', r10_g2: '🛸'
   };
   function _monsterBaseId(m){
     var room = Math.max(1, Number(m && m.room) || 1);
     var base = ((room - 1) % 10) + 1;                 // rooms 11-65 cycle the base 1-10 roster
+    if (m && m.gauntletSlot) return 'r' + base + '_g' + m.gauntletSlot;
     return 'r' + base + '_' + ((m && m.rank) || 1);
   }
   // Now takes the monster OBJECT (was: difficulty string) so it can pick distinct art + tint
@@ -382,6 +395,64 @@
     return getRoomMonsters(room).find(function(m){ return m.rank === 3; });
   }
 
+  // ---- Gauntlet sub-bosses: 2 brand-new monsters per room, fought back-to-back with no Hotel
+  // access in between (module: monster-select "2-Boss"/"3-Boss Gauntlet" cards). They use the
+  // already-verified Elite BAL curve (rank 2) so this adds new CONTENT without inventing a new,
+  // unverified stat tier. Wu Xing element offsets (+4, +5≡+0) fall outside Easy/Elite/Boss's
+  // (+1/+2/+3), so every arena's 5 monsters (Easy, Elite, Boss, 2 sub-bosses) cover all 5 elements
+  // exactly once. rank:2 means they do NOT trigger the rank>=3 trophy/lore-fragment branch in
+  // handleBattleVictory — only the real Boss (the 3rd link of the 3-chain) still does that, so the
+  // arena-advance gate, trophies, and Star Log fragments are completely untouched by this feature.
+  var gauntletCatalog = [
+    { room: 1,  slot: 1, name: 'Chalk Wraith' },      { room: 1,  slot: 2, name: 'Detention Golem' },
+    { room: 2,  slot: 1, name: 'Fossil Scorpion' },   { room: 2,  slot: 2, name: "Miner's Ghost" },
+    { room: 3,  slot: 1, name: 'Grave Warden' },      { room: 3,  slot: 2, name: 'Plague Revenant' },
+    { room: 4,  slot: 1, name: 'Dune Marauder' },     { room: 4,  slot: 2, name: 'Sphinx Riddler' },
+    { room: 5,  slot: 1, name: 'Reef Shark King' },   { room: 5,  slot: 2, name: 'Whalebone Colossus' },
+    { room: 6,  slot: 1, name: 'Thunder Wraith' },    { room: 6,  slot: 2, name: 'Squall Djinn' },
+    { room: 7,  slot: 1, name: 'Ember Berserker' },   { room: 7,  slot: 2, name: 'Powderkeg Fiend' },
+    { room: 8,  slot: 1, name: 'Umbral Stalker' },    { room: 8,  slot: 2, name: 'Widow Assassin' },
+    { room: 9,  slot: 1, name: 'Magma Brute' },       { room: 9,  slot: 2, name: 'Meteor Warlord' },
+    { room: 10, slot: 1, name: 'Nova Sentinel' },     { room: 10, slot: 2, name: 'Void Cruiser' }
+  ];
+  function buildSubBoss(entry) {
+    var m = BAL.GAUNTLET_SUB_MULT;   // full Boss-tier — see economy.config.js for why
+    var r = entry.room;
+    return {
+      id: 'r' + r + '_g' + entry.slot,
+      room: r,
+      rank: 2,   // stays 2 so handleBattleVictory's trophy/lore-fragment branch (rank>=3) fires
+                 // only for the real Boss finale, not these — even though stats are Boss-tier.
+      gauntletSlot: entry.slot,
+      name: entry.name,
+      maxHp: Math.max(5, Math.round(BAL.bossHp(r) * m.hp)),
+      maxMp: monsterRanks[2].mp + r * 2,
+      attack: Math.max(1, Math.round(BAL.bossAtk(r) * m.atk)),
+      defense: Math.max(0, Math.round(BAL.bossDef(r) * m.def)),
+      speed: BAL.monsterSpeed(r),
+      reward: Math.max(5, Math.round(BAL.bossCash(r) * m.cash)),
+      xp: BAL.killXp(r, 3),                     // full Boss XP payout — matches the stat tier
+      difficulty: monsterRanks[2].difficulty,   // 'Boss' — bigger art, matches the real threat level
+      element: ELEMENT_ORDER[(r + 3 + entry.slot) % ELEMENT_ORDER.length],
+      requiredHeroLvl: Math.ceil(r / 2) + 2      // matches the real Boss's own gate formula
+    };
+  }
+  function getGauntletSubBosses(room) {
+    var base = ((room - 1) % 10) + 1;
+    var eraIdx = Math.floor((room - 1) / 10);
+    var era = (eraIdx < MONSTER_ERAS.length) ? MONSTER_ERAS[eraIdx] : ' Astral';
+    return gauntletCatalog.filter(function(g){ return g.room === base; })
+      .map(function(entry){ return buildSubBoss({ room: room, slot: entry.slot, name: entry.name + era }); })
+      .sort(function(a, b){ return a.gauntletSlot - b.gauntletSlot; });
+  }
+  // size 2 = the two sub-bosses only; size 3 = sub-bosses + the arena's real Boss as the finale.
+  function getGauntletChain(room, size) {
+    var subs = getGauntletSubBosses(room);
+    if (size === 2) return subs;
+    var boss = getRoomBoss(room);
+    return boss ? subs.concat([boss]) : subs;
+  }
+
   function getMonsterLockReason(monster) {
     if (state.testMode) return '';   // admin/test account: every monster is unlocked (non-persistent, re-derived each session)
     if (monster.room > state.level) return 'Reach Arena ' + monster.room;
@@ -417,17 +488,81 @@
     if (typeof playMusic === 'function') playMusic('arena');
   }
 
+  // Aggregate lock reason for a gauntlet card: same-room check once, hero-level check against
+  // the STRONGEST member (clearing the gate for the hardest link clears it for the whole chain).
+  // `bonus` pushes the requirement ABOVE what the members alone would need — the 3-Boss card uses
+  // this deliberately so it's not clearable just by meeting the normal arena-boss gate: reaching it
+  // for real requires extra hero levels, i.e. Arena Infinity grinding (the only repeatable combat-XP
+  // source, since regular monster kills are one-time) and/or Cash for early gear upgrades.
+  function cardLockReason(members, bonus) {
+    if (!members.length) return '';
+    if (state.testMode) return '';
+    if (members[0].room > state.level) return 'Reach Arena ' + members[0].room;
+    var maxLvl = 0;
+    members.forEach(function(m){ if (m.requiredHeroLvl > maxLvl) maxLvl = m.requiredHeroLvl; });
+    maxLvl += (bonus || 0);
+    if (state.heroLvl < maxLvl) return 'Hero Lv. ' + maxLvl;
+    return '';
+  }
+  function gauntletMembersHtml(members) {
+    return members.map(function(m, i){
+      var dead = isMonsterDefeated(monsterKey(m));
+      return '<div class="gauntlet-member' + (dead ? ' defeated' : '') + '">' +
+          '<div class="gauntlet-member-art">' + getMonsterArtMarkup(m) + '</div>' +
+          '<div class="gauntlet-member-name">' + m.name + (dead ? ' 💀' : '') + '</div>' +
+          '<div class="gauntlet-member-el">' + elementBadgeHtml(m.element) + '</div>' +
+          '<div class="gauntlet-member-stat">HP ' + m.maxHp + ' · ATK ' + m.attack + ' · DEF ' + m.defense + '</div>' +
+        '</div>' +
+        (i < members.length - 1 ? '<div class="gauntlet-arrow">→</div>' : '');
+    }).join('');
+  }
+  function buildGauntletCard(members, label, icon, bonus) {
+    var lockReason = cardLockReason(members, bonus);
+    var isLocked = !!lockReason;
+    var deadCount = members.filter(function(m){ return isMonsterDefeated(monsterKey(m)); }).length;
+    var fullyCleared = deadCount === members.length;
+    var totalReward = members.reduce(function(s, m){ return s + m.reward; }, 0);
+    var card = document.createElement('div');
+    card.className = 'monster-card-select gauntlet-card' + (fullyCleared ? ' defeated' : '') + (isLocked ? ' locked' : '');
+    if (fullyCleared) {
+      card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; card.style.borderStyle = 'dotted';
+    }
+    card.innerHTML =
+      '<div class="gauntlet-card-title">' + icon + ' ' + label + '</div>' +
+      '<div class="gauntlet-row">' + gauntletMembersHtml(members) + '</div>' +
+      (deadCount > 0 && !fullyCleared ? '<div class="monster-select-stat gauntlet-progress">⏳ ' + deadCount + '/' + members.length + ' defeated — resume from here</div>' : '') +
+      '<div class="monster-select-stat gauntlet-warn">⚠️ No retreat — fight all ' + members.length + ' back-to-back, no Hotel until the chain is cleared</div>' +
+      '<div class="monster-select-reward">Total Reward: ' + totalReward + ' 💵</div>' +
+      (isLocked ? ('<div class="monster-lock-note">🔒 Locked: ' + lockReason +
+        (bonus ? ' — ♾️ grind Arena Infinity for extra hero XP to reach it' : '') + '</div>') : '');
+    if (!fullyCleared && !isLocked) {
+      card.addEventListener('click', function(){ startGauntletCard(members); });
+    }
+    return card;
+  }
+  // Entry point for the 2-Boss / 3-Boss cards: resume from the first not-yet-defeated member
+  // (a prior mid-chain death already marked earlier members defeated via the normal kill flow).
+  function startGauntletCard(members) {
+    var remaining = members.filter(function(m){ return !isMonsterDefeated(monsterKey(m)); });
+    if (!remaining.length) return;
+    startCombat(remaining[0], remaining.slice(1), true);
+  }
+
   function renderMonsterChoices() {
     el.monsterChoices.innerHTML = '';
     if (el.bountyLvlText) el.bountyLvlText.textContent = state.level;
 
     var currentRoomMonsters = getRoomMonsters(state.level);
-    // Show THIS arena's three foes (with 65 arenas, listing every monster was noise).
-    var allMonsters = currentRoomMonsters;
+    var easy = currentRoomMonsters.find(function(m){ return m.rank === 1; });
+    var chain2 = getGauntletChain(state.level, 2);
+    var chain3 = getGauntletChain(state.level, 3);
+    // Bounty checklist tracks what's actually fightable now: Easy solo + the gauntlet chain
+    // (2 new sub-bosses + the real Boss) — the old solo Elite fight is superseded by the chains.
+    var checklistMonsters = easy ? [easy].concat(chain3) : chain3;
 
     if (el.bountyChecklist) {
       var bHTML = '';
-      currentRoomMonsters.forEach(function(m) {
+      checklistMonsters.forEach(function(m) {
         var lockReason = getMonsterLockReason(m);
         var isDefeated = isMonsterDefeated(monsterKey(m));
         var checkSymbol = isDefeated ? '☑️' : (lockReason ? '🔒' : '⬜');
@@ -438,10 +573,11 @@
       el.bountyChecklist.innerHTML = bHTML;
     }
 
-    allMonsters.forEach(function(m){
-      var lockReason = getMonsterLockReason(m);
+    // Card 1: the solo Easy fight — unchanged behavior, narrower layout (see CSS).
+    if (easy) {
+      var lockReason = getMonsterLockReason(easy);
       var isLocked = !!lockReason;
-      var isDefeated = isMonsterDefeated(monsterKey(m));
+      var isDefeated = isMonsterDefeated(monsterKey(easy));
       var card = document.createElement('div');
       card.className = 'monster-card-select' + (isDefeated ? ' defeated' : '') + (isLocked ? ' locked' : '');
       if (isDefeated) {
@@ -450,24 +586,29 @@
         card.style.borderStyle = 'dotted';
       }
       card.innerHTML = `
-        <div class="monster-card-art">${getMonsterArtMarkup(m)}</div>
-        <div class="monster-select-name">${m.name} ${isDefeated ? '💀' : ''}</div>
-        <div class="monster-select-el">${elementBadgeHtml(m.element)}</div>
-        <div class="monster-select-stat" style="color:var(--yellow)">Arena ${m.room} · ${m.difficulty}</div>
-        <div class="monster-select-stat">${isDefeated ? '☠️ DEFEATED (Gone Forever)' : ('HP: ' + m.maxHp + ' · MP: ' + m.maxMp)}</div>
-        <div class="monster-select-stat">ATK: ${m.attack} &nbsp;|&nbsp; DEF: ${m.defense}</div>
-        <div class="monster-select-stat">Needs Hero Lv. ${m.requiredHeroLvl}</div>
-        <div class="monster-select-reward">Reward: ${m.reward} 💵</div>
-        <div class="monster-select-stat monster-drops" title="Chip drops scale with the monster's strength — ? = not guaranteed">🎁 Drops: ${typeof monsterDropPreview === 'function' ? monsterDropPreview(m) : ''}</div>
+        <div class="monster-card-art">${getMonsterArtMarkup(easy)}</div>
+        <div class="monster-select-name">${easy.name} ${isDefeated ? '💀' : ''}</div>
+        <div class="monster-select-el">${elementBadgeHtml(easy.element)}</div>
+        <div class="monster-select-stat" style="color:var(--yellow)">Arena ${easy.room} · ${easy.difficulty}</div>
+        <div class="monster-select-stat">${isDefeated ? '☠️ DEFEATED (Gone Forever)' : ('HP: ' + easy.maxHp + ' · MP: ' + easy.maxMp)}</div>
+        <div class="monster-select-stat">ATK: ${easy.attack} &nbsp;|&nbsp; DEF: ${easy.defense}</div>
+        <div class="monster-select-stat">Needs Hero Lv. ${easy.requiredHeroLvl}</div>
+        <div class="monster-select-reward">Reward: ${easy.reward} 💵</div>
+        <div class="monster-select-stat monster-drops" title="Chip drops scale with the monster's strength — ? = not guaranteed">🎁 Drops: ${typeof monsterDropPreview === 'function' ? monsterDropPreview(easy) : ''}</div>
         ${isLocked ? `<div class="monster-lock-note">🔒 Locked: ${lockReason}</div>` : ''}
       `;
       if (!isDefeated && !isLocked) {
-        card.addEventListener('click', function(){
-          startCombat(m);
-        });
+        card.addEventListener('click', function(){ startCombat(easy); });
       }
       el.monsterChoices.appendChild(card);
-    });
+    }
+
+    // Card 2: 2-Boss Gauntlet · Card 3: 3-Boss Gauntlet (finale = the real arena Boss).
+    // Bonus hero levels ON TOP of the members' own requirement — the 3-Boss card in particular is
+    // meant to be a real stretch goal that straight-through play doesn't casually reach; the intended
+    // path is grinding Arena Infinity (the only repeatable combat-XP source) for the extra levels.
+    el.monsterChoices.appendChild(buildGauntletCard(chain2, '2-Boss Gauntlet', '⚔️⚔️', 2));
+    el.monsterChoices.appendChild(buildGauntletCard(chain3, '3-Boss Gauntlet', '⚔️⚔️⚔️', 5));
 
     var boss = getRoomBoss(state.level);
     var isLevelClear = boss && state.defeatedMonsters[monsterKey(boss)];
@@ -481,7 +622,10 @@
 
   var activeCombat = null;
 
-  function startCombat(monster) {
+  // queue = remaining monsters to fight after this one (2-Boss/3-Boss gauntlets); locked = true
+  // disables Escape for the whole chain (not just while queue is non-empty — the LAST fight in a
+  // gauntlet has an empty queue but must stay locked, or fleeing it would still buy a free heal).
+  function startCombat(monster, queue, locked) {
     // Wounds persist between battles — only the Hotel (or a full-heal item) restores HP/MP.
     // A knocked-out hero must rest before fighting again.
     if (state.playerHp <= 0) {
@@ -500,7 +644,9 @@
       playerMp: Math.max(0, Math.min(state.playerMp, state.playerMaxMp)),
       playerMaxMp: state.playerMaxMp,
       monsterHp: monster.maxHp,
-      monsterMp: monster.maxMp
+      monsterMp: monster.maxMp,
+      queue: queue || [],
+      gauntletLocked: !!locked
     };
 
     var weaponEmojis = {
@@ -538,6 +684,7 @@
     // Tell the player how their weapon's element fares against this monster (五行).
     var _wxNote = (typeof elementMatchupNote === 'function') ? elementMatchupNote(getPlayerElement(), monster.element) : '';
     if (_wxNote) appendCombatLog('☯️ ' + _wxNote, 'system');
+    if (activeCombat.gauntletLocked) appendCombatLog('⚠️ Gauntlet fight — no retreat until the whole chain is cleared!', 'system');
 
     // ⚗️ Laboratory: a prepared Acid Vial corrodes THIS monster for 3 rounds.
     if (state.poisonArmed) {
@@ -555,7 +702,9 @@
       el.openSpellsBtn.disabled = false;
     }
     if (el.combatEscapeBtn) {
-      el.combatEscapeBtn.style.display = 'inline-block';
+      // Gauntlet fights disable Escape entirely — that's the "no chance to go to Hotel" rule;
+      // letting the player flee mid-chain would just buy a free heal before resuming.
+      el.combatEscapeBtn.style.display = activeCombat.gauntletLocked ? 'none' : 'inline-block';
       el.combatEscapeBtn.disabled = false;
     }
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
@@ -1021,6 +1170,16 @@
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
     el.battleFleeBtn.hidden = true;
 
+    // Mid-gauntlet victory: more foes queued in this chain — go straight to the next one, no
+    // Advance/Return/Keep-Fighting options yet (those only apply once the whole chain is clear).
+    if (activeCombat.queue && activeCombat.queue.length > 0) {
+      var nextFoe = activeCombat.queue[0];
+      el.postCombatBtn.style.display = 'inline-block';
+      el.postCombatBtn.textContent = '⚔️ Next: ' + nextFoe.name + ' →';
+      if (el.keepFightingBtn) el.keepFightingBtn.style.display = 'none';
+      return;
+    }
+
     // Show Advance button if we can advance (level is clear)
     var boss = getRoomBoss(state.level);
     var isLevelClear = boss && state.defeatedMonsters[monsterKey(boss)];
@@ -1139,7 +1298,19 @@
     el.battleFleeBtn.hidden = true;
   }
 
+  // Mid-gauntlet: carry the survivor straight into the next queued foe (no monster-select, no
+  // Flee/Shop/Escape exposure in between — that's what makes the chain "no chance to go to Hotel").
+  function continueGauntlet() {
+    if (!activeCombat || !activeCombat.queue || !activeCombat.queue.length) return;
+    var q = activeCombat.queue;
+    startCombat(q[0], q.slice(1), true);
+  }
+
   function handlePostCombatRedirect() {
+    if (activeCombat && activeCombat.queue && activeCombat.queue.length > 0) {
+      continueGauntlet();
+      return;
+    }
     var isVictory = el.playerSprite.classList.contains('victory');
     if (isVictory) {
       var boss = getRoomBoss(state.level);

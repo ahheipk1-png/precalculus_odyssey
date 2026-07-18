@@ -49,6 +49,17 @@ actual items (no odyssey sword/shield/armor/shoes existed anywhere) — added on
 category (`gear.config.js`): Infinity Vector, Eternity Bastion, Singularity Plate, Quantum
 Striders. See `balance-design.md`'s content inventory for full details.
 
+**2026-07-17 — 2-Boss/3-Boss Gauntlet cards** (user request): the arena monster-select screen's
+Elite/Boss cards became chained, no-retreat gauntlets — full detail + verification numbers in
+`balance-design.md`'s "2-Boss / 3-Boss Gauntlets" section. Summary: 2 new named sub-bosses per
+room (`gauntletCatalog`/`buildSubBoss` in `06-rpg-battle.js`), full Boss-tier stats
+(`BAL.GAUNTLET_SUB_MULT`), an elevated hero-level gate on top of the normal boss requirement
+(`cardLockReason`'s `bonus` param: +2 / +5) explicitly pointing players at Arena Infinity, and a
+monster queue on `activeCombat` (`startCombat(monster, queue, locked)` → `continueGauntlet()`)
+that chains fights with Escape/Flee/Shop hidden for the whole run. Death mid-chain needs no new
+state — each kill already marks `state.defeatedMonsters`, so resuming just filters to
+not-yet-defeated members. Card grid is `0.75fr 1.35fr 1.9fr` (narrow/medium/wide).
+
 ## Hero & stats
 
 `state.heroLvl / heroXp / playerHp / playerMaxHp / playerMp / playerMaxMp`. XP curve
