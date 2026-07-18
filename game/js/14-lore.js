@@ -396,7 +396,7 @@
       '<div class="pa-inner">' +
         '<div class="pa-kicker">✦ Now entering ✦</div>' +
         '<div class="pa-art">' + artHtml + '</div>' +
-        '<div class="pa-planet">Arena ' + level + ' · ' + escapeHtmlSafe(b.name) + '</div>' +
+        '<div class="pa-planet">Arena ' + ((typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(level) : level) + ' · ' + escapeHtmlSafe(b.name) + '</div>' +
         '<div class="pa-kind">' + escapeHtmlSafe(b.kind || '') + '</div>' +
         '<div class="pa-system">★ ' + escapeHtmlSafe(system) + '</div>' +
       '</div>';

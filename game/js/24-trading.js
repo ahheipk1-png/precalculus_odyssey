@@ -167,10 +167,11 @@
       if (!p) continue;
       if (p.mode === 'mcOnly' || p.mode === 'directInput'){
         var ar = (typeof getArena === 'function') ? getArena(lvl) : null;
+        var lvlLabel = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(lvl) : lvl;
         chosen = {
           mode: p.mode, prompt: p.prompt,
           choices: p.choices, correctIndex: p.correctIndex, answer: p.answer,
-          arenaLabel: ar ? ('Arena ' + lvl + ' · ' + ar.topic) : ('Arena ' + lvl)
+          arenaLabel: ar ? ('Arena ' + lvlLabel + ' · ' + ar.topic) : ('Arena ' + lvlLabel)
         };
       }
     }

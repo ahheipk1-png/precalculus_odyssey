@@ -46,18 +46,31 @@
     return baseSell + upgradeSell;
   }
 
+  // The effect of ONE hero level-up (HP/MP capacity + the spell-unlock toasts at Lv 3/6). Shared by
+  // addHeroXp's while-loop (XP-driven) and grantHeroLevels (a direct "+N levels" reward, no XP
+  // math — see js/52-comeback-arena.js) so the two can never drift apart. AP/DP/Speed are NOT
+  // touched here — they're derived live from state.heroLvl (heroStatBonus, 06-gear-shop.js).
+  function _heroApplyLevelUp(){
+    state.heroLvl++;
+    state.playerMaxHp += 20;
+    state.playerMaxMp += 10;
+    // Gain the new HP/MP capacity, but existing wounds persist (rest at the Hotel to heal).
+    state.playerHp = Math.min(state.playerMaxHp, state.playerHp + 20);
+    state.playerMp = Math.min(state.playerMaxMp, state.playerMp + 10);
+    if (state.heroLvl === 3) {
+      setTimeout(function(){ showToast('✨ Learned Spells: GREATER HEAL (80 HP, 30 MP)!'); }, 2000);
+    } else if (state.heroLvl === 6) {
+      setTimeout(function(){ showToast('✨ Learned Spells: ELIXIR OF LIFE (200 HP, 50 MP)!'); }, 2000);
+    }
+  }
+
   function addHeroXp(amount) {
     state.heroXp += amount;
     var xpNeeded = state.heroLvl * 100;
     var leveledUp = false;
     while (state.heroXp >= xpNeeded) {
       state.heroXp -= xpNeeded;
-      state.heroLvl++;
-      state.playerMaxHp += 20;
-      state.playerMaxMp += 10;
-      // Gain the new HP/MP capacity, but existing wounds persist (rest at the Hotel to heal).
-      state.playerHp = Math.min(state.playerMaxHp, state.playerHp + 20);
-      state.playerMp = Math.min(state.playerMaxMp, state.playerMp + 10);
+      _heroApplyLevelUp();
       xpNeeded = state.heroLvl * 100;
       leveledUp = true;
     }
@@ -65,11 +78,18 @@
     if (leveledUp) {
       showToast(`🎉 HERO LEVEL UP! Lv. ${state.heroLvl}! +20 HP · +10 MP · +2 ⚔️AP · +1 🛡️DP` + (state.heroLvl % 2 ? ' · +1 💨SPD' : '') + `!`);
       burst(15);
-      if (state.heroLvl === 3) {
-        setTimeout(function(){ showToast('✨ Learned Spells: GREATER HEAL (80 HP, 30 MP)!'); }, 2000);
-      } else if (state.heroLvl === 6) {
-        setTimeout(function(){ showToast('✨ Learned Spells: ELIXIR OF LIFE (200 HP, 50 MP)!'); }, 2000);
-      }
+    }
+  }
+
+  // Grant exactly N hero levels directly, no XP math — for rewards that promise "N levels"
+  // regardless of current XP progress (the Arena 888 comeback-quiz perfect-clear prize).
+  function grantHeroLevels(n) {
+    n = Math.max(0, Math.floor(Number(n) || 0));
+    for (var i = 0; i < n; i++) _heroApplyLevelUp();
+    updateHeroStatsDisplay();
+    if (n > 0) {
+      showToast(`🎉 +${n} HERO LEVELS! Now Lv. ${state.heroLvl}!`);
+      burst(25);
     }
   }
 
@@ -118,7 +138,7 @@
         ITEM_ORDER.forEach(function(k){ if ((state.inventory[k] || 0) < 99) state.inventory[k] = 99; });
       }
     }
-    if (el.level) el.level.textContent = state.level;
+    if (el.level) el.level.textContent = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(state.level) : state.level;
     // Planet tile: show the real body name + its star system (tap opens the star map).
     if (el.planetName || el.planetSystem) {
       var _ar = (typeof getArena === 'function') ? getArena(state.level) : null;
@@ -728,7 +748,8 @@
     updateLevelProgress(0);
     setControlsEnabled(true);
     loadProblem();
-    showToast(fromGameOver ? 'Arena ' + state.level + ' restarts — you can do it! 💪' : '🔄 Arena ' + state.level + ' restarted.');
+    var _restartLabel = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(state.level) : state.level;
+    showToast(fromGameOver ? 'Arena ' + _restartLabel + ' restarts — you can do it! 💪' : '🔄 Arena ' + _restartLabel + ' restarted.');
   }
 
   // 🌀 Worm-hole jump: swirling tunnel overlay; the room actually switches mid-swirl.
@@ -851,18 +872,30 @@
 
     setControlsEnabled(false);
 
+    // Special arenas (66/999 Giant Black Hole, 67/888 Second Chance) live OUTSIDE the linear
+    // 1-65 range, so `state.level < state.maxLevel` (maxLevel is fixed at 65) is always false for
+    // them — without the `curArena.special` half of this OR, reaching ARENA_GOAL here would just
+    // fall to the plain "keep loading questions" else-branch below FOREVER, and their Boss
+    // Gate/completion could never trigger. (Found + fixed 2026-07-18 while adding Arena 888 —
+    // this silently also blocked Arena 999's gate before this fix.)
+    var curArena = (typeof getArena === 'function') ? getArena(state.level) : null;
     if (state.testMode && state.level < state.maxLevel) {
       // Secret test account: ONE question and the room is DONE — auto-advance to the next room.
       setTimeout(function() {
         advanceToNextLevel(true);
       }, reduceMotion ? 150 : 900);
-    } else if (state.levelSolves >= ARENA_GOAL && state.level < state.maxLevel) {
-      // Reached the arena goal (10) — open the Boss Gate. The gate opens ONLY after the
-      // finale question; there is no "skip the boss" shortcut (removed).
-      state.gatePending = true;
-      state.bossGateUnlocked = true;
-      setTimeout(showBossGateNotice, reduceMotion ? 150 : 1300);
-      setTimeout(loadProblem, reduceMotion ? 150 : 1300);   // keep practising underneath the notice
+    } else if (state.levelSolves >= ARENA_GOAL && (state.level < state.maxLevel || (curArena && curArena.special))) {
+      if (curArena && curArena.special === 'comeback') {
+        // The Second Chance: a pure quiz, no boss — resolve completion directly (js/52-comeback-arena.js).
+        setTimeout(function(){ if (typeof handleComebackComplete === 'function') handleComebackComplete(); }, reduceMotion ? 150 : 900);
+      } else {
+        // Reached the arena goal (10) — open the Boss Gate. The gate opens ONLY after the
+        // finale question; there is no "skip the boss" shortcut (removed).
+        state.gatePending = true;
+        state.bossGateUnlocked = true;
+        setTimeout(showBossGateNotice, reduceMotion ? 150 : 1300);
+        setTimeout(loadProblem, reduceMotion ? 150 : 1300);   // keep practising underneath the notice
+      }
     } else {
       setTimeout(loadProblem, reduceMotion ? 150 : 1300);
     }

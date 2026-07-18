@@ -262,12 +262,20 @@
     G[187] = function(){ return mc('The DERIVATIVE of a function measures…', 'the slope of the curve at a single point', ['the area under the curve', 'the length of a line', 'the number of roots']); };
 
     // ---- Stamp each arena's ACTUAL question style onto the curriculum (atlas labels) ----
-    // Skip Bible arenas (mechanic + questions come from the registry) and Equation Battle
-    // arenas (numeric/formula/bracket must stay the native balance solver).
+    // Skip Bible arenas (mechanic + questions come from the registry), Equation Battle arenas
+    // (numeric/formula/bracket must stay the native balance solver), and special arenas (arena
+    // 66/999 Giant Black Hole, arena 67/888 Second Chance — generateProblem, 04-logic.js, gives
+    // them their own dedicated generator and their authored `mechanic` is already correct; without
+    // this guard, arena.gen||arena.n happens to collide with an unrelated LEGACY G[n] entry from
+    // the old 187-arena numbering — e.g. G[66] below is really an old "solve for x" generator that
+    // has nothing to do with the black hole, and was silently overwriting its mechanic from the
+    // authored 'mcOnly' to 'directInput', mislabelling its atlas card "🔢 Compute" instead of the
+    // correct "✔️ Identify". Found + fixed 2026-07-18 while renaming arena 66's display number).
     if (typeof CURRICULUM !== 'undefined'){
       for (var i = 0; i < CURRICULUM.length; i++){
         var a = CURRICULUM[i];
         if (a.phaseId) continue;
+        if (a.special) continue;
         if (a.mechanic === 'numeric' || a.mechanic === 'formula' || a.mechanic === 'bracket') continue;
         var g = a.gen || a.n;
         if (G[g]){

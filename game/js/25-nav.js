@@ -43,13 +43,17 @@
     var cur = _currentSystemId();
     // TEST MODE (admin) unlocks every star system so the tester can browse them all.
     var testUnlockAll = !!state.testMode;
-    // Hidden systems (Galaxy Center) only appear once galaxyUnlocked() — all 65 arenas perfect, or admin.
+    // Hidden systems each have their OWN reveal condition: Galaxy Center (Arena 999) needs all 65
+    // arenas perfect (galaxyUnlocked); the comeback trial (Arena 888) needs the black hole gauntlet
+    // to have been LOST first (comebackUnlocked) — see 06e-combat-outcome.js for both.
     var galaxyOn = (typeof galaxyUnlocked === 'function') && galaxyUnlocked();
+    var comebackOn = (typeof comebackUnlocked === 'function') && comebackUnlocked();
+    function _hiddenOn(s){ return s.id === 'comeback' ? comebackOn : galaxyOn; }
     var cards = (typeof STAR_SYSTEMS !== 'undefined' ? STAR_SYSTEMS : []).filter(function(s){
-      return !s.hidden || galaxyOn;
+      return !s.hidden || _hiddenOn(s);
     }).map(function(s){
       var here = s.id === cur;
-      var unlocked = s.unlocked || testUnlockAll || (s.hidden && galaxyOn);
+      var unlocked = s.unlocked || testUnlockAll || (s.hidden && _hiddenOn(s));
       var star = (typeof starSVG === 'function' && s.id === 'sol') ? starSVG('atlas-' + s.id) : '<div class="atlas-star-dot" style="background:radial-gradient(circle,#fff,#ffb347)"></div>';
       // Maths topic (world title) + arena range for this system, e.g. "Numbers · Arena 1–24".
       // Math theme for this system, from `chapters` (worlds.config.js) — the old MATH_WORLDS global
@@ -103,8 +107,9 @@
     // If the player opened this from a planet arena, the header button returns them to that planet
     // (rather than to the systems list) — "back to planet" navigation.
     var curArena = (typeof getArena === 'function') ? getArena(state.level) : null;
+    var backLabel = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(state.level) : state.level;
     var backBtn = _atlasFromArena
-      ? '<button class="btn btn-ghost" onclick="atlasBackToPlanet()">← Back to Arena ' + state.level +
+      ? '<button class="btn btn-ghost" onclick="atlasBackToPlanet()">← Back to Arena ' + backLabel +
           ((curArena && curArena.body) ? ' · ' + curArena.body.name : '') + '</button>'
       : '<button class="btn btn-ghost" onclick="atlasBackToSystems()">← All systems</button>';
     var html = '<div class="rpg-header"><h2 class="rpg-title">🪐 ' + name + '</h2>' + backBtn + '</div>';
@@ -125,8 +130,12 @@
   function _atlasArenaCard(a){
     var current = a.n === state.level;
     var isEarth = a.n === 1;
-    var playable = (typeof ARENA_GENS !== 'undefined') && !!ARENA_GENS[a.n];
-    var b = a.body || { name: 'Arena ' + a.n, kind: '', fact: '', real: true };
+    // Special arenas (blackhole/comeback) get their own dedicated generateProblem() branch
+    // (04-logic.js) rather than an ARENA_GENS entry, so they're always playable regardless of
+    // whether a (possibly coincidental, possibly absent) ARENA_GENS[a.n] exists.
+    var playable = a.special || ((typeof ARENA_GENS !== 'undefined') && !!ARENA_GENS[a.n]);
+    var displayNum = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(a.n) : a.n;
+    var b = a.body || { name: 'Arena ' + displayNum, kind: '', fact: '', real: true };
     var accent = _bodyAccent(b);
     var art = (typeof bodyArtSVG === 'function')
       ? bodyArtSVG(b, 'atlasnav' + a.n, (typeof ASTRO !== 'undefined' ? ASTRO[a.n] : null))
@@ -141,7 +150,7 @@
     return '<div class="atlas-planet ' + (current ? 'current' : '') + (perfect ? ' perfect' : '') + (b.real ? '' : ' imagined') + '" style="--astro-accent:' + accent + '">' +
       starBadge +
       '<div class="atlas-planet-art">' + art + '</div>' +
-      '<div class="atlas-planet-name">Arena ' + a.n + ' · ' + b.name + '</div>' +
+      '<div class="atlas-planet-name">Arena ' + displayNum + ' · ' + b.name + '</div>' +
       '<div class="atlas-planet-kind">' + b.kind + (b.real ? '' : ' · imagined') + '</div>' +
       '<div class="atlas-planet-topic">' + a.topic + '</div>' +
       '<div class="atlas-planet-style">' + (_ATLAS_STYLE[a.mechanic] || a.mechanic) + (playable ? '' : ' · soon') + '</div>' +
@@ -155,6 +164,9 @@
   // Composition → colour (planets/comets/moons/stars/stations get distinct hues).
   function _bodyAccent(b){
     var s = ((b.kind || '') + ' ' + (b.name || '')).toLowerCase();
+    // Arena 888 "The Second Chance" — a hopeful gold, deliberately distinct from the black hole's
+    // violet (user request 2026-07-18: give its card/button a different color from Arena 999's).
+    if (/second chance|comeback/.test(s)) return '#f2c14e';
     if (b.real === false || /station|companion|beacon|waypoint|outpost|imagined/.test(s)) return '#9aa4b2';
     if (/comet/.test(s)) return '#7fe3ff';
     if (/black hole|galactic|archive core/.test(s)) return '#b56cff';
@@ -174,7 +186,7 @@
   }
   function _bodyNoun(b){
     var s = ((b.kind || '')).toLowerCase();
-    if (b.real === false || /station|beacon|waypoint|outpost/.test(s)) return 'station';
+    if (b.real === false || /station|beacon|waypoint|outpost|trial|chance/.test(s)) return 'station';
     if (/comet/.test(s)) return 'comet';
     if (/moon/.test(s)) return 'moon';
     if (/star|dwarf|supergiant|black hole|galactic/.test(s)) return 'star';
@@ -236,7 +248,7 @@
       row('Atmosphere', X.atmosphere || unknown) +
       row('Distance from Earth', A.distanceLy ? (A.distanceLy + (/^[0-9]/.test(String(A.distanceLy)) ? ' light-years' : '')) : '') +
       row('Region', sys ? sys.name : null) +
-      row('Arena', '#' + n + ' · ' + (_ATLAS_STYLE[a.mechanic] || a.mechanic)) +
+      row('Arena', '#' + ((typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(n) : n) + ' · ' + (_ATLAS_STYLE[a.mechanic] || a.mechanic)) +
       row('Topic', a.topic);
     var m = document.getElementById('bodyInfoModal');
     if (!m){ m = document.createElement('div'); m.id = 'bodyInfoModal'; m.className = 'body-info-modal'; document.body.appendChild(m); }
@@ -302,7 +314,7 @@
       if (typeof renderScene === 'function') renderScene();
       if (typeof setControlsEnabled === 'function') setControlsEnabled(true);
       if (typeof loadProblem === 'function') loadProblem();
-      if (typeof showToast === 'function') showToast('🚀 Travelled to Arena ' + room + '!');
+      if (typeof showToast === 'function') showToast('🚀 Travelled to Arena ' + ((typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(room) : room) + '!');
       if (typeof showPlanetArrival === 'function') showPlanetArrival(room);
     };
     if (typeof playWarpFx === 'function') playWarpFx(doJump); else doJump();

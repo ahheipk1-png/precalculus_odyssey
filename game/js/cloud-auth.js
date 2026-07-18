@@ -338,7 +338,7 @@
     // Progress
     var passed = p.arenasPassed || 0;
     h += '<div class="pd-card"><div class="pd-title">🚀 Progress</div>' +
-      row('🪐 Current arena', 'Arena ' + (p.level || 1) + ' of ' + (p.maxLevel || 65)) +
+      row('🪐 Current arena', 'Arena ' + ((typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(p.level || 1) : (p.level || 1)) + ' of ' + (p.maxLevel || 65)) +
       row('✅ Arenas passed', passed + ' / ' + (p.maxLevel || 65)) +
       row('⭐ This arena solved', (p.levelSolves || 0) + ' / 10') +
       row('🦸 Hero', 'Lv. ' + (p.heroLvl || 1) + ' (XP ' + (p.heroXp || 0) + ')') +

@@ -213,6 +213,25 @@ Three linked additions (user request):
     first pass — it's meant to be beatable only with maxed odyssey gear + high hero level. Revisit
     if real play shows it's impossible or trivial.
 
+### Update (2026-07-18, later same day): renamed to "Arena 999" + a companion "Arena 888"
+
+User: rename arena 66's display to "Arena 999"; on LOSING its gauntlet, reveal a new "Arena 888"
+next to it — a pure 10-question MC quiz (derivatives, tangent slope, integration, integration by
+parts, differential equations) that grants +10 hero levels on a perfect run. Full design/build notes
+in `docs/world-and-hubs.md` batch #23; summary here since it directly extends this section:
+
+- **The internal id (`n:66`, room 66, `state.level`) never changed** — only a new `displayN:999`
+  field + `arenaDisplayNumber(n)` helper drive what's shown as text, everywhere.
+- **New Arena 888 "The Second Chance"** (`n:67, special:'comeback'`) — its own hidden system, no
+  combat, no Boss Gate; `handleComebackComplete()` grants the reward directly. One-time only
+  (`state.comebackCleared`), matching this project's existing anti-farming pattern.
+- **Two bugs in the ORIGINAL 66 implementation were found and fixed** while building this (see
+  world-and-hubs.md batch #23 for full detail): the atlas tag was mislabelled "Compute" instead of
+  "Identify" (a legacy `G[66]` generator, unrelated leftover from the old 187-arena numbering,
+  silently overwrote the mechanic stamp), and — more seriously — **the Boss Gate could never
+  actually open** for arena 66 through normal 10-question play, because the gate-opening check
+  required `state.level < state.maxLevel`, and `state.maxLevel` is permanently 65. Both fixed.
+
 ## Out of scope this pass (follow-ups)
 
 - ~~Wonderland `a2Reward` Cash amounts (flat 20–100)~~ — **fixed 2026-07-17**: added

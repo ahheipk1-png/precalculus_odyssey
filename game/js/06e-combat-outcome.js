@@ -209,6 +209,18 @@
     state.playerHp = state.playerMaxHp;
     state.playerMp = state.playerMaxMp;
     appendCombatLog(`⛑️ Medics revived you — HP & MP restored. Train or shop, then try again!`, 'system');
+
+    // Losing the Giant Black Hole gauntlet (Arena 999) reveals a one-time comeback trial (Arena
+    // 888) right next to it in the atlas — a pure MC quiz, no combat; a perfect run grants +10
+    // hero levels (js/52-comeback-arena.js). Stays revealed forever once unlocked.
+    if (typeof isBlackHoleArena === 'function' && isBlackHoleArena(state.level) && !state.comebackUnlocked) {
+      state.comebackUnlocked = true;
+      setTimeout(function(){
+        if (typeof showToast === 'function') showToast('🌟 A Second Chance has appeared in your Star Atlas — answer 10 questions correctly for +10 hero levels!');
+        if (typeof playSfx === 'function') playSfx('loot');
+      }, 2600);
+    }
+
     if (typeof updateStats === 'function') updateStats();
     if (typeof saveGame === 'function') saveGame();
 
@@ -362,6 +374,13 @@
     var max = (typeof CURRICULUM_MAX === 'number') ? CURRICULUM_MAX : 65;
     for (var i = 1; i <= max; i++){ if (!state.perfectArenas[i]) return false; }
     return true;
+  }
+
+  // The Second Chance (Arena 888) reveals once the Giant Black Hole gauntlet has been LOST —
+  // set by handleBattleDefeat() below the moment that happens. Stays true forever after (the
+  // trial itself never re-locks, even once cleared — see js/52-comeback-arena.js).
+  function comebackUnlocked(){
+    return !!state.comebackUnlocked || !!state.testMode;
   }
 
   function handleKeepFighting() {

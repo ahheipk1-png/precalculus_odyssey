@@ -94,6 +94,8 @@
       specialStore: state.specialStore,
       specialStoreOwned: state.specialStoreOwned,
       specialStoreAnnounced: state.specialStoreAnnounced,
+      comebackUnlocked: state.comebackUnlocked,
+      comebackCleared: state.comebackCleared,
       savedAt: Date.now()
     };
   }
@@ -208,6 +210,8 @@
           dp: snap.specialStoreOwned.dp || 0, spd: snap.specialStoreOwned.spd || 0 }
       : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
     state.specialStoreAnnounced = !!snap.specialStoreAnnounced;
+    state.comebackUnlocked = !!snap.comebackUnlocked;
+    state.comebackCleared = !!snap.comebackCleared;
     // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
     // the Boss Gate button is re-derived from levelSolves/bossDefeated in updatePanelVisibility.
     state.bossGateUnlocked = false;
@@ -258,6 +262,8 @@
     state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
     state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 };
     state.specialStoreAnnounced = false;
+    state.comebackUnlocked = false;
+    state.comebackCleared = false;
     if (el.trophiesPanel) el.trophiesPanel.style.display = 'none';
     state.weapons = reconcileGear(WEAPONS, null);
     state.shields = reconcileGear(SHIELDS, null);

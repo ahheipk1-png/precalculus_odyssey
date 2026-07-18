@@ -6,8 +6,18 @@
 .sstr-title{ color: var(--violet, #9a6cff); text-shadow: 0 0 14px rgba(154,108,255,0.35); }
 
 /* Wider cards than the base .istr-shelf (160px) — these descriptions are longer ("the same boost
-   as one hero level", "better dodge & crit chance") and were wrapping into 4+ cramped lines. */
-.sstr-shelf{ grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+   as one hero level", "better dodge & crit chance") and were wrapping into 4+ cramped lines.
+   2026-07-18: widened again 220px → 264px (1.2×) and switched from grid to a centered flex-wrap
+   layout — grid's auto-fill left an incomplete last row (e.g. 2 leftover cards) sitting on the
+   left with dead space to the right; flex + justify-content:center keeps every row, complete or
+   not, centered as a group instead. */
+.sstr-shelf{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+.sstr-shelf > .istr-card{ flex: 0 1 264px; }
 
 .sstr-card{
   border-color: rgba(154,108,255,0.25);

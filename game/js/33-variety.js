@@ -181,8 +181,13 @@
     if (!window.VARIETY_ENABLED || typeof generateProblem !== 'function') return null;
     // Bible arenas already ship 20 pre-authored, varied templates — serve them directly
     // (bibleProblem picks a fresh one each question) rather than running the numeric-style
-    // transforms, which assume computed numeric answers.
-    try { var _a = (typeof getArena === 'function') ? getArena(n) : null; if (_a && _a.phaseId) return null; } catch (e) {}
+    // transforms, which assume computed numeric answers. Special arenas (66/999 Giant Black
+    // Hole, 67/888 Second Chance) ALSO own their question source end-to-end (generateProblem's
+    // special branches, 04-logic.js) — deriving "direct"/"true-false" variants from a single
+    // `generateProblem(n)` sample here would instead compose reworded variants of just ONE
+    // sampled question (or, for the comeback trial, corrupt its levelSolves-indexed shuffle —
+    // found 2026-07-18 while building Arena 888: repeated questions within one run).
+    try { var _a = (typeof getArena === 'function') ? getArena(n) : null; if (_a && (_a.phaseId || _a.special)) return null; } catch (e) {}
     var sample; try { sample = generateProblem(n); } catch (e) { return null; }
     if (!sample) return null;
     var pool = _poolFor(sample.mode);

@@ -1,0 +1,29 @@
+/* ---------- Arena 888 "The Second Chance" — result overlay ----------
+   Reuses the shared .gameover-overlay/.gameover-card modal shell (same pattern as the Special
+   Store's first-visit announce modal, special-store.css); comeback- classes add only the
+   3 outcome themes (win/repeat/miss). Gold accent throughout — deliberately distinct from the
+   Giant Black Hole's violet (js/25-nav.js _bodyAccent), so the two atlas cards read as different
+   at a glance. */
+
+.comeback-card{
+  border-color: var(--yellow);
+  background: linear-gradient(165deg, rgba(242,193,78,0.16), rgba(244,241,232,0.04));
+}
+.comeback-title{ color: var(--yellow); }
+.comeback-emoji{ filter: drop-shadow(0 0 10px rgba(242,193,78,0.5)); }
+
+/* A perfect FIRST clear gets the biggest, warmest treatment — this is the whole point of the trial. */
+.comeback-win{
+  box-shadow: 0 18px 50px rgba(0,0,0,0.5), 0 0 40px rgba(242,193,78,0.35);
+}
+.comeback-win .comeback-emoji{ font-size: 60px; }
+
+/* Repeat perfect clears (reward already claimed) — same gold theme, no extra glow. */
+.comeback-repeat .comeback-title{ color: var(--sky); }
+
+/* A miss (at least one wrong answer) — quieter, encouraging, not punishing. */
+.comeback-miss{
+  border-color: rgba(244,241,232,0.2);
+  background: linear-gradient(165deg, rgba(244,241,232,0.08), rgba(244,241,232,0.03));
+}
+.comeback-miss .comeback-title{ color: var(--chalk-dim); }

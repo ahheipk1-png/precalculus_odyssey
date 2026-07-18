@@ -41,5 +41,8 @@
     { id: 'hd-40307',           name: 'HD 40307',              worldId: 'hd-40307',           distanceLy: 42,   star: 'HD 40307 (orange dwarf)',            fact: 'A chain of super-Earths, one in the habitable zone — the Odyssey’s final frontier.', unlocked: false },
     // HIDDEN endgame system — only shows in the atlas once ALL 65 arenas have a perfect (0-mistake)
     // green star (galaxyUnlocked() in 06e-combat-outcome.js). Holds the single "Giant Black Hole" arena.
-    { id: 'galaxy-center',      name: 'Galaxy Center',         worldId: 'galaxy-center',      distanceLy: 26000, star: 'Sagittarius A* (supermassive black hole)', fact: 'The 4-million-solar-mass monster at the heart of the Milky Way — the Odyssey’s ultimate trial.', unlocked: false, hidden: true }
+    { id: 'galaxy-center',      name: 'Galaxy Center',         worldId: 'galaxy-center',      distanceLy: 26000, star: 'Sagittarius A* (supermassive black hole)', fact: 'The 4-million-solar-mass monster at the heart of the Milky Way — the Odyssey’s ultimate trial.', unlocked: false, hidden: true },
+    // HIDDEN comeback system — only shows once the Giant Black Hole gauntlet has been LOST
+    // (comebackUnlocked() in 06e-combat-outcome.js). Holds the single "Second Chance" quiz arena.
+    { id: 'comeback',           name: 'The Second Chance',     worldId: 'comeback',           distanceLy: null,  star: 'An echo of hope', fact: 'A last, generous chance — clear it perfectly and the universe grants you ten hero levels at once.', unlocked: false, hidden: true }
   ];

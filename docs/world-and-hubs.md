@@ -623,6 +623,105 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #23 — Odyssey Forge 1.2× wider + centered; Arena 66 relabeled "Arena 999";
+new Arena 888 "The Second Chance" comeback trial; 2 latent bugs found + fixed along the way.**
+
+- **Odyssey Forge cards, round 2** (user: "make them even 1.2 times wder and align in the center"):
+  `special-store.css`'s `.sstr-shelf` switched from CSS grid (`auto-fill`, which left an incomplete
+  last row hugging the left edge with dead space beside it) to a centered flex-wrap layout —
+  `display:flex; flex-wrap:wrap; justify-content:center;` with each card at `flex:0 1 264px` (was
+  220px, ×1.2). Verified live: the 2-card last row (Aegis Forge/Velocity Core) now sits centered as
+  a group at any viewport width instead of left-aligned.
+
+- **Arena 66 → displays as "Arena 999"** (user: "called it arena 999"). The rename is TEXT-ONLY —
+  every internal id/travel-target/room value stays the real `n:66` (`curriculum.config.js`); only
+  a new `displayN:999` field plus a new pure helper `arenaDisplayNumber(n)` (`curriculum.config.js`,
+  next to `getArena`) drive what gets shown. Fixed **8 separate render call sites** to prefer
+  `arenaDisplayNumber()` over the raw arena number for TEXT only (never for `atlasTravel`/`state.level`
+  /`room` comparisons, which must stay 66): the header "Arena N of 65" stat (`05-render.js`
+  `el.level`), the restart-room toast, the atlas system-card range (`STAR_SYSTEMS.arenaStart/End`,
+  now derived from `displayN||n`), the atlas planet-card name + "Back to Arena N" + the "About this
+  star" info-modal row (`25-nav.js`), the planet-arrival splash (`14-lore.js`), the Trading Room's
+  review-question label (`24-trading.js`), and the admin dashboard's profile summary
+  (`cloud-auth.js`). `_bodyAccent`/`_bodyNoun` (`25-nav.js`) unchanged for it (black hole → violet).
+
+- **New Arena 888 "The Second Chance"** (user: "when it failed, show up an arena 888 next to it
+  that allows you level up 10 levels if you could answer all the questions correctly... multiple
+  choice to derivatives, tangent slope of functions and integrations, integration by parts,
+  differential equations"):
+  - New CURRICULUM row `n:67, systemId:'comeback', displayN:888, special:'comeback'`
+    (`curriculum.config.js`) + a matching hidden `STAR_SYSTEMS` entry (`worlds.config.js`) — its own
+    system (not a second planet under Galaxy Center) so its atlas card shows a clean "Arena 888–888"
+    next to Galaxy Center's "Arena 999–999", exactly matching the existing card pattern from the
+    user's screenshot.
+  - **Trigger**: `handleBattleDefeat()` (`06e-combat-outcome.js`) sets `state.comebackUnlocked = true`
+    the moment `isBlackHoleArena(state.level)` — i.e. the Giant Black Hole gauntlet is LOST — with a
+    delayed toast (after the existing revival-fee toast) announcing it. New `comebackUnlocked()`
+    predicate mirrors `galaxyUnlocked()`'s style; `renderStarAtlas` (`25-nav.js`) now dispatches PER
+    hidden system (`_hiddenOn(s)`) instead of one shared `galaxyOn` flag, since the two systems now
+    have independent reveal conditions.
+  - **Content**: `COMEBACK_QUESTIONS` — 10 hand-authored multiple-choice questions, 2 each across
+    derivatives, tangent-line slope, integration, integration by parts, and differential equations
+    (new `game/config/comeback.config.js`). Served through generateProblem's `special==='comeback'`
+    branch (`_comebackProblem`, 04-logic.js) — shuffled once per fresh attempt
+    (`state._comebackOrder`, re-shuffled whenever `levelSolves===0`) so a run never repeats a
+    question but attempts vary run-to-run.
+  - **No combat, no Boss Gate** — it's a pure quiz. `handleSolved` (`05-render.js`) now checks
+    `curArena.special === 'comeback'` at the ARENA_GOAL branch and routes straight to
+    `handleComebackComplete()` (new `js/52-comeback-arena.js`) instead of opening a boss gate.
+  - **Reward**: a PERFECT run (`state.roomFails === 0` — the same "0 mistakes" bar the game already
+    uses for the green perfect-clear star) grants **+10 hero levels** via new `grantHeroLevels(n)`
+    (`05-render.js` — extracted the shared per-level effect into `_heroApplyLevelUp()` so
+    `addHeroXp`'s XP-driven loop and this direct "+N levels" grant can never drift apart), but only
+    the FIRST time ever (`state.comebackCleared`) — anti-farming, matching the Wonderland
+    repeat-clear-halving convention. Replaying after claiming it shows an encouraging "Perfect
+    again!" message with no extra reward; any wrong answer shows "So close!" with no reward either
+    way — the trial never re-locks, so it's always retryable.
+  - **UI**: a themed result overlay (`comeback-arena.css`, new file) reusing the shared
+    `.gameover-overlay`/`.gameover-card` shell (same pattern as the Special Store's first-visit
+    announce modal) with win/repeat/miss variants; a gold accent (`_bodyAccent`, 25-nav.js) —
+    deliberately distinct from the black hole's violet, per the user's explicit ask for the new
+    arena's button to be a different color.
+  - **4-place persistence**: `state.comebackUnlocked`/`state.comebackCleared` wired through
+    `01-data.js` defaults, `03-save.js` snapshot + restore + reset.
+
+- **2 latent bugs found and fixed while building this** (neither reported by the user — found
+  because the new work touched the exact same code paths):
+  1. **Arena 66's atlas tag was mislabelled "🔢 Compute" instead of "✔️ Identify"** ever since it was
+     built. Root cause: `28-arena-generators.js`'s mechanic-stamping loop does `G[a.gen||a.n]()` to
+     peek the REAL question style — but arena 66 happens to collide with a totally unrelated leftover
+     `G[66]` from the old 187-arena numbering scheme (a "solve for x" generator), silently
+     overwriting the authored `mcOnly` mechanic. Fixed by skipping `.special` arenas in that loop —
+     they own their mechanic already. (The actual question CONTENT was never affected — a separate,
+     correct `special==='blackhole'` branch in `generateProblem` already intercepts before reaching
+     `ARENA_GENS`; only the display tag was wrong.)
+  2. **Arena 66's Boss Gate could never open through normal play** — `handleSolved`'s ARENA_GOAL
+     check required `state.level < state.maxLevel`, but `state.maxLevel` is permanently fixed at 65
+     (the linear cap), so `66 < 65` is always false. Reaching 10 questions on arena 66 silently fell
+     through to "just keep loading more questions," forever. Fixed by widening the condition to
+     `state.level < state.maxLevel || curArena.special` — this is also exactly what makes Arena 888's
+     completion reachable at all, so it had to be fixed for either arena to function.
+  - A third issue was caught DURING testing (not shipped): `buildArenaTrial()` (`33-variety.js`)
+    pre-samples `generateProblem(n)` once and derives reworded "variety" variants from that single
+    sample for any `mcOnly` arena — which would have corrupted the comeback trial's
+    levelSolves-indexed shuffle (repeated questions within one run, confirmed via a direct 10-call
+    simulation before the fix). Fixed by skipping `.special` arenas in `buildArenaTrial` too, the
+    same guard already used for Bible `phaseId` arenas.
+
+- **Verified live** (fresh `claude_agent` session): per-system atlas gating confirmed independently
+  (`comebackUnlocked()` false → only Galaxy Center's card shows; flipped true → "The Second Chance"
+  appears right beside it, "Arena 888–888"); drilled into both — "Arena 999 · Giant Black Hole" now
+  tagged "✔️ Identify" (was "🔢 Compute"), "Arena 888 · The Second Chance" shows the gold accent;
+  drove a REAL 10-question run through the actual UI (`selectMcChoice`/`confirmMcAnswer`) confirming
+  all 10 questions are genuinely distinct (re-verified via a direct `generateProblem` sweep after the
+  `buildArenaTrial` fix — 10/10 unique); a perfect run granted exactly +10 hero levels and showed the
+  win overlay; a second perfect run granted nothing extra ("Perfect again!"); a run with one miss
+  granted nothing ("So close!"); `handleBattleDefeat()` called with a mocked black-hole `activeCombat`
+  correctly set `comebackUnlocked` and charged the normal revival fee with zero errors; save-snapshot
+  round-trip confirmed for both new state fields; a normal arena (Arena 1, unaffected by any of these
+  changes) still opens its Boss Gate correctly — no regression. Cache token bumped
+  `20260718q → 20260718r`.
+
 **2026-07-18 batch #22 — Wonderland gains a hub layer: Casino vs. Arcade, with big centered
 category tiles.** User: "add one more layer in wonderland: 1. casino... 2. arcade (add all the
 games expect the gambling ones to it)... make the buttons larger and in the center of the screen."

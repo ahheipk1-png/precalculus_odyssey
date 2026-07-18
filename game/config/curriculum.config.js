@@ -27,19 +27,37 @@
     // into it (arena 65 clear → "Return to Quest"). Reached only via the Galaxy Center atlas card,
     // which itself only appears once all 65 arenas are perfect-starred. special:'blackhole' drives
     // its hardest-review questions (04-logic.js) and 10-monster gauntlet (06b-monster-roster.js).
+    // displayN:999 (2026-07-18, user request) is a TEXT-ONLY relabel — every travel/lookup/room
+    // value stays the real n:66 (see arenaDisplayNumber() below); only render call sites read it.
     CURRICULUM.push({
       n: 66, worldId: 'galaxy-center', systemId: 'galaxy-center', origSystem: 'galaxy-center',
       topic: 'The hardest review from every arena', mechanic: 'mcOnly', code: 'HOLE',
-      phaseId: null, gen: null, special: 'blackhole',
+      phaseId: null, gen: null, special: 'blackhole', displayN: 999,
       body: { name: 'Giant Black Hole', kind: 'Supermassive Black Hole', real: true,
         fact: 'Sagittarius A* — 4 million times the Sun’s mass, at the heart of the galaxy.' }
+    });
+    // Arena 888 "The Second Chance" — appears once the Giant Black Hole gauntlet (Arena 999) is
+    // LOST (js/06e-combat-outcome.js sets state.comebackUnlocked on that defeat). A pure 10-question
+    // MC quiz (COMEBACK_QUESTIONS, comeback.config.js; served via generateProblem's special==='comeback'
+    // branch, 04-logic.js) — no combat, no Boss Gate. A ZERO-mistake run grants +10 hero levels,
+    // ONCE ever (state.comebackCleared — anti-farming, js/52-comeback-arena.js). Its own hidden
+    // system ('comeback') so its atlas card shows a clean "Arena 888–888", right next to Galaxy
+    // Center's "Arena 999–999" once both are unlocked.
+    CURRICULUM.push({
+      n: 67, worldId: 'comeback', systemId: 'comeback', origSystem: 'comeback',
+      topic: 'A Second Chance: the Calculus Gauntlet', mechanic: 'mcOnly', code: 'HOPE',
+      phaseId: null, gen: null, special: 'comeback', displayN: 888,
+      body: { name: 'The Second Chance', kind: 'Comeback Trial', real: false,
+        fact: 'Ten multiple-choice questions on derivatives, tangent-line slopes, integrals, ' +
+          'integration by parts, and differential equations. Answer all ten correctly and ' +
+          'reclaim ten hero levels at once — a one-time gift.' }
     });
     if (typeof STAR_SYSTEMS !== 'undefined'){
       STAR_SYSTEMS.forEach(function(sys){
         var rows=CURRICULUM.filter(function(a){ return a.systemId===sys.id; });
         sys.planets=rows.length;
-        sys.arenaStart=rows.length?rows[0].n:null;
-        sys.arenaEnd=rows.length?rows[rows.length-1].n:null;
+        sys.arenaStart=rows.length?(rows[0].displayN||rows[0].n):null;
+        sys.arenaEnd=rows.length?(rows[rows.length-1].displayN||rows[rows.length-1].n):null;
       });
     }
     if (typeof chapters !== 'undefined'){
@@ -53,6 +71,10 @@
   })();
 
   function getArena(n){ return CURRICULUM[n-1] || null; }
+  // Display-only arena label for renamed special arenas (Giant Black Hole shows "Arena 999", the
+  // comeback trial "Arena 888") — the INTERNAL id/room/travel target (`n`) never changes; only
+  // text rendering should ever read this. Falls back to n itself for every ordinary arena.
+  function arenaDisplayNumber(n){ var a = getArena(n); return (a && a.displayN) || n; }
   function arenasForSystem(id){ return CURRICULUM.filter(function(a){ return a.systemId===id; }); }
   function arenaByCode(code){ var up=(code||'').toUpperCase(); for(var i=0;i<CURRICULUM.length;i++) if(CURRICULUM[i].code===up) return CURRICULUM[i]; return null; }
   // The LINEAR progression cap = the 65 authored rows. Arena 66 (Giant Black Hole) is intentionally

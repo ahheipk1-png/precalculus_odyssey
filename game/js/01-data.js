@@ -77,7 +77,13 @@
     // Bought but not yet installed (Buy acquires; Use installs — matches the Item Store's
     // buy-then-use pattern). Same 5 keys; installed + owned share one price/cap ladder.
     specialStoreOwned: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0 },
-    specialStoreAnnounced: false   // has the one-time "Special Item Store is open!" modal fired yet
+    specialStoreAnnounced: false,  // has the one-time "Special Item Store is open!" modal fired yet
+    // Arena 888 "The Second Chance" (js/52-comeback-arena.js): appears next to the Giant Black
+    // Hole (Arena 999) once its gauntlet is LOST. comebackUnlocked reveals its atlas card forever
+    // after; comebackCleared guards the +10-hero-level reward to a ONE-TIME grant (anti-farming,
+    // matching the Wonderland repeat-clear convention) — it stays replayable for practice after.
+    comebackUnlocked: false,
+    comebackCleared: false
   };
   // levelTitles, formulaBank, sceneCaptions \u2192 game/config/rooms.config.js (loaded first).
   // The `chapters` registry \u2192 game/config/worlds.config.js. The chapter room-range
