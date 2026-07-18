@@ -345,6 +345,18 @@
   .spell-btn small{ font-size:13px; opacity:0.85; font-weight:600; }
   .spell-btn:disabled{ opacity:0.4; cursor:not-allowed; }
   .spell-btn:not(:disabled):hover{ background:rgba(244,241,232,0.12); }
+  /* Spell-category tabs (26-spells.js renderSpellsMenu): ⚔️ Attack / 🌀 Control / 💚 Recovery / ✨ Special.
+     The active tab glows yellow; the spell buttons below only show the active category. */
+  .spell-cat-row{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; width:100%; margin-bottom:4px; }
+  .spell-cat-btn{
+    background:rgba(244,241,232,0.05); border:1.5px solid rgba(244,241,232,0.25); color:var(--chalk-dim);
+    border-radius:999px; padding:4px 12px; font-family:'Quicksand',sans-serif; font-weight:800; font-size:13px;
+    cursor:pointer; transition:border-color .15s ease, color .15s ease, background .15s ease;
+  }
+  .spell-cat-btn:hover{ border-color:var(--chalk); color:var(--chalk); }
+  .spell-cat-btn.active{ border-color:var(--yellow); color:var(--yellow); background:rgba(242,193,78,0.12); }
+  /* "No usable items" note inside the 🎒 combat items panel. */
+  .combat-items-empty{ width:100%; text-align:center; font-size:14px; color:var(--chalk-dim); padding:6px 4px; }
 
   /* ---- Generic view helpers ---- */
   .prof-tabs, .codex-tabs{ display:flex; gap:8px; margin:0 0 14px; flex-wrap:wrap; }
@@ -416,10 +428,13 @@
   .atlas-planet-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
   .atlas-planet{ position:relative; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-top:4px solid var(--astro-accent,var(--sky)); border-radius:16px; padding:16px 14px; text-align:center; display:flex; flex-direction:column; }
   .atlas-planet.current{ box-shadow:0 0 0 2px var(--yellow); } .atlas-planet-art{ width:104px; height:104px; margin:0 auto 6px; }
-  /* Perfect-clear (0-mistake) green shiny star, pinned top-right, with a soft glow + twinkle. */
+  /* Perfect-clear (0-mistake) green shiny star, pinned top-right, with a soft glow + twinkle.
+     Rendered as a text ★ (25-nav.js) so `color` actually paints it green — bright green fill,
+     layered green glow, slightly bigger than the old emoji (user 2026-07-18). */
   .atlas-planet.perfect{ border-color:rgba(123,216,143,0.55); box-shadow:0 0 14px rgba(123,216,143,0.25); }
-  .atlas-perfect-star{ position:absolute; top:8px; right:10px; font-size:22px; line-height:1; z-index:2;
-    filter:drop-shadow(0 0 5px #7bd88f) drop-shadow(0 0 10px rgba(123,216,143,0.7)); animation:perfectTwinkle 2.2s ease-in-out infinite; }
+  .atlas-perfect-star{ position:absolute; top:6px; right:9px; font-size:30px; line-height:1; z-index:2;
+    color:#4bf08a; text-shadow:0 0 6px #7bd88f, 0 0 14px rgba(123,216,143,0.85), 0 0 24px rgba(123,216,143,0.45);
+    filter:drop-shadow(0 0 5px #7bd88f); animation:perfectTwinkle 2.2s ease-in-out infinite; }
   @keyframes perfectTwinkle{ 0%,100%{ transform:scale(1) rotate(0deg); opacity:1; } 50%{ transform:scale(1.18) rotate(8deg); opacity:0.82; } }
   @media (prefers-reduced-motion: reduce){ .atlas-perfect-star{ animation:none; } }
   .atlas-planet-name{ font-family:'Patrick Hand',cursive; font-size:22px; color:var(--chalk); } .atlas-planet-kind{ font-size:14px; color:var(--astro-accent,var(--sky)); margin-bottom:6px; }

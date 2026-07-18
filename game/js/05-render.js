@@ -151,10 +151,17 @@
 
   // Cash · Gold · Silver · Chips HUD strip (user-required currency display).
   function updateCurrencyBar(){
+    // Always-visible pills on the arena-progress bar (user 2026-07-18): Wonderland pass count +
+    // an All-Chips rollup that opens the viewChips() breakdown — visible while solving, not just
+    // in the stats header above the fold.
+    var chips = (typeof chipTotal === 'function') ? chipTotal() : 0;
+    var pbc = document.getElementById('passBarCount');
+    if (pbc) pbc.textContent = state.wonderPasses || 0;
+    var cbc = document.getElementById('chipsBarCount');
+    if (cbc) cbc.textContent = chips;
     var cb = document.getElementById('currencyBar');
     if (!cb) return;
     var c = state.currencies || { gold: 0, silver: 0 };
-    var chips = (typeof chipTotal === 'function') ? chipTotal() : 0;
     cb.innerHTML =
       '<span class="cur-chip cur-cash" title="Cash — earned by solving arenas, spent in shops">💵 <b>' + state.coins + '</b> Cash</span>' +
       '<span class="cur-chip" title="Gold — premium currency from bosses and trading">🥇 <b>' + (c.gold || 0) + '</b> Gold</span>' +

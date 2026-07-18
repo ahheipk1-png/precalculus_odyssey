@@ -769,6 +769,10 @@
       el.openSpellsBtn.style.display = 'inline-block';
       el.openSpellsBtn.disabled = false;
     }
+    if (el.openItemsBtn) {
+      el.openItemsBtn.style.display = 'inline-block';
+      el.openItemsBtn.disabled = false;
+    }
     if (el.combatEscapeBtn) {
       // Escape is ALWAYS available now (user 2026-07-18) — but success is a speed-based gamble
       // (attemptEscape), so gauntlet fights are no longer a guaranteed no-retreat wall; a slow hero
@@ -782,6 +786,7 @@
         '⚠️ Gauntlet chain — escaping mid-chain is a speed-based gamble; failing costs a free hit.';
     }
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
+    if (el.combatItemsPanel) el.combatItemsPanel.style.display = 'none';
     el.postCombatBtn.style.display = 'none';
     el.battleFleeBtn.hidden = true;
     if (el.battleShopBtn) el.battleShopBtn.hidden = true;
@@ -1293,8 +1298,10 @@
       if (typeof showToast === 'function') showToast('⚔️ ' + monster.name + ' down — on to the next!');
       el.startCombatBtn.style.display = 'none';
       if (el.openSpellsBtn) el.openSpellsBtn.style.display = 'none';
+      if (el.openItemsBtn) el.openItemsBtn.style.display = 'none';
       if (el.combatEscapeBtn) el.combatEscapeBtn.style.display = 'none';
       if (el.spellsPanel) el.spellsPanel.style.display = 'none';
+      if (el.combatItemsPanel) el.combatItemsPanel.style.display = 'none';
       el.battleFleeBtn.hidden = true;
       var nextFoe = activeCombat.queue[0];
       el.postCombatBtn.style.display = 'inline-block';
@@ -1343,8 +1350,10 @@
 
     el.startCombatBtn.style.display = 'none';
     if (el.openSpellsBtn) el.openSpellsBtn.style.display = 'none';
+    if (el.openItemsBtn) el.openItemsBtn.style.display = 'none';
     if (el.combatEscapeBtn) el.combatEscapeBtn.style.display = 'none';
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
+    if (el.combatItemsPanel) el.combatItemsPanel.style.display = 'none';
     el.battleFleeBtn.hidden = true;
 
     // Giant Black Hole cleared — the true end of the Odyssey. No arena to advance to; the button
@@ -1468,8 +1477,10 @@
 
     el.startCombatBtn.style.display = 'none';
     if (el.openSpellsBtn) el.openSpellsBtn.style.display = 'none';
+    if (el.openItemsBtn) el.openItemsBtn.style.display = 'none';
     if (el.combatEscapeBtn) el.combatEscapeBtn.style.display = 'none';
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
+    if (el.combatItemsPanel) el.combatItemsPanel.style.display = 'none';
     el.postCombatBtn.style.display = 'inline-block';
     el.postCombatBtn.textContent = 'Return to Shop & Quest';
     if (el.keepFightingBtn) el.keepFightingBtn.style.display = 'none';

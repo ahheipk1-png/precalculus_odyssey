@@ -34,7 +34,7 @@
   ];
   var QBF_COLORS = ['#6EC1E4', '#F2C14E', '#F0705E', '#7bd88f', '#9a6cff', '#66e0ff'];
 
-  var QBF = { active: false, level: 0, size: 8, board: null, tray: [], sel: -1, score: 0, totalScore: 0, combo: 0, lines: 0, placed: 0 };
+  var QBF = { active: false, level: 0, size: 8, board: null, tray: [], sel: -1, score: 0, totalScore: 0, combo: 0, lines: 0, placed: 0, hist: [] };
 
   // ---- pure core ----
   function qbfNewBoard(size){ var b = []; for (var r = 0; r < size; r++){ b.push([]); for (var c = 0; c < size; c++) b[r].push(0); } return b; }
@@ -102,7 +102,7 @@
     var lv = QBF_LEVELS[QBF.level] || QBF_LEVELS[QBF_LEVELS.length - 1];
     QBF.active = true; QBF.size = lv.size;
     QBF.board = qbfNewBoard(QBF.size);
-    QBF.score = 0; QBF.combo = 0; QBF.lines = 0; QBF.placed = 0; QBF.sel = -1;
+    QBF.score = 0; QBF.combo = 0; QBF.lines = 0; QBF.placed = 0; QBF.sel = -1; QBF.hist = [];
     QBF.goal = lv.goal;   // reach it to clear this level
     QBF.best = wgMini('blockForge').highScore || 0;
     qbfRefillTray();
@@ -111,7 +111,8 @@
         (typeof agTopBar === 'function' ? agTopBar('🧩 Quantum Block Forge — Level ' + (QBF.level + 1) + ' / ' + QBF_LEVELS.length, 'openWonderland()') : '') +
         '<div class="wond-hud" id="qbfHud"></div>' +
         '<div class="qbf-wrap"><div class="qbf-grid" id="qbfGrid"></div><div class="qbf-tray" id="qbfTray"></div></div>' +
-        '<p class="wond-tip">DRAG a block onto the grid (or click it, then click the grid). Fill a row or column to clear it — reach the 🎯 goal score to clear this level!</p>' +
+        '<div class="qbf-controls"><button type="button" class="btn btn-ghost" id="qbfUndoBtn" onclick="qbfUndo()" data-tooltip="Take back your last block placement.">↶ Undo</button></div>' +
+        '<p class="wond-tip">DRAG a block onto the grid (or click it, then click the grid). Fill a row or column to clear it — reach the 🎯 goal score to clear this level! ↶ Undo takes back your last placement.</p>' +
       '</div>';
     if (typeof playSfx === 'function') playSfx('ui-click');
     qbfRender();
@@ -175,9 +176,35 @@
       '<span class="wond-chip">🔥 Combo: <b>×' + Math.max(1, QBF.combo) + '</b></span>' +
       '<span class="wond-chip">🧹 Lines: <b>' + QBF.lines + '</b></span>' +
       '<span class="wond-chip">🏆 Best: <b>' + QBF.best + '</b></span>';
+    var ub = document.getElementById('qbfUndoBtn');
+    // Mirror qbfUndo's ACTUAL guard (active AND history) so the button never looks clickable
+    // during the level-clear freeze / after game over (undo-review 2026-07-18 finding).
+    if (ub) ub.disabled = !(QBF.active && QBF.hist && QBF.hist.length);
   }
 
   function qbfSelectPiece(i){ if (!QBF.active || !QBF.tray[i]) return; QBF.sel = i; qbfRender(); }
+
+  // Deep snapshot of the mutable game state for Undo. board is 2D (row-copy); tray pieces are
+  // shallow-cloned but keep the shared immutable `cells` reference (offsets are never mutated).
+  function qbfSnapshot(){
+    return {
+      board: QBF.board.map(function(row){ return row.slice(); }),
+      tray: QBF.tray.map(function(p){ return p ? { cells: p.cells, color: p.color } : null; }),
+      score: QBF.score, combo: QBF.combo, lines: QBF.lines, placed: QBF.placed
+    };
+  }
+  // Take back the last placement (including any lines it cleared / combo it built / tray refill).
+  // Active-play only — matches Cargo/Glacier/Forbidden City: no undo across a level clear or game over.
+  function qbfUndo(){
+    if (!QBF.active || !QBF.hist || !QBF.hist.length) return;
+    var s = QBF.hist.pop();
+    QBF.board = s.board.map(function(row){ return row.slice(); });
+    QBF.tray = s.tray.map(function(p){ return p ? { cells: p.cells, color: p.color } : null; });
+    QBF.score = s.score; QBF.combo = s.combo; QBF.lines = s.lines; QBF.placed = s.placed;
+    QBF.sel = -1;
+    if (typeof playSfx === 'function') playSfx('ui-click');
+    qbfRender();
+  }
 
   // Drag-and-drop placement (POINTER-based — works on mouse AND touch; native HTML5 drag does
   // not fire on touch devices, which is why this felt broken before). Drag a tray piece onto
@@ -229,6 +256,10 @@
       if (typeof playSfx === 'function') playSfx('wrong');
       return;
     }
+    // Record the full pre-placement state so Undo can restore the board, tray, score, combo and
+    // line count exactly — placements clear lines, grow combos and can refill the whole tray.
+    QBF.hist.push(qbfSnapshot());
+    if (QBF.hist.length > 200) QBF.hist.shift();
     qbfPlaceCells(QBF.board, p.cells, r, c, p.color);
     QBF.score += p.cells.length;                                 // 1 point per cell placed
     QBF.placed++;
@@ -254,6 +285,7 @@
   // the last one (matching Sky Stacker / Blast Bot's sequential-level pattern).
   function _qbfLevelClear(){
     QBF.active = false;
+    qbfUpdateHud();          // re-disable the Undo button the instant the level-clear freeze starts
     QBF.totalScore += QBF.score;
     if (QBF.level + 1 >= QBF_LEVELS.length){ qbfEnd(true); return; }
     if (typeof playSfx === 'function') playSfx('victory');

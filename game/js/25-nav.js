@@ -135,7 +135,9 @@
     var label = 'Enter';
     // Green shiny star (top-right) if this arena was cleared with a PERFECT (0-mistake) run.
     var perfect = !!(state.perfectArenas && state.perfectArenas[a.n]);
-    var starBadge = perfect ? '<div class="atlas-perfect-star" title="Perfect clear — no mistakes!">🌟</div>' : '';
+    // A text ★ (not the 🌟 emoji) so CSS can paint it a true shiny GREEN — emoji glyphs ignore
+    // CSS color and always render yellow (user 2026-07-18: "make sure the star shiny green").
+    var starBadge = perfect ? '<div class="atlas-perfect-star" title="Perfect clear — no mistakes!">★</div>' : '';
     return '<div class="atlas-planet ' + (current ? 'current' : '') + (perfect ? ' perfect' : '') + (b.real ? '' : ' imagined') + '" style="--astro-accent:' + accent + '">' +
       starBadge +
       '<div class="atlas-planet-art">' + art + '</div>' +

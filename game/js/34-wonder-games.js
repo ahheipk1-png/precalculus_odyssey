@@ -54,6 +54,11 @@
     if (typeof fishStop === 'function') fishStop();
     if (typeof qbfStop === 'function') qbfStop();
     if (typeof agStopAll === 'function') agStopAll();   // arcade games (36-arcade.js)
+    // A2 games (39-puzzles/40-action) bind a DOCUMENT-level keydown handler via a2Keys — if it
+    // isn't removed here, quitting Cargo Bay/Glacier/Forbidden City mid-level leaves arrows/Z/R
+    // firing against the abandoned game's state from ANY later Wonderland screen (undo-review
+    // 2026-07-18 finding). a2StopAll also clears A2 timers + any in-flight drag.
+    if (typeof a2StopAll === 'function') a2StopAll();
   }
 
   // ===========================================================================

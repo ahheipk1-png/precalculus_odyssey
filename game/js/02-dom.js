@@ -70,6 +70,8 @@
     heroMpText: document.getElementById('heroMpText'),
     openSpellsBtn: document.getElementById('openSpellsBtn'),
     spellsPanel: document.getElementById('spellsPanel'),
+    openItemsBtn: document.getElementById('openItemsBtn'),
+    combatItemsPanel: document.getElementById('combatItemsPanel'),
     trophiesCount: document.getElementById('trophiesCount'),
     trophiesPanel: document.getElementById('trophiesPanel'),
     trophiesList: document.getElementById('trophiesList'),

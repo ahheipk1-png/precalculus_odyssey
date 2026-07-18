@@ -392,6 +392,7 @@
   function gameWelcome(gameId, icon, title, desc, playFn){
     var view = document.getElementById('wonderlandView');
     if (!view) return;
+    if (typeof wgStopAll === 'function') wgStopAll();   // kill any running game's loops + A2 key handler
     document.querySelectorAll('.view-container').forEach(function (v){ v.classList.remove('active'); });
     view.classList.add('active');
     var m = (typeof wgMini === 'function') ? wgMini(gameId) : { highScore: 0 };

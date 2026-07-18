@@ -409,6 +409,11 @@
   if (el.openSpellsBtn) {
     el.openSpellsBtn.addEventListener('click', openSpellsMenu);
   }
+  if (el.openItemsBtn) {
+    el.openItemsBtn.addEventListener('click', function(){
+      if (typeof openItemsMenu === 'function') openItemsMenu();
+    });
+  }
   if (el.combatEscapeBtn) {
     // Escape is a speed-based gamble now (attemptEscape in 06-rpg-battle.js) — always available,
     // even mid-gauntlet, but a failed roll costs a free enemy hit.

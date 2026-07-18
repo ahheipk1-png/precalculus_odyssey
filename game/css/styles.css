@@ -127,6 +127,7 @@
     justify-content:center;
     gap: 8px;
     margin: 2px 0 10px;
+    flex-wrap: wrap;   /* the 🎟️/🧩 pills drop to a second row on narrow screens instead of overflowing */
   }
   .progress-dots{ display:flex; gap:5px; }
   .progress-dot{
@@ -142,6 +143,16 @@
     transform: scale(1.15);
   }
   .level-progress-text{ font-size: 18px; font-weight:700; color: var(--chalk-dim); }
+  /* Always-visible pills on the arena-progress bar: 🎟️ pass count + 🧩 chips rollup (opens the
+     viewChips breakdown). Same visual weight as the progress text so the bar reads as one strip. */
+  .lp-pill{
+    display:inline-flex; align-items:center; gap:5px; margin-left:10px; padding:3px 12px;
+    font-size:16px; font-weight:700; color:var(--chalk); white-space:nowrap;
+    background:rgba(244,241,232,0.06); border:1px solid rgba(244,241,232,0.16); border-radius:999px;
+  }
+  .lp-pill b{ color:var(--yellow); }
+  .lp-pill-btn{ cursor:pointer; font-family:inherit; transition:background .15s ease, border-color .15s ease; }
+  .lp-pill-btn:hover{ background:rgba(242,193,78,0.14); border-color:var(--yellow); }
 
   .formula-caption{
     text-align:center;

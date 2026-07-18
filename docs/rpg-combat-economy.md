@@ -401,3 +401,31 @@ at **+2 clears a boss in ~4–10 hits**, **maxed in 2–5** (never a one-shot), 
 deliberate slog (upgrade incentive); an under-geared player dies in ~4–10 boss hits, a well-geared one
 tanks it. The `renderMonsterChoicesLegacy` dead function (its old `state.level×15/35/75` monster block,
 unreachable after a `return`) was deleted in the same pass.
+
+**2026-07-18 — combat action column, 🎒 Use Item in battle, spell category tabs** (user request,
+3 screenshots):
+- **Action buttons are a vertical column** (`.combat-btn-stack` in `index.html`): Cast & Strike! /
+  Spell / **Use Item** (new) / Escape stack top-to-bottom at equal width (max 260px) instead of the
+  old wrapping row.
+- **🎒 Use Item — consumables are usable MID-FIGHT** (`openItemsMenu`/`renderItemsMenu`/
+  `useCombatItem` in `26-spells.js`; button wired in `07-main.js`; `#combatItemsPanel` in
+  `index.html`, el refs in `02-dom.js`). Items offered: 🧪 Potion (+50 HP), 💧 Ether (+10 MP),
+  💊 Super Medicine (full restore), ⚗️ Acid Vial (poisons the CURRENT monster 3 rounds — the
+  out-of-combat version still arms for the next battle). **Using an item takes your turn**: effect
+  lands, then the monster answers via the same `spellMonsterCounter()` path spells use (dodge /
+  power-hit / status rules all apply). Effects write `activeCombat.playerHp/Mp`; the existing
+  `updateCombatHpBars()` mirror keeps "wounds persist" bookkeeping in one place. No-op uses (HP
+  already full, etc.) refund nothing and cost nothing — they just toast. Item buttons show live
+  ×counts and disable at 0; empty bag shows a "stock up at the Item Store" note. The Use Item
+  button hides/disables at every site the Spell button does (start, gauntlet-next, victory, defeat,
+  mid-round). Verified in a REAL fight (Volt Eagle, arena 6, real clicks): potion 151→201 HP,
+  count 2→1, eagle counter-hit for 13, panel closed, buttons re-enabled.
+- **Spell menu grouped by category tabs** (`SPELL_CATS` + per-spell `cat` in `spells.config.js`;
+  `renderSpellsMenu` in `26-spells.js`; `.spell-cat-row/.spell-cat-btn` CSS in `systems.css`):
+  **⚔️ Attack (5)** elemental strikes · **🌀 Control (6)** freeze/poison/debuffs (Static Veil moved
+  here) · **💚 Recovery (1)** Repair Wave · **✨ Special (2)** — spells with NO `cat` land in
+  Special automatically (currently Aegis Field + Overclock), per the user's "unclassified ones call
+  it special". Active tab remembered for the session (`_spellTab`). Verified with real clicks: tab
+  counts correct, each tab lists exactly its spells.
+- Also in this batch (other docs): puzzle-game Undo + key-leak fix (world-and-hubs.md batch #15),
+  top-bar 🎟️/🧩 pills, green atlas star.

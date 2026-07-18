@@ -728,7 +728,7 @@
 
   var SOKO = { title: '', replay: '', gameId: '', slide: false, levels: [], idx: 0, total: 0,
     diffs: null, fallbacks: null,
-    walls: {}, targets: {}, crates: {}, px: 0, py: 0, W: 0, H: 0, moves: 0, totalMoves: 0, done: false };
+    walls: {}, targets: {}, crates: {}, px: 0, py: 0, W: 0, H: 0, moves: 0, totalMoves: 0, done: false, hist: [] };
 
   // Lazily generate + cache the level for the given index (one at a time — see the comment in
   // _skGenerateOne). Cargo/Glacier both set SOKO.diffs + SOKO.fallbacks in their start functions.
@@ -743,7 +743,7 @@
 
   function _skParse(rows){
     SOKO.walls = {}; SOKO.targets = {}; SOKO.crates = {};
-    SOKO.H = rows.length; SOKO.W = rows[0].length; SOKO.moves = 0; SOKO.done = false;
+    SOKO.H = rows.length; SOKO.W = rows[0].length; SOKO.moves = 0; SOKO.done = false; SOKO.hist = [];
     for (var y = 0; y < rows.length; y++){
       for (var x = 0; x < rows[y].length; x++){
         var c = rows[y].charAt(x), k = x + ',' + y;
@@ -778,12 +778,18 @@
     var hud = document.getElementById('skHud');
     if (hud) hud.innerHTML = '<span class="wond-chip">🗺️ Level <b>' + (SOKO.idx + 1) + ' / ' + SOKO.total + '</b></span>' +
       '<span class="wond-chip">👣 Moves: <b>' + SOKO.moves + '</b></span>';
+    // Grey out Undo when there's nothing to take back (parity with Block Forge's qbfUndoBtn).
+    var ub = document.getElementById('skUndoBtn');
+    if (ub) ub.disabled = SOKO.done || !SOKO.hist.length;
   }
 
   function sokoMove(dx, dy){
     if (SOKO.done || !a2Active()) return;
     var nx = SOKO.px + dx, ny = SOKO.py + dy, nk = nx + ',' + ny;
     if (SOKO.walls[nk]) return;
+    // Snapshot the pre-move state; only committed to the undo stack once the move is certain to
+    // happen (past the blocked-push early returns below), so a bumped-into-wall never records a step.
+    var snap = { crates: JSON.stringify(SOKO.crates), px: SOKO.px, py: SOKO.py, moves: SOKO.moves };
     if (SOKO.crates[nk]){
       var cx = nx, cy = ny;
       if (SOKO.slide){          // ice: the crate glides until it hits a wall or another crate
@@ -802,6 +808,8 @@
       SOKO.crates[cx + ',' + cy] = 1;
     }
     SOKO.px = nx; SOKO.py = ny; SOKO.moves++;
+    SOKO.hist.push(snap);
+    if (SOKO.hist.length > 300) SOKO.hist.shift();
     if (typeof playSfx === 'function') playSfx('click');
     _skRender();
     if (_skSolved()){
@@ -822,18 +830,26 @@
       }
     }
   }
+  function sokoUndo(){
+    if (SOKO.done || !a2Active() || !SOKO.hist.length) return;
+    var s = SOKO.hist.pop();
+    SOKO.crates = JSON.parse(s.crates); SOKO.px = s.px; SOKO.py = s.py; SOKO.moves = s.moves;
+    if (typeof playSfx === 'function') playSfx('click');
+    _skRender();
+  }
   function sokoRestart(){ _skParse(_skEnsureLevel(SOKO.idx)); _skRender(); }
 
   function _skLevel(){
     _skParse(_skEnsureLevel(SOKO.idx));
     var v = a2Shell(SOKO.title, 'openWonderland()',
-      '<div class="wond-hud" id="skHud"></div>' + a2KeyLegend('Arrow keys or WASD move · R restart') +
+      '<div class="wond-hud" id="skHud"></div>' + a2KeyLegend('Arrows / WASD move · Z undo · R restart') +
       '<div class="a2-center" id="skWrap"></div>' +
       '<div class="a2-pad">' +
         '<button type="button" class="btn btn-secondary" onclick="sokoMove(0,-1)">▲</button>' +
         '<div><button type="button" class="btn btn-secondary" onclick="sokoMove(-1,0)">◀</button>' +
         '<button type="button" class="btn btn-secondary" onclick="sokoMove(0,1)">▼</button>' +
         '<button type="button" class="btn btn-secondary" onclick="sokoMove(1,0)">▶</button></div>' +
+        '<button type="button" class="btn btn-ghost" id="skUndoBtn" onclick="sokoUndo()" data-tooltip="Take back your last move.">↶ Undo</button>' +
         '<button type="button" class="btn btn-ghost" onclick="sokoRestart()">↺ Restart level</button>' +
       '</div>',
       SOKO.slide ? 'Push the 🧊 ice — it SLIDES until it hits something! Park one on every ring.'
@@ -844,6 +860,7 @@
       var m = { ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0],
                 w: [0,-1], s: [0,1], a: [-1,0], d: [1,0] }[e.key];
       if (m){ e.preventDefault(); sokoMove(m[0], m[1]); }
+      else if (e.key === 'z' || e.key === 'Z') sokoUndo();
       else if (e.key === 'r' || e.key === 'R') sokoRestart();
     });
   }
@@ -1158,6 +1175,9 @@
     if (hud) hud.innerHTML = '<span class="wond-chip">🏯 Chamber <b>' + (SHIK.idx + 1) + ' / ' + SHIK.total + '</b></span>' +
       '<span class="wond-chip">👣 Moves: <b>' + SHIK.moves + '</b></span>' +
       '<span class="wond-chip">🧩 Tiles: <b>' + _shikTileCount() + '</b></span>';
+    // Grey out Undo when there's nothing to take back (parity with Cargo/Glacier/Block Forge).
+    var ub = document.getElementById('shikUndoBtn');
+    if (ub) ub.disabled = SHIK.done || !SHIK.hist.length;
   }
 
   // Pure move core — shared by the game AND the in-code solver/generator that verify levels.
@@ -1237,7 +1257,7 @@
         '<div><button type="button" class="btn btn-secondary" onclick="shikMove(-1,0)">◀</button>' +
         '<button type="button" class="btn btn-secondary" onclick="shikMove(0,1)">▼</button>' +
         '<button type="button" class="btn btn-secondary" onclick="shikMove(1,0)">▶</button></div>' +
-        '<button type="button" class="btn btn-ghost" onclick="shikUndo()">↶ Undo</button>' +
+        '<button type="button" class="btn btn-ghost" id="shikUndoBtn" onclick="shikUndo()" data-tooltip="Take back your last move.">↶ Undo</button>' +
         '<button type="button" class="btn btn-ghost" onclick="shikRestart()">↺ Restart</button>' +
       '</div>',
       'Shove a tile and it SLIDES until it hits something. Slide it into a matching tile (🟥→🟥) to cancel both and clear a path to the 🚪 exit. A tile stuck against a wall with no match is stranded — plan your pushes!');

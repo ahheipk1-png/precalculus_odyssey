@@ -73,7 +73,9 @@
     ensureStatusBags();
     activeCombat.playerMp -= sp.manaCost;
     if (el.spellsPanel) el.spellsPanel.style.display = 'none';
+    if (el.combatItemsPanel) el.combatItemsPanel.style.display = 'none';
     el.startCombatBtn.disabled = true; if (el.openSpellsBtn) el.openSpellsBtn.disabled = true;
+    if (el.openItemsBtn) el.openItemsBtn.disabled = true;
 
     el.playerSprite.classList.add('casting');
     setTimeout(function(){ el.playerSprite.classList.remove('casting'); }, 500);
@@ -181,16 +183,47 @@
     setTimeout(function(){
       if (activeCombat.playerHp <= 0){ handleBattleDefeat(); return; }
       el.startCombatBtn.disabled = false; if (el.openSpellsBtn) el.openSpellsBtn.disabled = false;
+      if (el.openItemsBtn) el.openItemsBtn.disabled = false;
     }, 400);
   }
 
   // ---- Spell menu (overrides 06's openSpellsMenu; 06 wires the button to this name) ----
+  // Spells are grouped by category (user 2026-07-18): tab buttons on top (⚔️ Attack / 🌀 Control /
+  // 💚 Recovery / ✨ Special from SPELL_CATS in spells.config.js); clicking a tab lists just that
+  // category's spells. Spells with no `cat` land in Special automatically. Last tab is remembered
+  // for the session so re-opening the menu doesn't reset to Attack.
+  var _spellTab = 'attack';
+  function _spellCatOf(sp){ return sp.cat || 'special'; }
   function openSpellsMenu(){
     if (!el.spellsPanel) return;
     if (el.spellsPanel.style.display === 'flex'){ el.spellsPanel.style.display = 'none'; return; }
-    el.spellsPanel.innerHTML = '';
+    if (el.combatItemsPanel) el.combatItemsPanel.style.display = 'none';   // one panel at a time
     el.spellsPanel.style.display = 'flex';
+    renderSpellsMenu();
+  }
+  function renderSpellsMenu(){
+    if (!el.spellsPanel) return;
+    el.spellsPanel.innerHTML = '';
+    var cats = (typeof SPELL_CATS !== 'undefined') ? SPELL_CATS
+      : [{ key: 'special', label: '✨ Spells', desc: '' }];
+    // Tab row
+    var tabRow = document.createElement('div');
+    tabRow.className = 'spell-cat-row';
+    cats.forEach(function(cat){
+      var n = SPELLS.filter(function(sp){ return _spellCatOf(sp) === cat.key; }).length;
+      if (!n) return;                                    // hide empty categories
+      var tb = document.createElement('button');
+      tb.type = 'button';
+      tb.className = 'spell-cat-btn' + (_spellTab === cat.key ? ' active' : '');
+      tb.textContent = cat.label + ' (' + n + ')';
+      tb.title = cat.desc;
+      tb.addEventListener('click', function(){ _spellTab = cat.key; renderSpellsMenu(); });
+      tabRow.appendChild(tb);
+    });
+    el.spellsPanel.appendChild(tabRow);
+    // Spells of the active tab
     SPELLS.forEach(function(sp){
+      if (_spellCatOf(sp) !== _spellTab) return;
       var afford = activeCombat && activeCombat.playerMp >= sp.manaCost;
       var col = (typeof elementColor === 'function') ? elementColor(sp.element) : '#8ab';
       var btn = document.createElement('button');
@@ -202,4 +235,91 @@
       btn.addEventListener('click', function(){ castSpell(sp.id); });
       el.spellsPanel.appendChild(btn);
     });
+  }
+
+  // ---- Combat items (🎒 Use Item) ------------------------------------------------------------
+  // Consumables usable MID-FIGHT so the Item Store actually matters in battle (user 2026-07-18).
+  // Using an item takes your turn: the effect lands, then the monster gets its counter-turn via
+  // the same spellMonsterCounter() path spells use (dodge/power-hit/status rules all apply).
+  // Effects write activeCombat.playerHp/Mp — updateCombatHpBars() mirrors them into state, so
+  // "wounds persist" bookkeeping stays in one place.
+  var COMBAT_ITEM_IDS = ['potion', 'ether', 'super_medicine', 'poison_vial'];
+  function openItemsMenu(){
+    if (!el.combatItemsPanel) return;
+    if (el.combatItemsPanel.style.display === 'flex'){ el.combatItemsPanel.style.display = 'none'; return; }
+    if (el.spellsPanel) el.spellsPanel.style.display = 'none';             // one panel at a time
+    el.combatItemsPanel.style.display = 'flex';
+    renderItemsMenu();
+  }
+  function renderItemsMenu(){
+    if (!el.combatItemsPanel) return;
+    el.combatItemsPanel.innerHTML = '';
+    var any = false;
+    COMBAT_ITEM_IDS.forEach(function(id){
+      var meta = (typeof ITEMS !== 'undefined') ? ITEMS[id] : null;
+      if (!meta) return;
+      var n = (typeof countItem === 'function') ? countItem(id) : 0;
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'spell-btn';
+      btn.disabled = n < 1;
+      btn.innerHTML = meta.icon + ' ' + meta.name + '<small>×' + n + '</small>';
+      btn.title = meta.desc + (n < 1 ? ' — none left! Buy more at the Item Store.' : '');
+      btn.addEventListener('click', function(){ useCombatItem(id); });
+      el.combatItemsPanel.appendChild(btn);
+      if (n > 0) any = true;
+    });
+    if (!any){
+      var note = document.createElement('div');
+      note.className = 'combat-items-empty';
+      note.textContent = '🎒 No usable items — stock up at the 🏪 Item Store on Earth!';
+      el.combatItemsPanel.appendChild(note);
+    }
+  }
+  function useCombatItem(id){
+    if (!activeCombat) return;
+    if (el.startCombatBtn && el.startCombatBtn.disabled) return;   // mid-round animation; ignore
+    if (typeof countItem !== 'function' || countItem(id) < 1) return;
+    var meta = ITEMS[id];
+    // No-op uses don't consume the item OR your turn — just explain why.
+    if (id === 'potion' && activeCombat.playerHp >= activeCombat.playerMaxHp){ showToast('HP is already full!'); return; }
+    if (id === 'ether' && activeCombat.playerMp >= activeCombat.playerMaxMp){ showToast('MP is already full!'); return; }
+    if (id === 'super_medicine' && activeCombat.playerHp >= activeCombat.playerMaxHp && activeCombat.playerMp >= activeCombat.playerMaxMp){ showToast('HP & MP are already full!'); return; }
+    ensureStatusBags();
+    spendItem(id);
+    if (el.combatItemsPanel) el.combatItemsPanel.style.display = 'none';
+    el.startCombatBtn.disabled = true;
+    if (el.openSpellsBtn) el.openSpellsBtn.disabled = true;
+    if (el.openItemsBtn) el.openItemsBtn.disabled = true;
+    switch (id){
+      case 'potion':
+        activeCombat.playerHp = Math.min(activeCombat.playerMaxHp, activeCombat.playerHp + 50);
+        triggerFloatingNote('player', '+50 HP 🧪');
+        appendCombatLog('🧪 Potion! +50 HP (' + activeCombat.playerHp + '/' + activeCombat.playerMaxHp + ')', 'p-attack');
+        break;
+      case 'ether':
+        activeCombat.playerMp = Math.min(activeCombat.playerMaxMp, activeCombat.playerMp + 10);
+        triggerFloatingNote('player', '+10 MP 💧');
+        appendCombatLog('💧 Ether! +10 MP (' + activeCombat.playerMp + '/' + activeCombat.playerMaxMp + ')', 'p-attack');
+        break;
+      case 'super_medicine':
+        activeCombat.playerHp = activeCombat.playerMaxHp;
+        activeCombat.playerMp = activeCombat.playerMaxMp;
+        triggerFloatingNote('player', 'FULL RESTORE 💊');
+        appendCombatLog('💊 Super Medicine — HP & MP fully restored!', 'p-attack');
+        break;
+      case 'poison_vial':
+        applyMonsterStatus('poison', 3);
+        showImpactEffect('monster', '⚗️');
+        appendCombatLog('⚗️ Acid Vial splashes ' + activeCombat.monster.name + ' — it corrodes for 3 rounds!', 'p-attack');
+        break;
+    }
+    updateCombatHpBars();
+    if (typeof updateStats === 'function') updateStats();
+    if (typeof playSfx === 'function') playSfx('click');
+    // Using an item takes the turn — the monster answers (same path as after a spell).
+    setTimeout(function(){
+      if (!activeCombat) return;
+      if (activeCombat.monsterHp <= 0){ handleBattleVictory(); return; }
+      spellMonsterCounter();
+    }, 650);
   }

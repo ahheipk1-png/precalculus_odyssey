@@ -545,6 +545,48 @@ same-colour decoy tiles at the gates (Forbidden City).
   Forbidden City: 0 fallbacks, ≤3ms/level. No console errors; render path (`_glToRows`/`_skParse`/
   `_skGridHtml`/`_shikToRows`) unchanged.
 
+**2026-07-18 batch #15 — Undo in Cargo Bay / Glacier Push / Block Forge (+ adversarial review
+fixes); Wonderland pass + chips pills on the arena top bar; green atlas star.** (Combat-side items
+in the same commit: see rpg-combat-economy.md 2026-07-18.)
+- **↶ Undo everywhere** (user: "add undo to these games"). Forbidden City already had it (the
+  reference pattern). Added to:
+  - **📦 Cargo Bay & ❄️ Glacier Push** (shared SOKO engine, `39-puzzles.js`): `SOKO.hist` snapshot
+    stack (`{crates:JSON, px, py, moves}`) captured at the top of `sokoMove` but **committed only
+    after the move actually happens** — wall bumps and blocked pushes record nothing. `sokoUndo()`
+    restores exactly (including multi-cell ice slides); `↶ Undo` button (id `skUndoBtn`, greys out
+    via `_skRender` when there's nothing to undo) + `Z` key; cap 300; `_skParse` clears the stack
+    per level. Forbidden City's button got the same id/disabled treatment (`shikUndoBtn`) for
+    parity.
+  - **🧩 Quantum Block Forge** (`35-block-forge.js`): `qbfSnapshot()` deep-copies board rows +
+    tray + score/combo/lines/placed before every placement, so `qbfUndo()` rolls back even a
+    line-clear + combo growth + full tray refill in one step. Undo button under the board
+    (`#qbfUndoBtn` in `.qbf-controls`), disabled when `!(QBF.active && hist.length)`. No `z` key
+    by design (QBF has no keyboard teardown path). Verified: line-clear undo restored board hash /
+    score / combo / tray exactly; tray-refill undo brought the old tray back; real-click round-trip.
+- **Adversarial review (4-lens workflow, 5 confirmed findings, all fixed):**
+  1. *(medium)* The A2 document-level keydown handler (now carrying Z/R) leaked when quitting a
+     puzzle mid-level to the lobby — arrows/Z/R kept firing against the abandoned game's state from
+     any later Wonderland screen (pre-existing for arrows; the undo batch widened it). **Fix:**
+     `wgStopAll()` (34-wonder-games.js) now also calls `a2StopAll()` — every lobby/welcome/game
+     transition funnels through it — and `gameWelcome()` (17-wonderland.js) calls `wgStopAll()` up
+     front. Verified live: `A2.kd === null` after quitting to the lobby; pressing `z` inside Block
+     Forge no longer touches SOKO state.
+  2-5. *(low)* Undo-button disabled-state gaps: QBF's button looked clickable during the ~900ms
+     level-clear freeze (now gated on `QBF.active` + refreshed in `_qbfLevelClear`); SOKO/SHIK
+     buttons never greyed out at all (now they do, with tooltips, via `skUndoBtn`/`shikUndoBtn` +
+     a shared `.a2-pad .btn[disabled]` rule in wonderland.css).
+  The exact-restore and memory/perf lenses found **zero** defects in the core undo logic.
+- **🎟️ Passes + 🧩 Chips pills on the arena progress bar** (user: "add a bar like [this] for
+  wonderland pass count… add view to see all the chips"): two always-visible pills next to the
+  Arena Progress dots (`#passBarPill`/`#chipsBarPill` in index.html, `.lp-pill` CSS in styles.css,
+  counts refreshed in `updateCurrencyBar`, 05-render.js). The chips pill is a button that opens
+  the existing `viewChips()` per-type breakdown modal. The row `flex-wrap`s on narrow screens.
+- **⭐ Perfect-clear star is now truly green + bigger** (user: "make sure the star shiny green
+  color and slightly bigger"): the 🌟 emoji ignores CSS color (always yellow), so `_atlasArenaCard`
+  (25-nav.js) renders a text `★` and `.atlas-perfect-star` (systems.css) paints it `#4bf08a` at
+  30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
+  system card.
+
 **2026-07-18 batch #14 — puzzle trio harder + "no pre-solved" rule + icy Glacier look; Block Forge
 full-block drop preview; Bubble Blast more gremlins.** Player feedback on three screenshots.
 - **📦 Cargo Bay & ❄️ Glacier Push — no crate/cube may START on its target ring** (`_skGenerateOne`,
