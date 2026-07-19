@@ -399,6 +399,7 @@
           _wondCard('🐍', 'Snake', 'Steer the classic snake — eat food to grow, avoid the walls and your own tail! ' + SN_LEVELS.length + ' levels, faster each time.', 'openSnake') +
           _wondCard('💎', 'Crystal Cascade', 'Drop columns of 3 gems, cycle their colors, and chain cascading matches for huge combos!', 'openCrystal') +
           _wondCard('☁️', 'Cloudberry Squadron', 'Ten stages of homing-missile mayhem! Shoot down smart missiles, collect power-ups, and face an escalating final boss.', 'openCloudberry') +
+          _wondCard('✈️', 'Sky Squadron 194X', 'A 10-level 194X island campaign! Break enemy formations, grab power-ups, and defeat a different boss commander every mission.', 'openSkySquadron') +
           carnival +
         '</div>' +
         '<div class="wond-footer">' +

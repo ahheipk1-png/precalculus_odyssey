@@ -623,6 +623,53 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #28 — Added a second user-supplied Arcade shooter: ✈️ Sky Squadron 194X
+(10-level vertical-scrolling 194X campaign).** User pasted another complete standalone HTML5 game
+(+ its README listing the 10 missions/bosses) and said "add the following games too...".
+- **`js/54-sky-squadron.js` (new)**: same integration treatment as batch #27's Cloudberry — the
+  game logic (10 `LEVELS` configs each with its own palette/enemy mix/boss stats + one of 10 boss
+  bullet patterns, 4 enemy types, 7 formation patterns, pilot XP/leveling, 6 powerup types incl. a
+  drawn first-aid box, a bullet-**graze** special-charge mechanic, screen-clearing Blast,
+  procedurally drawn ocean/islands/clouds, real-time WebAudio SFX) kept essentially verbatim in its
+  own IIFE. Shell adaptations beyond the standard swap set
+  (`gameWelcome`/`wonderPlay`/`a2Shell`/`a2Keys`/`A2.raf`+`a2Active` guard/`a2Result`/
+  `wgRecordScore`), the ones specific to THIS game:
+  - Its `let state = "menu"` internal variable was renamed `phase` so the GLOBAL save `state` stays
+    reachable inside the closure — needed because `tone()`/`noise()` (its WebAudio SFX) are now
+    gated on `state.settings.sfxVol === 0`, so the game respects the Settings sound mute.
+  - Its rich **DOM HUD** (score/level/high-score cards, health/special/XP bars, combo chip, big
+    center message overlay, pause panel — all `ui.*` refs into its own page markup) was redrawn ON
+    the canvas (`drawHud`/`drawMessage` + a PAUSED overlay), because per-game DOM would have needed
+    new CSS and its generic element ids (`#startScreen`, `#score`, `#level`…) collide with the main
+    game's DOM. Zero new CSS shipped.
+  - Its **virtual joystick** touch control was replaced with the shared `.a2-pad` D-pad +
+    `💥 Blast`/`⏸ Pause` buttons (`_ssqTouchKey`/`_ssqBlast`/`_ssqPauseToggle` globals), matching
+    every other A2 canvas game; `pointerMove` is kept as a permanent zero-vector so `updatePlayer`
+    stays verbatim.
+  - Its responsive full-window canvas + DPR scaling was replaced with the standard fixed logical
+    canvas — **640×800 portrait** (it's a vertical shooter; every other A2 game is landscape) —
+    scaled by the shared `.a2-canvas` CSS; `dpr = 1` kept as a var so the boss-health-bar
+    `setTransform(dpr,…)` line stays verbatim.
+  - Its `localStorage` high score was replaced by `wgMini('skySquadron')` (cloud-saved, feeds the
+    leaderboard); "BEST" on the HUD comes from there.
+  - Its pause-on-tab-hidden `visibilitychange` listener is registered ONCE at file load with
+    are-we-the-live-game guards (running + `#ssqCanvas` present) instead of per-run, so it can't
+    leak or misfire while other games run.
+  - The victory fanfare's `setTimeout` became `a2Later` (A2-tracked timer).
+- **`js/17-wonderland.js`**: `_wondCard('✈️', 'Sky Squadron 194X', …)` after Cloudberry.
+  **`game/index.html`**: `<script src="js/54-sky-squadron.js?v=…">` after `53-cloudberry.js`.
+- **Verified live** (local `_localtest` bridge session, rAF `setTimeout` shim for the backgrounded
+  preview tab as in batch #27, SFX muted per testing convention): card renders; welcome screen OK;
+  Play → 640×800 canvas fully painted, loop on `A2.raf`, keys bound; pad `⏸ Pause` visibly darkens
+  the canvas (avg brightness 255→110) and resumes; holding the pad's ▼ via `_ssqTouchKey` moved the
+  plane into enemy fire and produced a REAL natural death (~40s), proving touch input drives
+  gameplay AND exercising the full `damagePlayer→endGame→wgRecordScore→a2Result` chain end-to-end
+  (result screen showed "Aircraft Lost 🏆 · Score 1,104 · level 1/10 · destroyed 7"; miniGames
+  recorded `{highScore:1104, bestLevel:1, plays:1}`); after the result `A2.raf/kd/ku` all cleared;
+  "↻ Play Again" lands on the free welcome screen (no double-charge); a fresh run quit mid-game via
+  the topbar "← Back" cleared `A2.raf/kd/ku`, removed the canvas, and landed on the Wonderland hub
+  (no key/rAF leak). Zero console errors throughout. Cache token bumped `20260718v → 20260718w`.
+
 **2026-07-18 batch #27 — Added a new Arcade game: ☁️ Cloudberry Squadron (10-stage homing-missile
 shooter).** User pasted a complete standalone HTML5 canvas game ("Cloudberry Squadron — Homing
 Missile Mayhem") and said: "add this game to wonderland."
