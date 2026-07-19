@@ -623,6 +623,63 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-19 batch #32 — Full computer/iPad/phone pass: header nav collapses into a "☰ Menu"
+dropdown; a real touch-breaking Weapon Store overflow bug found + fixed; ~15 screens + 15
+keyboard-driven arcade games audited for responsive/touch coverage.** User (screenshot of the
+header stacked into a tall column of pills): "could you test every screen as both computer/ipad/
+phone user? also make sure touchscreen works in any cases… the layout is pretty ugly like this…
+may be a droplist to choose instead if there are a lot of buttons shown on a screen… check this
+situation for the whole game."
+- **Header nav → collapsible "☰ Menu" (the reported bug, present on every screen)**: the 7-button
+  header row (Full screen/Boss Gate/Practice/Profile/Earth Hub/Space Travel/Settings) had
+  `max-width:62%` + `flex-wrap` (styles.css's unconditional "widescreen desktop" rule) — on a
+  narrow phone this wrapped into the tall right-aligned column of pills in the user's screenshot.
+  `game/index.html` gained a `<button id="headerMenuToggle">☰ Menu</button>` sibling right before
+  `.header-actions` (now also `id="headerActionsMenu"`). New CSS block in styles.css: at ≤1024px
+  (matches the Earth Hub's phone/iPad breakpoint) the toggle shows and `.header-actions` is
+  `display:none` unless `.header-menu-open` — then it renders as an absolute-positioned dropdown
+  panel (full-width buttons, `max-height` + scroll, violet-dark themed) anchored under the toggle.
+  `js/08-layout.js` wires the toggle: click opens/closes (toggling the class + `aria-expanded`),
+  any click on a button INSIDE the menu closes it (they all navigate/open something else anyway),
+  a document-level click outside closes it, Escape closes it. Desktop (>1024px) is untouched — the
+  toggle stays hidden, the row shows exactly as before.
+- **Real bug found by the audit: Weapon & Shield Store items were unusably overflowing on phone.**
+  `.shop-item{display:flex}` was `nowrap` by default — its 2-button actions column (Buy/Upgrade,
+  ~258px, can't shrink below its own content) plus the item name/stat column together exceeded a
+  narrow phone's available width, and since nothing could wrap, the WHOLE row rendered wider than
+  the frame — pushing the Buy/Upgrade buttons up to 58px past the right edge of a 375px phone,
+  clipped by `body{overflow-x:hidden}` and **completely untappable**. Fixed in `styles.css`:
+  `.shop-item{flex-wrap:wrap; row-gap:6px}` lets the actions row drop to its own line instead of
+  overflowing; `.shop-item-info{flex:1 1 200px; min-width:0}` (was bare `flex-direction:column`,
+  content-sized) pins an explicit basis so the wrap decision isn't driven by the long
+  upgrade-hint sentence's huge unwrapped max-content width; `.shop-item-actions{flex:0 0 auto;
+  margin-left:auto; justify-content:flex-end}` keeps the buttons at their natural size, hugging
+  the right edge on both the single-line and wrapped-to-own-line cases.
+  **Found mid-fix: a cross-file cascade conflict.** `systems.css` (loaded AFTER styles.css in
+  index.html) had its OWN `.shop-item-info{ flex:1; ... }` — same selector, equal specificity, later
+  file wins — silently resetting the new `flex:1 1 200px` basis back to `flex:1 1 0%` and defeating
+  the fix. Removed the now-fully-redundant duplicate from systems.css (left a comment pointing back
+  to styles.css) rather than fight it with `!important`. (Item Store / Special Item Store were
+  NOT affected — they use a different, already-responsive vertical-card grid, `.istr-shelf`.)
+- **Full-game responsive audit** (a reusable in-page bounding-box overlap/offscreen checker,
+  tested at 375×812 phone, 768×1024 iPad portrait, 1024×768 iPad landscape, 1320×860 desktop):
+  Earth Hub, Weapon Store (before AND after the fix above), Item Store, Special Item Store, Hotel,
+  Trading Room, Laboratory, Wonderland Hub/Casino/Arcade, Profile (all 3 tabs), Star Atlas,
+  Settings, Monster Select, and a live Combat screen all came back with **zero offscreen buttons
+  and zero overlaps** at every size. Zero console errors across the entire sweep.
+- **Touch-control coverage audit** (the request's other half — "some games using keyboard need a
+  touchscreen version"): grepped every game file for `a2Keys(` (keyboard binding, 15 files) vs.
+  `.a2-pad` (on-screen D-pad/buttons, 13 files) — the only 2 files in the gap were `39-a2-shell.js`
+  itself (the shared shell, not a game) and Sky Stacker, which already has an equivalent touch
+  path (`canvas.addEventListener('pointerdown', stkDrop)` — tap anywhere to drop). Also checked
+  Tile Ball (an older, pre-A2-shell game with its own direct `keydown` listener): its
+  `pointerdown` handler both re-positions the paddle AND launches the ball, so tap-to-play already
+  works. **Conclusion: every keyboard-capable game already has a working touch equivalent** — no
+  gaps to fix. Live-verified on Snake: a real dispatched click on the on-screen "▼" button changed
+  `SN.nextDir` from `[1,0]` to `[0,1]`, confirming the D-pad actually drives the game loop, not
+  just cosmetically present.
+- Cache token bumped `20260719a → 20260719f` across this batch's several verify-then-fix rounds.
+
 **2026-07-19 batch #31 — Earth Hub map made phone/iPad-responsive (buildings no longer overlap); the
 desktop spatial map respaced so it doesn't overlap either.** User (with a phone screenshot): "make
 the game display well when using from a phone or ipad… in the phone, all these shops in the screen

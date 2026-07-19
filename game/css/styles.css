@@ -784,6 +784,12 @@
   }
   .shop-item {
     display: flex;
+    flex-wrap: wrap;              /* on a narrow phone, the 2-3 action buttons can't shrink
+                                      below their own min-content — wrap them to their own row
+                                      instead of overflowing the frame (verified: was pushing
+                                      Buy/Upgrade buttons ~58px past the right edge on a 375px
+                                      phone, past the tappable area entirely). */
+    row-gap: 6px;
     justify-content: space-between;
     align-items: center;
     background: rgba(244,241,232,0.05);
@@ -799,6 +805,13 @@
   .shop-item-info {
     display: flex;
     flex-direction: column;
+    /* Explicit basis + min-width:0, NOT flex:auto — the upgrade-hint line's long unwrapped
+       sentence ("AP: 2 → 4 (+2) · needs...") has a huge max-content width, which is what an
+       auto-basis flex item uses to decide whether the ROW should wrap. Pinning the basis here
+       decouples that: the row only wraps to 2 lines when it's genuinely tight (narrow phones),
+       not on every roomy desktop screen just because one hint sentence is long. */
+    flex: 1 1 200px;
+    min-width: 0;
   }
   .shop-item-name {
     font-family: 'Patrick Hand', cursive;
@@ -816,7 +829,11 @@
   }
   .shop-item-actions {
     display: flex;
+    flex: 0 0 auto;      /* stay at natural content size — don't grow/shrink like .shop-item-info */
+    flex-wrap: wrap;
     gap: 8px;
+    margin-left: auto;   /* hugs the right edge, including when it wraps to its own row */
+    justify-content: flex-end;
   }
   .shop-btn {
     font-family: 'Quicksand', sans-serif;
@@ -2057,6 +2074,41 @@
   @media (max-width:900px){
     .btn{ font-size:17px !important; min-height:48px !important; }
     .btn-ghost, .header-actions .reset-btn, .reset-btn{ font-size:15px !important; }
+  }
+
+  /* ---- Header nav → collapsible "☰ Menu" on phone/iPad (≤1024px, matches the Earth Hub's
+     phone/iPad breakpoint) ----
+     The 7-button header row (Full screen / Boss Gate / Practice / Profile / Earth Hub /
+     Space Travel / Settings) is present on EVERY screen. At narrower widths it used to wrap
+     into a tall right-aligned column of pills (max-width:62% + flex-wrap, set above for the
+     desktop layout) — this collapses that same row into a single toggle button + dropdown
+     list instead, once there are too many buttons to show comfortably in one line. Desktop
+     (>1024px) is untouched: the toggle stays hidden and the row displays exactly as before. */
+  .header-menu-toggle{ display:none; }
+  @media (max-width:1024px){
+    .header-menu-toggle{
+      display:inline-flex; align-items:center; justify-content:center;
+      position:absolute; top:-4px; right:-2px; z-index:14;
+    }
+    .header-actions{
+      display:none;
+    }
+    .header-actions.header-menu-open{
+      display:flex; flex-direction:column;
+      position:absolute; top:38px; right:-2px; z-index:13;
+      width:max-content; max-width:min(86vw, 300px);
+      max-height:min(70vh, 480px); overflow-y:auto;
+      background:linear-gradient(160deg, rgba(31,61,46,0.98), rgba(20,40,30,0.98));
+      border:1px solid rgba(244,241,232,0.25); border-radius:14px;
+      padding:8px; gap:6px;
+      box-shadow:0 18px 40px rgba(0,0,0,0.5);
+    }
+    .header-actions.header-menu-open .reset-btn{
+      display:flex; align-items:center; width:100%; justify-content:flex-start; text-align:left;
+    }
+  }
+  @media (max-width:640px){
+    .header-actions.header-menu-open{ max-width:min(90vw, 280px); }
   }
 
   /* ---- Equation expression: Cinzel serif (the balance-scale question text) ---- */

@@ -73,4 +73,32 @@
     });
     actions.insertBefore(btn,actions.firstChild);
   }
+
+  // Header "☰ Menu" toggle (phone/iPad, ≤1024px — see styles.css). The button row itself
+  // (.header-actions) is untouched; this only shows/hides it as a dropdown on narrow screens.
+  var menuToggle=document.getElementById('headerMenuToggle');
+  if(menuToggle && actions && !menuToggle.dataset.wired){
+    menuToggle.dataset.wired='1';
+    function closeHeaderMenu(){
+      actions.classList.remove('header-menu-open');
+      menuToggle.setAttribute('aria-expanded','false');
+    }
+    menuToggle.addEventListener('click',function(e){
+      e.stopPropagation();
+      var open=actions.classList.toggle('header-menu-open');
+      menuToggle.setAttribute('aria-expanded',open?'true':'false');
+    });
+    // Any action inside the menu navigates or opens something else — close it behind them.
+    actions.addEventListener('click',function(e){
+      if(e.target.closest('.reset-btn')) closeHeaderMenu();
+    });
+    document.addEventListener('click',function(e){
+      if(!actions.classList.contains('header-menu-open')) return;
+      if(actions.contains(e.target) || menuToggle.contains(e.target)) return;
+      closeHeaderMenu();
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape') closeHeaderMenu();
+    });
+  }
 })();
