@@ -1,8 +1,11 @@
   // ---------- Special Item Store 🏭 ("The Odyssey Forge") ----------
-  // A late-game building that only appears after the player clears Arena 44's boss. Sells 5
-  // "machines" — one per core stat (HP/MP/AP/DP/Speed) — each purchase permanently grants the
-  // same flat boost as ONE hero level (see heroStatBonus/addHeroXp), stacking indefinitely
-  // (capped at SPECIAL_STORE_MAX_PURCHASES per stat) at an ever-rising Cash price.
+  // A late-game building that appears after the player clears Arena 44's boss. Sells 5 stat
+  // "machines" — one per core stat (HP/MP/AP/DP/Speed) — plus the premium Ascension Core; each
+  // purchase permanently grants the same flat boost as ONE hero level (see heroStatBonus/addHeroXp),
+  // stacking indefinitely (capped at SPECIAL_STORE_MAX_PURCHASES per stat) at an ever-rising Cash
+  // price. The machines UNLOCK PROGRESSIVELY, not all at once — one new machine every 4 arenas
+  // (HP@44, MP@48, Speed@52, DP@56, AP@60, Ascension Core@60), each with its own CONGRATULATIONS
+  // milestone popup. See SPECIAL_STORE_MACHINES / specialStoreMachineUnlocked / specialStoreMaybeAnnounce.
   //
   // Design decisions:
   // * Same view-controller shape as 20-item-store.js (whole view re-rendered on open + after every
@@ -18,8 +21,9 @@
   // * The building itself is HIDDEN on the Earth Hub map until unlocked (15-map.js filters
   //   WMAP_SPOTS through specialStoreUnlocked()) — it doesn't just render disabled, it doesn't
   //   exist yet, so there's nothing to be curious about before Arena 44.
-  // * The one-time "Special Item Store is open!" celebration fires from openMapHub() (15-map.js)
-  //   the first time the hub renders after unlock; state.specialStoreAnnounced latches it off.
+  // * The per-milestone "new machine unlocked!" celebrations fire from openMapHub() (15-map.js) the
+  //   first time the hub renders after each milestone boss falls; state.specialStoreAnnounced is a
+  //   per-machine map latching each popup off once shown.
 
   var SPECIAL_STORE_UNLOCK_ARENA = 44;   // clearing this arena's boss reveals the store
   var SPECIAL_STORE_MAX_PURCHASES = 999; // per-stat purchase cap
@@ -38,18 +42,27 @@
   // intentionally matches the existing per-hero-level bonus (heroStatBonus / addHeroXp) so the
   // tooltip's "worth one hero level" claim stays true if that formula ever changes — update both
   // places together.
+  //
+  // PROGRESSIVE UNLOCK (user 2026-07-18: "instead of letting player buy all special items at arena
+  // 44, we should do it progressively... i think it is more fun this way"): each machine has an
+  // `unlock` arena. Clearing that arena's boss reveals the machine (specialStoreMachineUnlocked)
+  // AND fires its own CONGRATULATIONS milestone popup (specialStoreMaybeAnnounce). The building
+  // itself appears at 44 (the HP machine's unlock = the store opening). Listed here in unlock order
+  // so the shelf reads as a top-to-bottom progression; locked machines still show as 🔒 teasers.
+  // The Ascension Core is the premium capstone (a whole level, priced far higher) — it unlocks at
+  // the FINAL stat milestone (60) rather than at the opening.
   var SPECIAL_STORE_MACHINES = [
-    { id: 'hp',  icon: '❤️', name: 'Vitality Chamber', statLabel: 'Max HP', gain: 20,
+    { id: 'hp',  icon: '❤️', name: 'Vitality Chamber', statLabel: 'Max HP', gain: 20, unlock: 44,
       desc: 'Permanently raises your maximum HP by 20 — the same boost as one hero level.' },
-    { id: 'mp',  icon: '💧', name: 'Mana Reactor',      statLabel: 'Max MP', gain: 10,
+    { id: 'mp',  icon: '💧', name: 'Mana Reactor',      statLabel: 'Max MP', gain: 10, unlock: 48,
       desc: 'Permanently raises your maximum MP by 10 — the same boost as one hero level.' },
-    { id: 'ap',  icon: '⚔️', name: 'Power Amplifier',   statLabel: 'AP',     gain: 2,
-      desc: 'Permanently raises your Attack Power by 2 — the same boost as one hero level.' },
-    { id: 'dp',  icon: '🛡️', name: 'Aegis Forge',       statLabel: 'DP',     gain: 1,
-      desc: 'Permanently raises your Defense by 1 — the same boost as one hero level.' },
-    { id: 'spd', icon: '💨', name: 'Velocity Core',     statLabel: 'Speed',  gain: 1,
+    { id: 'spd', icon: '💨', name: 'Velocity Core',     statLabel: 'Speed',  gain: 1,  unlock: 52,
       desc: 'Permanently raises your Speed by 1 (better dodge & crit chance) — the same boost as one hero level.' },
-    { id: 'level', icon: '🌟', name: 'Ascension Core',  statLabel: 'Hero Level', gain: 1,
+    { id: 'dp',  icon: '🛡️', name: 'Aegis Forge',       statLabel: 'DP',     gain: 1,  unlock: 56,
+      desc: 'Permanently raises your Defense by 1 — the same boost as one hero level.' },
+    { id: 'ap',  icon: '⚔️', name: 'Power Amplifier',   statLabel: 'AP',     gain: 2,  unlock: 60,
+      desc: 'Permanently raises your Attack Power by 2 — the same boost as one hero level.' },
+    { id: 'level', icon: '🌟', name: 'Ascension Core',  statLabel: 'Hero Level', gain: 1, unlock: 60,
       desc: 'Instantly grants one full hero level — the same HP/MP/AP/DP/Speed boost as leveling up through XP.' }
   ];
 
@@ -58,10 +71,33 @@
     return null;
   }
 
-  // PURE: unlocked once Arena 44's boss is beaten (permanent — bossDefeated never clears). Admin
-  // test accounts see it immediately, matching the Star Atlas's testUnlockAll convention.
+  // PURE: the STORE (building on the map) opens once Arena 44's boss is beaten — that's also the HP
+  // machine's unlock, so "store open" == "at least one machine available". Permanent (bossDefeated
+  // never clears). Admin test accounts see everything immediately (Star Atlas testUnlockAll convention).
   function specialStoreUnlocked(){
     return !!(state.bossDefeated && state.bossDefeated[SPECIAL_STORE_UNLOCK_ARENA]) || !!state.testMode;
+  }
+  // PURE: a single MACHINE is unlocked once its own milestone arena's boss is beaten (progressive
+  // unlock — see SPECIAL_STORE_MACHINES). Test accounts see all machines at once.
+  function specialStoreMachineUnlocked(m){
+    if (!m) return false;
+    if (state.testMode) return true;
+    return !!(state.bossDefeated && state.bossDefeated[m.unlock]);
+  }
+  // Source of truth for migrating the old boolean `specialStoreAnnounced` (one shared "store is
+  // open" latch) to the new per-machine map { hp:true, mp:true, ... } (one latch per milestone
+  // popup). Called from applySnapshotToState (03-save.js). Given a saved value + that save's
+  // bossDefeated map, returns the per-machine announced-map. Any milestone whose boss was ALREADY
+  // cleared in the loaded save is seeded as already-announced, so upgrading an existing save never
+  // spams retroactive CONGRATULATIONS popups for arenas the player conquered long ago.
+  function specialStoreMigrateAnnounced(saved, bossDefeated){
+    var out = {};
+    var isMap = saved && typeof saved === 'object';
+    for (var i = 0; i < SPECIAL_STORE_MACHINES.length; i++){
+      var m = SPECIAL_STORE_MACHINES[i];
+      out[m.id] = isMap ? !!saved[m.id] : !!(bossDefeated && bossDefeated[m.unlock]);
+    }
+    return out;
   }
   // "Installed" = the count actually contributing its stat bonus right now. Matches the Item
   // Store's buy-then-use pattern (user 2026-07-18: "just add a use button beloew each of them") —
@@ -94,6 +130,7 @@
     if (!specialStoreUnlocked()) return { ok: false, msg: 'The Odyssey Forge isn’t open yet.' };
     var m = specialStoreMachine(id);
     if (!m) return { ok: false, msg: 'Unknown machine.' };
+    if (!specialStoreMachineUnlocked(m)) return { ok: false, msg: '🔒 ' + m.name + ' unlocks after you clear Arena ' + m.unlock + '!' };
     if (!state.specialStore) state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
     if (!state.specialStoreOwned) state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
     var total = specialStoreTotalCount(id);
@@ -190,6 +227,18 @@
 
   function sstrShelfHtml(){
     return SPECIAL_STORE_MACHINES.map(function(m){
+      // Locked (milestone arena not yet cleared): show a greyed 🔒 teaser card instead of Buy/Use,
+      // so the player can see what's coming and which arena unlocks it.
+      if (!specialStoreMachineUnlocked(m)){
+        return (
+          '<div class="istr-card sstr-card sstr-locked" title="Unlocks after you clear Arena ' + m.unlock + '">' +
+            '<span class="istr-icon sstr-lock-icon">🔒</span>' +
+            '<span class="istr-name">' + m.name + '</span>' +
+            '<span class="istr-desc">' + m.desc + '</span>' +
+            '<span class="sstr-lock-note">🔒 Unlocks at Arena ' + m.unlock + '</span>' +
+          '</div>'
+        );
+      }
       var installed = specialStoreCount(m.id);
       var owned = specialStoreOwned(m.id);
       var total = installed + owned;
@@ -224,23 +273,52 @@
     }).join('');
   }
 
-  // ---------- First-visit celebration ----------
-  // Called by openMapHub() (15-map.js) after every render. Fires exactly once: the first Earth
-  // Hub visit after Arena 44's boss falls. A big overlay (reuses the .gameover-* modal classes —
-  // see the "Boss Gate Open!" notice in index.html for the same pattern) + a confetti burst.
+  // ---------- Per-milestone celebration ----------
+  // Called by openMapHub() (15-map.js) after every render. Fires a CONGRATULATIONS popup ONCE per
+  // milestone machine — the first Earth Hub visit after that machine's arena boss falls (44 opens
+  // the store + HP, then 48/52/56/60 each add one machine). `state.specialStoreAnnounced` is a
+  // per-machine latch map { hp:true, mp:true, ... }. Shows the lowest-arena un-announced machine,
+  // then chains to any others on close (only relevant when two unlock together — AP + Ascension at
+  // 60, or a test account seeing everything at once). Big overlay (reuses the .gameover-* modal
+  // shell — same pattern as the "Boss Gate Open!" notice) + confetti burst.
   function specialStoreMaybeAnnounce(){
-    if (!specialStoreUnlocked() || state.specialStoreAnnounced) return;
-    state.specialStoreAnnounced = true;
+    if (!specialStoreUnlocked()) return;
+    if (!state.specialStoreAnnounced || typeof state.specialStoreAnnounced !== 'object') state.specialStoreAnnounced = {};
+    // Admin/test accounts have everything unlocked from the start — seed all latches without any
+    // popups so they aren't spammed with six celebrations on their first hub visit.
+    if (state.testMode){
+      var changed = false;
+      SPECIAL_STORE_MACHINES.forEach(function(m){ if (!state.specialStoreAnnounced[m.id]){ state.specialStoreAnnounced[m.id] = true; changed = true; } });
+      if (changed && typeof saveGame === 'function') saveGame();
+      return;
+    }
+    // The lowest-arena machine that's unlocked but whose milestone popup hasn't shown yet.
+    var next = null;
+    for (var i = 0; i < SPECIAL_STORE_MACHINES.length; i++){
+      var m = SPECIAL_STORE_MACHINES[i];
+      if (specialStoreMachineUnlocked(m) && !state.specialStoreAnnounced[m.id]){
+        if (!next || m.unlock < next.unlock) next = m;
+      }
+    }
+    if (!next) return;
+    state.specialStoreAnnounced[next.id] = true;
     if (typeof saveGame === 'function') saveGame();
+    specialStoreShowAnnounce(next);
+  }
+
+  function specialStoreShowAnnounce(m){
+    var opensStore = (m.unlock === SPECIAL_STORE_UNLOCK_ARENA);   // Arena 44 = the Forge itself opening
+    var body = opensStore
+      ? ('You’ve conquered Arena ' + m.unlock + ' — the <b>Odyssey Forge</b> is open! Its first machine, the <b>' + m.name + '</b> (+' + m.gain + ' ' + m.statLabel + '), is ready on the Earth Hub map. Clear more arenas to unlock a new machine every 4 arenas!')
+      : ('You’ve conquered Arena ' + m.unlock + ' — a new Odyssey Forge machine is online: the <b>' + m.name + '</b> (+' + m.gain + ' ' + m.statLabel + ')! Visit the Earth Hub map to install it.');
     var ov = document.createElement('div');
     ov.id = 'specialStoreAnnounceOverlay';
     ov.className = 'gameover-overlay sstr-announce-overlay';
     ov.innerHTML =
       '<div class="gameover-card sstr-announce-card">' +
-        '<div class="gameover-emoji sstr-announce-emoji">🏭✨</div>' +
+        '<div class="gameover-emoji sstr-announce-emoji">' + m.icon + '✨</div>' +
         '<h2 class="gameover-title sstr-announce-title">CONGRATULATIONS!</h2>' +
-        '<p class="gameover-text sstr-announce-text">You’ve conquered Arena 44 — the <b>Special Item Store</b> is open! ' +
-          'Head to the Odyssey Forge on the Earth Hub map for permanent, stackable HP/MP/AP/DP/Speed upgrades.</p>' +
+        '<p class="gameover-text sstr-announce-text">' + body + '</p>' +
         '<button class="btn btn-primary" type="button" onclick="specialStoreCloseAnnounce()">Awesome! 🎉</button>' +
       '</div>';
     ov.addEventListener('click', function(e){ if (e.target === ov) specialStoreCloseAnnounce(); });
@@ -251,4 +329,7 @@
   function specialStoreCloseAnnounce(){
     var o = document.getElementById('specialStoreAnnounceOverlay');
     if (o && o.parentNode) o.parentNode.removeChild(o);
+    // Chain: if another machine unlocked at the same time (AP + Ascension both at Arena 60), show
+    // its popup next. A no-op in the normal one-milestone-at-a-time case.
+    specialStoreMaybeAnnounce();
   }

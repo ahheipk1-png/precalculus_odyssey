@@ -209,7 +209,12 @@
       ? { hp: snap.specialStoreOwned.hp || 0, mp: snap.specialStoreOwned.mp || 0, ap: snap.specialStoreOwned.ap || 0,
           dp: snap.specialStoreOwned.dp || 0, spd: snap.specialStoreOwned.spd || 0, level: snap.specialStoreOwned.level || 0 }
       : { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
-    state.specialStoreAnnounced = !!snap.specialStoreAnnounced;
+    // Per-machine milestone-popup latch map. Migrate old boolean saves (a single "store open" flag)
+    // via the store module's source-of-truth helper, seeding already-cleared milestones so upgrading
+    // never spams retroactive CONGRATULATIONS popups. See specialStoreMigrateAnnounced (42-special-store.js).
+    state.specialStoreAnnounced = (typeof specialStoreMigrateAnnounced === 'function')
+      ? specialStoreMigrateAnnounced(snap.specialStoreAnnounced, snap.bossDefeated)
+      : (snap.specialStoreAnnounced && typeof snap.specialStoreAnnounced === 'object' ? snap.specialStoreAnnounced : {});
     state.comebackUnlocked = !!snap.comebackUnlocked;
     state.comebackCleared = !!snap.comebackCleared;
     // Transient boss-visit flags never persist — a reload starts you outside the boss room, and
@@ -261,7 +266,7 @@
     state.trophies = [];
     state.specialStore = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
     state.specialStoreOwned = { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 };
-    state.specialStoreAnnounced = false;
+    state.specialStoreAnnounced = {};
     state.comebackUnlocked = false;
     state.comebackCleared = false;
     if (el.trophiesPanel) el.trophiesPanel.style.display = 'none';

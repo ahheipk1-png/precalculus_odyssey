@@ -623,6 +623,41 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #30 — Odyssey Forge machines now unlock PROGRESSIVELY (one every 4 arenas), each
+with its own CONGRATULATIONS milestone.** User: "instead of letting player to buy all special items
+at arena 44, we should do it progressively, at 44 only HP, at 48 add MP, at 52 add speed, at 56 add
+DP, at 60 add AP... i think it is more fun this way... remember to add congrats for each milestone."
+- **`js/42-special-store.js`**: each `SPECIAL_STORE_MACHINES` entry gained an `unlock` arena
+  (HP@44, MP@48, Speed@52, DP@56, AP@60); the array is reordered into unlock order so the shelf
+  reads top-to-bottom as a progression. The premium **Ascension Core** (a whole hero level, priced
+  100k+) is the capstone — it unlocks at the final stat milestone (**60**) rather than at the
+  opening. New `specialStoreMachineUnlocked(m)` gates each machine on `bossDefeated[m.unlock]` (test
+  accounts see all). The store BUILDING still appears at 44 (that's the HP unlock = the Forge
+  opening); `specialStoreUnlocked()` / the map filter (15-map.js) are unchanged.
+- **Locked machines** render as greyed 🔒 teaser cards ("🔒 Unlocks at Arena N", no Buy/Use buttons
+  — `.sstr-locked` in special-store.css) so the roadmap is visible; `specialStoreBuy` rejects a
+  locked id defensively.
+- **Per-milestone congrats**: `state.specialStoreAnnounced` changed from a single boolean ("store is
+  open" latch) to a **per-machine map** `{hp:true, mp:true, ...}`. `specialStoreMaybeAnnounce()`
+  (still called from `openMapHub`, 15-map.js) shows the lowest-arena unlocked-but-unannounced
+  machine's CONGRATULATIONS popup (its own icon + "+N stat" message), latches it, and on close
+  chains to any other simultaneously-unlocked one (AP + Ascension both at 60 → two celebratory
+  popups back-to-back). Admin/test accounts get all latches **seeded silently** (no six-popup spam).
+- **Save migration** (`specialStoreMigrateAnnounced`, called from applySnapshotToState in
+  03-save.js; default in 01-data.js `false`→`{}`; reset likewise): an old boolean save is converted
+  to the map with every ALREADY-cleared milestone seeded as announced, so upgrading an existing deep
+  save never fires retroactive popups for arenas conquered long ago — only newly-crossed milestones
+  celebrate. New object saves pass through untouched.
+- **Verified live** (local session, real + simulated milestones): at Arena 44 only HP is buyable,
+  the other 5 show "🔒 Unlocks at Arena 48/52/56/60"; the HP "Odyssey Forge is open" popup (❤️✨)
+  fires once and doesn't re-fire; clearing Arena 48 fires the MP popup (💧✨); buying a locked
+  machine is rejected ("🔒 Mana Reactor unlocks after you clear Arena 48!"); the Arena-60 double
+  (AP ⚔️ then Ascension 🌟) chains two popups; testMode seeds all latches with zero popups; the real
+  Buy button's `onclick="sstrBuyClick('hp')"` handler spends Cash and re-renders correctly (the
+  browser-automation *click delivery* was flaky, but the wired handler path is verified end-to-end);
+  save→restore round-trip and old-boolean migration both preserve the right map. Zero console
+  errors. Cache token bumped `20260718x → 20260718y`.
+
 **2026-07-18 batch #29 — Earth Hub: the 🌾 Farm is marked under development (shown but not
 enterable).** User: "make farm game as unclickable and say undevelopment for now."
 - **`js/15-map.js`**: the Farm `WMAP_SPOTS` entry gained `dev: true` (a general, reusable flag —

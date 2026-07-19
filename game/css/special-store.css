@@ -48,6 +48,23 @@
   cursor: not-allowed;
 }
 
+/* Locked machine (its milestone arena not yet cleared) — a greyed 🔒 teaser card showing what's
+   coming and which arena unlocks it. No Buy/Use buttons; progressive unlock (2026-07-18). */
+.sstr-locked{
+  opacity: 0.55;
+  filter: grayscale(0.7);
+}
+.sstr-locked .istr-name,
+.sstr-locked .istr-desc{ color: var(--muted, #9bb3c2); }
+.sstr-lock-icon{ opacity: 0.85; }
+.sstr-lock-note{
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--violet, #9a6cff);
+  letter-spacing: 0.02em;
+}
+
 /* First-visit congratulations overlay (specialStoreMaybeAnnounce, 42-special-store.js) — reuses
    the shared .gameover-overlay/.gameover-card modal shell, themed violet + a slightly bigger,
    glowing emoji so it reads as a genuine milestone, not a routine toast. */

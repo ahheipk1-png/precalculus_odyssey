@@ -79,7 +79,7 @@
     // Bought but not yet installed (Buy acquires; Use installs — matches the Item Store's
     // buy-then-use pattern). Same keys; installed + owned share one price/cap ladder per machine.
     specialStoreOwned: { hp: 0, mp: 0, ap: 0, dp: 0, spd: 0, level: 0 },
-    specialStoreAnnounced: false,  // has the one-time "Special Item Store is open!" modal fired yet
+    specialStoreAnnounced: {},  // per-machine latch map { hp:true,... } — which milestone "new machine unlocked!" popups have fired
     // Arena 888 "The Second Chance" (js/52-comeback-arena.js): appears next to the Giant Black
     // Hole (Arena 999) once its gauntlet is LOST. comebackUnlocked reveals its atlas card forever
     // after; comebackCleared guards the +10-hero-level reward to a ONE-TIME grant (anti-farming,
