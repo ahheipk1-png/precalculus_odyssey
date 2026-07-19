@@ -629,9 +629,10 @@ at arena 44, we should do it progressively, at 44 only HP, at 48 add MP, at 52 a
 DP, at 60 add AP... i think it is more fun this way... remember to add congrats for each milestone."
 - **`js/42-special-store.js`**: each `SPECIAL_STORE_MACHINES` entry gained an `unlock` arena
   (HP@44, MP@48, Speed@52, DP@56, AP@60); the array is reordered into unlock order so the shelf
-  reads top-to-bottom as a progression. The premium **Ascension Core** (a whole hero level, priced
-  100k+) is the capstone — it unlocks at the final stat milestone (**60**) rather than at the
-  opening. New `specialStoreMachineUnlocked(m)` gates each machine on `bossDefeated[m.unlock]` (test
+  reads top-to-bottom as a progression. The premium **Ascension Core(Level Up)** (a whole hero level, priced
+  100k+) is the capstone — it unlocks on its own at Arena **64** (one step past the final stat
+  milestone, AP@60), rather than at the opening. (Renamed + moved 60→64 per user follow-up.) New
+  `specialStoreMachineUnlocked(m)` gates each machine on `bossDefeated[m.unlock]` (test
   accounts see all). The store BUILDING still appears at 44 (that's the HP unlock = the Forge
   opening); `specialStoreUnlocked()` / the map filter (15-map.js) are unchanged.
 - **Locked machines** render as greyed 🔒 teaser cards ("🔒 Unlocks at Arena N", no Buy/Use buttons
@@ -641,18 +642,19 @@ DP, at 60 add AP... i think it is more fun this way... remember to add congrats 
   open" latch) to a **per-machine map** `{hp:true, mp:true, ...}`. `specialStoreMaybeAnnounce()`
   (still called from `openMapHub`, 15-map.js) shows the lowest-arena unlocked-but-unannounced
   machine's CONGRATULATIONS popup (its own icon + "+N stat" message), latches it, and on close
-  chains to any other simultaneously-unlocked one (AP + Ascension both at 60 → two celebratory
-  popups back-to-back). Admin/test accounts get all latches **seeded silently** (no six-popup spam).
+  chains to any other simultaneously-unlocked one (rare now that every milestone is a distinct arena
+  — mainly a deep/migrated-save safety net). Admin/test accounts get all latches **seeded silently**
+  (no six-popup spam).
 - **Save migration** (`specialStoreMigrateAnnounced`, called from applySnapshotToState in
   03-save.js; default in 01-data.js `false`→`{}`; reset likewise): an old boolean save is converted
   to the map with every ALREADY-cleared milestone seeded as announced, so upgrading an existing deep
   save never fires retroactive popups for arenas conquered long ago — only newly-crossed milestones
   celebrate. New object saves pass through untouched.
 - **Verified live** (local session, real + simulated milestones): at Arena 44 only HP is buyable,
-  the other 5 show "🔒 Unlocks at Arena 48/52/56/60"; the HP "Odyssey Forge is open" popup (❤️✨)
+  the other 5 show "🔒 Unlocks at Arena 48/52/56/60/64"; the HP "Odyssey Forge is open" popup (❤️✨)
   fires once and doesn't re-fire; clearing Arena 48 fires the MP popup (💧✨); buying a locked
-  machine is rejected ("🔒 Mana Reactor unlocks after you clear Arena 48!"); the Arena-60 double
-  (AP ⚔️ then Ascension 🌟) chains two popups; testMode seeds all latches with zero popups; the real
+  machine is rejected ("🔒 Mana Reactor unlocks after you clear Arena 48!"); AP unlocks alone at 60
+  and the Ascension Core(Level Up) 🌟 unlocks alone at 64; testMode seeds all latches with zero popups; the real
   Buy button's `onclick="sstrBuyClick('hp')"` handler spends Cash and re-renders correctly (the
   browser-automation *click delivery* was flaky, but the wired handler path is verified end-to-end);
   save→restore round-trip and old-boolean migration both preserve the right map. Zero console

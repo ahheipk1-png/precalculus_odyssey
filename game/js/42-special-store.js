@@ -4,7 +4,7 @@
   // purchase permanently grants the same flat boost as ONE hero level (see heroStatBonus/addHeroXp),
   // stacking indefinitely (capped at SPECIAL_STORE_MAX_PURCHASES per stat) at an ever-rising Cash
   // price. The machines UNLOCK PROGRESSIVELY, not all at once — one new machine every 4 arenas
-  // (HP@44, MP@48, Speed@52, DP@56, AP@60, Ascension Core@60), each with its own CONGRATULATIONS
+  // (HP@44, MP@48, Speed@52, DP@56, AP@60, Ascension Core@64), each with its own CONGRATULATIONS
   // milestone popup. See SPECIAL_STORE_MACHINES / specialStoreMachineUnlocked / specialStoreMaybeAnnounce.
   //
   // Design decisions:
@@ -49,8 +49,8 @@
   // AND fires its own CONGRATULATIONS milestone popup (specialStoreMaybeAnnounce). The building
   // itself appears at 44 (the HP machine's unlock = the store opening). Listed here in unlock order
   // so the shelf reads as a top-to-bottom progression; locked machines still show as 🔒 teasers.
-  // The Ascension Core is the premium capstone (a whole level, priced far higher) — it unlocks at
-  // the FINAL stat milestone (60) rather than at the opening.
+  // The Ascension Core (Level Up) is the premium capstone (a whole level, priced far higher) — it
+  // unlocks at Arena 64, one step past the final stat milestone (AP@60), rather than at the opening.
   var SPECIAL_STORE_MACHINES = [
     { id: 'hp',  icon: '❤️', name: 'Vitality Chamber', statLabel: 'Max HP', gain: 20, unlock: 44,
       desc: 'Permanently raises your maximum HP by 20 — the same boost as one hero level.' },
@@ -62,7 +62,7 @@
       desc: 'Permanently raises your Defense by 1 — the same boost as one hero level.' },
     { id: 'ap',  icon: '⚔️', name: 'Power Amplifier',   statLabel: 'AP',     gain: 2,  unlock: 60,
       desc: 'Permanently raises your Attack Power by 2 — the same boost as one hero level.' },
-    { id: 'level', icon: '🌟', name: 'Ascension Core',  statLabel: 'Hero Level', gain: 1, unlock: 60,
+    { id: 'level', icon: '🌟', name: 'Ascension Core(Level Up)', statLabel: 'Hero Level', gain: 1, unlock: 64,
       desc: 'Instantly grants one full hero level — the same HP/MP/AP/DP/Speed boost as leveling up through XP.' }
   ];
 
@@ -278,8 +278,8 @@
   // milestone machine — the first Earth Hub visit after that machine's arena boss falls (44 opens
   // the store + HP, then 48/52/56/60 each add one machine). `state.specialStoreAnnounced` is a
   // per-machine latch map { hp:true, mp:true, ... }. Shows the lowest-arena un-announced machine,
-  // then chains to any others on close (only relevant when two unlock together — AP + Ascension at
-  // 60, or a test account seeing everything at once). Big overlay (reuses the .gameover-* modal
+  // then chains to any others on close (only relevant when several milestones are pending at once,
+  // e.g. a deep/migrated save loaded past multiple of them). Big overlay (reuses the .gameover-* modal
   // shell — same pattern as the "Boss Gate Open!" notice) + confetti burst.
   function specialStoreMaybeAnnounce(){
     if (!specialStoreUnlocked()) return;
@@ -329,7 +329,7 @@
   function specialStoreCloseAnnounce(){
     var o = document.getElementById('specialStoreAnnounceOverlay');
     if (o && o.parentNode) o.parentNode.removeChild(o);
-    // Chain: if another machine unlocked at the same time (AP + Ascension both at Arena 60), show
-    // its popup next. A no-op in the normal one-milestone-at-a-time case.
+    // Chain: if several milestones are pending at once (e.g. a deep/migrated save loaded past
+    // multiple of them), show the next popup. A no-op in the normal one-milestone-at-a-time case.
     specialStoreMaybeAnnounce();
   }
