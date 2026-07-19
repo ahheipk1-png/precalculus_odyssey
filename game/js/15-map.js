@@ -21,17 +21,17 @@
   // The seven buildings. x/y = CENTER of the building card in % of the scene box. The avatar
   // walks to the "door" (same x, y + 10) so it stands on the path, not on the roof.
   var WMAP_SPOTS = [
-    { id: 'practice', emoji: '♾️', name: 'Arena Infinity', x: 68, y: 26, accent: 'var(--sky)', desc: 'Endless mixed practice from every arena you’ve cleared — earn XP, Wonderland Passes 🎟️ & a gold chest.' },
-    { id: 'weapon',   emoji: '⚔️', name: 'Weapon Store',  x: 33, y: 58, accent: 'var(--coral)', desc: 'Buy and upgrade weapons & shields with Cash and chips.' },
-    { id: 'item',     emoji: '🎒', name: 'Item Store',    x: 56, y: 70, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
-    { id: 'hotel',    emoji: '🏨', name: 'Hotel',         x: 82, y: 62, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },
-    { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    x: 84, y: 24, accent: 'var(--coral)', desc: 'Choose 🎰 Casino (bet Cash on games of chance) or 🕹️ Arcade (skill games & puzzles) — both cost Wonderland Passes.' },
+    { id: 'practice', emoji: '♾️', name: 'Arena Infinity', x: 50, y: 18, accent: 'var(--sky)', desc: 'Endless mixed practice from every arena you’ve cleared — earn XP, Wonderland Passes 🎟️ & a gold chest.' },
+    { id: 'weapon',   emoji: '⚔️', name: 'Weapon Store',  x: 37, y: 48, accent: 'var(--coral)', desc: 'Buy and upgrade weapons & shields with Cash and chips.' },
+    { id: 'item',     emoji: '🎒', name: 'Item Store',    x: 62, y: 74, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
+    { id: 'hotel',    emoji: '🏨', name: 'Hotel',         x: 85, y: 48, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },
+    { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    x: 84, y: 20, accent: 'var(--coral)', desc: 'Choose 🎰 Casino (bet Cash on games of chance) or 🕹️ Arcade (skill games & puzzles) — both cost Wonderland Passes.' },
     // `dev: true` → shown on the map but not enterable yet: clicking / walking-up + Enter both
     // just toast "under development" (see wmapDevBlocked, wired into wmapGoTo + wmapArrive). Rendered
     // greyed with a 🚧 badge (wmap-dev in map.css). Flip this flag off to ship the Farm.
-    { id: 'farm',     emoji: '🌾', name: 'Farm',          x: 57, y: 30, accent: 'var(--yellow)', desc: 'Under development — coming soon! Grow crops and raise animals for materials over time.', dev: true },
-    { id: 'alchemy',  emoji: '🧪', name: 'Laboratory',    x: 27, y: 22, accent: 'var(--sky)', desc: 'Synthesize Super Medicine and Acid Vials from ingredients + chips.' },
-    { id: 'trading',  emoji: '🔄', name: 'Trading Room',  x: 44, y: 46, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },
+    { id: 'farm',     emoji: '🌾', name: 'Farm',          x: 33, y: 74, accent: 'var(--yellow)', desc: 'Under development — coming soon! Grow crops and raise animals for materials over time.', dev: true },
+    { id: 'alchemy',  emoji: '🧪', name: 'Laboratory',    x: 16, y: 22, accent: 'var(--sky)', desc: 'Synthesize Super Medicine and Acid Vials from ingredients + chips.' },
+    { id: 'trading',  emoji: '🔄', name: 'Trading Room',  x: 66, y: 46, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },
     // Hidden until specialStoreUnlocked() (42-special-store.js) — clearing Arena 44's boss. Not
     // just rendered-disabled: it doesn't appear on the map at all before that, so there's nothing
     // to be curious about early. See wmapVisibleSpots().
@@ -68,6 +68,12 @@
     try {
       return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     } catch (e) { return false; }
+  }
+  // ≤1024px: phones + iPads render the hub as a tap-friendly card grid instead of the spatial
+  // walk-map (see map.css). Must match that CSS breakpoint. Taps open a building instantly here —
+  // there's no visible avatar to walk, so the walk animation/delay would just feel laggy.
+  function wmapCompact(){
+    try { return !!(window.matchMedia && window.matchMedia('(max-width: 1024px)').matches); } catch (e) { return false; }
   }
   function wmapFindSpot(id){
     for (var i = 0; i < WMAP_SPOTS.length; i++){
@@ -232,6 +238,7 @@
     var spot = wmapFindSpot(id);
     if (!spot) return;
     if (wmapDevBlocked(spot)) return;        // under-development building: toast, don't walk/open
+    if (wmapCompact()) { wmapArrive(id); return; }   // phone/iPad grid: open instantly, no walk
     var av = document.getElementById('wmapAvatar');
     if (!av) { wmapArrive(id); return; }     // no scene rendered (console call) — just open
     wmapCancelWalk();                        // clicking mid-walk retargets to the new building

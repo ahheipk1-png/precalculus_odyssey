@@ -623,6 +623,33 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-19 batch #31 — Earth Hub map made phone/iPad-responsive (buildings no longer overlap); the
+desktop spatial map respaced so it doesn't overlap either.** User (with a phone screenshot): "make
+the game display well when using from a phone or ipad… in the phone, all these shops in the screen
+are overlapping."
+- **Root cause**: the hub buildings are absolute-positioned at fixed %-coords tuned for a WIDE scene.
+  Squeezed onto a phone/iPad they pile on top of each other; even the desktop coords had a couple of
+  genuine collisions (Farm/Arena-Infinity, Trading/Weapon).
+- **`css/map.css` — ≤1024px (every phone + iPad portrait & landscape) drops the spatial walk-map for
+  a tap-friendly card grid**: `.wmap-scene` becomes `display:flex; flex-wrap:wrap; justify-content:
+  center` (aspect-ratio/min-height cleared); `.wmap-building` is forced back into flow
+  (`position:relative; left/top:auto; transform:none; flex:0 1 150px`); the star/path SVG, moon/planet
+  decor, walking avatar and keyboard hint are hidden (meaningless off the spatial map). ≤640px tunes
+  it to a clean **2-column** layout (`flex:0 1 44%`). The obsolete old mobile rule
+  (`.wmap-scene{aspect-ratio:4/5}`) that fought this was removed.
+- **`js/15-map.js`**: new `wmapCompact()` (matchMedia ≤1024, matches the CSS breakpoint); `wmapGoTo`
+  opens a building **instantly** when compact (the avatar is hidden, so the walk animation would just
+  feel laggy). Respaced all 9 `WMAP_SPOTS` into 3 clean rows so the desktop (>1024) spatial map has
+  **zero** overlaps: top = Laboratory/Arena Infinity/Wonderland; mid = Special Store/Weapon/Trading/
+  Hotel; bottom = Farm/Item Store.
+- **Verified live** at 375 (phone: 2-col grid, 0 overlaps, real tap opens the Weapon Store instantly),
+  768 (iPad portrait: 4-col grid, 0 overlaps), 1024 (iPad landscape: grid, 0 overlaps) and 1320
+  (desktop: spatial map, 9 buildings incl. Special Store, 0 overlaps) — pairwise bounding-box overlap
+  test came back empty at every size; zero console errors. Cache token bumped `20260718z → 20260719b`.
+  (Touch controls for keyboard-driven arcade games — the other half of the request — are a follow-up;
+  an audit shows most action games already ship an on-screen D-pad/tap layer via `.a2-pad`/pointer
+  handlers.)
+
 **2026-07-18 batch #30 — Odyssey Forge machines now unlock PROGRESSIVELY (one every 4 arenas), each
 with its own CONGRATULATIONS milestone.** User: "instead of letting player to buy all special items
 at arena 44, we should do it progressively, at 44 only HP, at 48 add MP, at 52 add speed, at 56 add
