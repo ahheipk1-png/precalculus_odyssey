@@ -26,7 +26,10 @@
     { id: 'item',     emoji: '🎒', name: 'Item Store',    x: 56, y: 70, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
     { id: 'hotel',    emoji: '🏨', name: 'Hotel',         x: 82, y: 62, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },
     { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    x: 84, y: 24, accent: 'var(--coral)', desc: 'Choose 🎰 Casino (bet Cash on games of chance) or 🕹️ Arcade (skill games & puzzles) — both cost Wonderland Passes.' },
-    { id: 'farm',     emoji: '🌾', name: 'Farm',          x: 57, y: 30, accent: 'var(--yellow)', desc: 'Grow crops and raise animals for materials over time.' },
+    // `dev: true` → shown on the map but not enterable yet: clicking / walking-up + Enter both
+    // just toast "under development" (see wmapDevBlocked, wired into wmapGoTo + wmapArrive). Rendered
+    // greyed with a 🚧 badge (wmap-dev in map.css). Flip this flag off to ship the Farm.
+    { id: 'farm',     emoji: '🌾', name: 'Farm',          x: 57, y: 30, accent: 'var(--yellow)', desc: 'Under development — coming soon! Grow crops and raise animals for materials over time.', dev: true },
     { id: 'alchemy',  emoji: '🧪', name: 'Laboratory',    x: 27, y: 22, accent: 'var(--sky)', desc: 'Synthesize Super Medicine and Acid Vials from ingredients + chips.' },
     { id: 'trading',  emoji: '🔄', name: 'Trading Room',  x: 44, y: 46, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },
     // Hidden until specialStoreUnlocked() (42-special-store.js) — clearing Arena 44's boss. Not
@@ -71,6 +74,14 @@
       if (WMAP_SPOTS[i].id === id) return WMAP_SPOTS[i];
     }
     return null;
+  }
+  // An under-development building (spot.dev) is shown but not enterable. Returns true (and toasts)
+  // when a spot is blocked, so callers can bail. Wired into BOTH entry points — wmapGoTo (click) and
+  // wmapArrive (keyboard walk-up + Enter) — so there's no path that actually opens it.
+  function wmapDevBlocked(spot){
+    if (!spot || !spot.dev) return false;
+    wmapToast('🚧 ' + spot.name + ' is under development — coming soon!');
+    return true;
   }
   function wmapCancelWalk(){
     if (wmapWalkTimer) { clearTimeout(wmapWalkTimer); wmapWalkTimer = null; }
@@ -168,11 +179,14 @@
 
   function wmapBuildingsHtml(){
     return wmapVisibleSpots().map(function(s){
-      var badge = (s.id === 'wonder')
-        ? '<span class="wmap-badge" id="wmapWonderBadge" title="Wonderland Passes you have">🎟️ ' + (state.wonderPasses || 0) + '</span>'
-        : '';
-      return '<button type="button" class="wmap-building" data-id="' + s.id + '" style="left:' + s.x + '%;top:' + s.y +
+      var badge = s.dev
+        ? '<span class="wmap-badge wmap-badge-dev" title="This building is under development">🚧 In dev</span>'
+        : (s.id === 'wonder'
+          ? '<span class="wmap-badge" id="wmapWonderBadge" title="Wonderland Passes you have">🎟️ ' + (state.wonderPasses || 0) + '</span>'
+          : '');
+      return '<button type="button" class="wmap-building' + (s.dev ? ' wmap-dev' : '') + '" data-id="' + s.id + '" style="left:' + s.x + '%;top:' + s.y +
         '%;--wmap-accent:' + s.accent + '" onclick="wmapGoTo(\'' + s.id + '\')" ' +
+        (s.dev ? 'aria-disabled="true" ' : '') +
         'title="' + wmapEsc(s.name + (s.desc ? ' — ' + s.desc : '')) + '" ' +
         'aria-label="' + wmapEsc(s.name + (s.desc ? '. ' + s.desc : '')) + '">' +
         badge +
@@ -217,6 +231,7 @@
   function wmapGoTo(id){
     var spot = wmapFindSpot(id);
     if (!spot) return;
+    if (wmapDevBlocked(spot)) return;        // under-development building: toast, don't walk/open
     var av = document.getElementById('wmapAvatar');
     if (!av) { wmapArrive(id); return; }     // no scene rendered (console call) — just open
     wmapCancelWalk();                        // clicking mid-walk retargets to the new building
@@ -336,12 +351,18 @@
     for (var b = 0; b < buildings.length; b++) buildings[b].classList.toggle('wmap-near', buildings[b].getAttribute('data-id') === newId);
     var hint = document.getElementById('wmapEnterHint');
     if (hint){
-      if (near){ hint.hidden = false; hint.innerHTML = '▶ Press <b>Enter</b> to visit ' + near.emoji + ' ' + wmapEsc(near.name); }
+      if (near){
+        hint.hidden = false;
+        hint.innerHTML = near.dev
+          ? '🚧 ' + near.emoji + ' ' + wmapEsc(near.name) + ' is under development'
+          : '▶ Press <b>Enter</b> to visit ' + near.emoji + ' ' + wmapEsc(near.name);
+      }
       else hint.hidden = true;
     }
   }
 
   function wmapArrive(id){
+    if (wmapDevBlocked(wmapFindSpot(id))) return;   // safety net for the keyboard walk-up + Enter path
     switch (id) {
       case 'practice': wmapOpenExternal('openArenaInfinity'); return;
       case 'weapon':   wmapOpenExternal('openShop'); return;

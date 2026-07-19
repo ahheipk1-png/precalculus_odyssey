@@ -623,6 +623,30 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-18 batch #29 — Earth Hub: the 🌾 Farm is marked under development (shown but not
+enterable).** User: "make farm game as unclickable and say undevelopment for now."
+- **`js/15-map.js`**: the Farm `WMAP_SPOTS` entry gained `dev: true` (a general, reusable flag —
+  set it on any building to shelve it; flip off to ship). New helper `wmapDevBlocked(spot)` toasts
+  "🚧 <name> is under development — coming soon!" and returns true so callers bail. It's wired into
+  **both** entry points, so no path opens the Farm: `wmapGoTo` (the click handler — bails before the
+  walk animation, so the click gives instant feedback rather than a pointless stroll) and
+  `wmapArrive` (the keyboard walk-up + Enter path — a safety net). `wmapBuildingsHtml` renders a dev
+  spot with a `wmap-dev` class + a `🚧 In dev` badge (`wmap-badge-dev`) + `aria-disabled="true"`;
+  the proximity hint (`wmapUpdateProximity`) shows "🚧 <name> is under development" instead of
+  "Press Enter to visit".
+- **`css/map.css`**: `.wmap-building.wmap-dev` greys the building (grayscale + 0.62 opacity,
+  `cursor:not-allowed`, no hover lift); `.wmap-building.wmap-dev.wmap-near` swaps the yellow
+  "enterable" glow for a neutral dashed outline when walked up to; `.wmap-badge-dev` is an amber
+  construction badge (distinct from the yellow Wonderland-pass badge).
+- **The Farm module itself (`js/18-farm.js`) is untouched** — `openFarm` still exists and works;
+  only the hub door to it is gated, so re-enabling later is a one-line `dev` flag removal.
+- **Verified live** (local `_localtest` test-mode session): Farm renders greyed with the 🚧 badge,
+  `aria-disabled`, `not-allowed` cursor, and "Under development" in its tooltip; a real click stays
+  on the map and toasts "🚧 Farm is under development — coming soon!" (Farm view never activates);
+  the keyboard-Enter path (`wmapArrive('farm')`) is blocked identically; a normal building (Weapon
+  Store) still opens, confirming no regression. Zero console errors. Cache token bumped
+  `20260718w → 20260718x`.
+
 **2026-07-18 batch #28 — Added a second user-supplied Arcade shooter: ✈️ Sky Squadron 194X
 (10-level vertical-scrolling 194X campaign).** User pasted another complete standalone HTML5 game
 (+ its README listing the 10 missions/bosses) and said "add the following games too...".

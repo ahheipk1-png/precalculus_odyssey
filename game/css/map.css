@@ -136,6 +136,12 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.35);
   }
 
+  /* Under-development building: greyed + non-interactive-looking (still clickable so it can toast). */
+  .wmap-building.wmap-dev{ cursor: not-allowed; filter: grayscale(0.85); opacity: 0.62; }
+  .wmap-building.wmap-dev:hover,
+  .wmap-building.wmap-dev:focus-visible{ transform: translate(-50%, -50%); background: rgba(244,241,232,0.07); box-shadow: none; }
+  .wmap-badge-dev{ background: #b06a2c; color: #fff5e6; }
+
   /* ---------- the walking avatar ---------- */
   .wmap-avatar{
     position: absolute;
@@ -155,6 +161,8 @@
   .wmap-avatar.wmap-keywalk .wmap-avatar-emoji{ animation: wmapBob 0.3s ease-in-out infinite; }
   /* Building the player is standing next to — glows + shows it's enterable. */
   .wmap-building.wmap-near{ outline: 3px solid var(--yellow); outline-offset: 3px; box-shadow: 0 0 22px rgba(242,193,78,0.6); transform: translate(-50%, -50%) scale(1.08); }
+  /* Walked up to an under-development building: dashed grey outline, no "enterable" glow. */
+  .wmap-building.wmap-dev.wmap-near{ outline: 3px dashed rgba(244,241,232,0.55); box-shadow: none; transform: translate(-50%, -50%) scale(1.03); }
   .wmap-enter-hint{
     position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
     z-index: 8; background: rgba(16,22,40,0.94); color: var(--chalk);
