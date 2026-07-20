@@ -246,15 +246,20 @@
   function _hhFinishRoll(){
     _hhRolling = false;
     _hhDice = _hhFinal;
-    var winnings = 0;
+    var winnings = 0, jackpotHit = false;
     for (var id in _hhBetsSnapshot){
       var matches = _hhDice.filter(function(d){ return d === id; }).length;
       if (matches > 0) winnings += _hhBetsSnapshot[id] * (1 + matches); // stake back + 1× per match
+      if (matches === 3) jackpotHit = true;   // all 3 dice landed on one bet animal — the rarest win
     }
     state.coins += winnings;
     var net = winnings - _hhTotal;
-    _hhOutcome = net > 0 ? 'win' : (net === 0 ? 'even' : 'lose');
-    _hhResult = net > 0 ? ('🎉 You won 💵' + winnings + ' (net +' + net + ')!') : (net === 0 ? '➖ Broke even.' : '💸 You lost 💵' + Math.abs(net) + '. Try again!');
+    // A triple-match used to look IDENTICAL to a min-scrape win — same text, same green dice
+    // bounce. It's the game's biggest possible payout (up to 4x a single bet), so it now gets its
+    // own tier: a distinct message, colour and animation (hh-dice-jackpot / hh-result-jackpot).
+    _hhOutcome = jackpotHit ? 'jackpot' : (net > 0 ? 'win' : (net === 0 ? 'even' : 'lose'));
+    _hhResult = jackpotHit ? ('🎰 JACKPOT! All 3 dice matched — 💵' + winnings + ' (net +' + net + ')!')
+      : (net > 0 ? ('🎉 You won 💵' + winnings + ' (net +' + net + ')!') : (net === 0 ? '➖ Broke even.' : '💸 You lost 💵' + Math.abs(net) + '. Try again!'));
     if (typeof playSfx === 'function') playSfx(net > 0 ? 'victory' : 'wrong');
     if (typeof updateStats === 'function') updateStats();
     // Record history (newest first) and persist.

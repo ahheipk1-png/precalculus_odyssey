@@ -57,12 +57,14 @@
     state.coins += totalCash;
     addMaterials(totalLoot);
 
+    var newTrophies = [];
     kills.forEach(function(m){
       state.defeatedMonsters[monsterKey(m)] = true;
       // Bosses (rank 3) leave a keepsake trophy + recover a story memory fragment (14-lore.js).
       if (m.rank >= 3) {
         var rewardTrophy = '👑 ' + m.name + '\'s Ancient Soul';
         state.trophies.push(rewardTrophy);
+        newTrophies.push(rewardTrophy);
         appendCombatLog('Obtained Trophy: ' + rewardTrophy + '!', 'system');
         if (typeof unlockMemoryFragment === 'function') {
           var frag = unlockMemoryFragment(m.room);
@@ -83,6 +85,16 @@
       showVictoryChest(totalLoot, totalCash);
     } else {
       showToast('💰 +' + totalCash + ' Cash · Looted ' + lootSummary(totalLoot));
+    }
+    // A boss trophy used to be logged to the combat log ONLY — no toast — so it was easy to miss
+    // entirely under the victory chest that opens the same moment. Staggered after the chest so
+    // it doesn't fight it (or an earlier memory-fragment toast from the loop above) for attention.
+    if (newTrophies.length){
+      setTimeout(function(){
+        showToast(newTrophies.length > 1
+          ? ('🏆 ' + newTrophies.length + ' Trophies obtained!')
+          : ('🏆 Trophy obtained: ' + newTrophies[0] + '!'));
+      }, 1600);
     }
 
     el.startCombatBtn.style.display = 'none';
@@ -331,18 +343,40 @@
     }
     // Perfect clear = beat this arena with ZERO wrong answers this visit → a green star on its
     // atlas card. All 65 stars reveal the hidden Galaxy Center (see galaxyUnlocked / 25-nav.js).
+    // Both used to be entirely silent — the star and the Galaxy Center itself only ever showed up
+    // later if the player happened to notice them on the atlas — so neither is announced anywhere
+    // in the moment they're actually earned. Capture the BEFORE state so the Galaxy-Center check
+    // below can tell "always unlocked" (admin/replay) apart from "just now, for the first time".
+    var wasGalaxyUnlocked = (typeof galaxyUnlocked === 'function') && galaxyUnlocked();
     if (!state.perfectArenas) state.perfectArenas = {};
-    if ((state.roomFails || 0) === 0) state.perfectArenas[state.level] = true;
+    var isPerfectRun = (state.roomFails || 0) === 0;
+    var isNewStar = isPerfectRun && !state.perfectArenas[state.level];
+    if (isPerfectRun) state.perfectArenas[state.level] = true;
 
     state.roomFails = 0;
     var _paBefore = state.level;
+    var starSuffix = isNewStar ? ' ⭐ Perfect clear!' : '';
     if (state.level < state.maxLevel) {
       state.level++;
       if (byTraining) {
-        showToast('Arena ' + state.level + ' mastered through training! 🎓🎉');
+        showToast('Arena ' + state.level + ' mastered through training! 🎓🎉' + starSuffix);
       } else {
-        showToast('Arena ' + state.level + ' unlocked! 🎉');
+        showToast('Arena ' + state.level + ' unlocked! 🎉' + starSuffix);
       }
+    } else if (isNewStar) {
+      // The last arena doesn't advance state.level further, so it would never get an "unlocked!"
+      // toast to piggyback the star onto — give it its own so a first-time perfect finish here
+      // isn't the one case that goes completely unannounced.
+      showToast('⭐ Perfect clear!' + (byTraining ? ' 🎓' : ' 🎉'));
+    }
+    // A brand-new Galaxy Center unlock is rare (all 65 arenas perfect) and deserves its own
+    // dedicated toast — scheduled after the arena-advance toast (immediate) and the Wonderland
+    // Pass toast (+1900ms) so it doesn't compete with either for the single shared toast slot.
+    if (!wasGalaxyUnlocked && typeof galaxyUnlocked === 'function' && galaxyUnlocked()){
+      setTimeout(function(){
+        showToast('🌌 GALAXY CENTER UNLOCKED! Every arena, perfectly cleared — a hidden system just appeared on your Star Atlas.');
+        if (typeof playSfx === 'function') playSfx('loot');
+      }, 3400);
     }
     // Permanently record that this arena's boss was beaten (clears the gate for good here) and
     // clear the per-visit boss-room flags.

@@ -123,6 +123,7 @@
     state.coins -= cost;
     state.currencies[g] = (state.currencies[g] || 0) + qty;
     _trTx.push('Bought ' + qty + ' ' + CURRENCIES[g].icon + ' for 💵' + cost);
+    showToast('Bought ' + qty + ' ' + CURRENCIES[g].icon + ' ' + CURRENCIES[g].name + ' for 💵' + cost + '!');
     if (typeof playSfx === 'function') playSfx('buy');
     if (typeof updateStats === 'function') updateStats();
     renderTrading();
@@ -135,6 +136,7 @@
     state.currencies[g] -= qty;
     state.coins += gain;
     _trTx.push('Sold ' + qty + ' ' + CURRENCIES[g].icon + ' for 💵' + gain);
+    showToast('Sold ' + qty + ' ' + CURRENCIES[g].icon + ' ' + CURRENCIES[g].name + ' for 💵' + gain + '!');
     if (typeof playSfx === 'function') playSfx('buy');
     if (typeof updateStats === 'function') updateStats();
     renderTrading();

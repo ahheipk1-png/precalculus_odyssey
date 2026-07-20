@@ -403,7 +403,7 @@
     var card = document.getElementById('adminToolsBody');
     if (!card) return;
     var r = await api('/api/admin/save?username=' + encodeURIComponent(username), { method: 'GET', auth: true });
-    var deleteBtn = '<button class="btn btn-ghost admin-btn admin-danger" onclick="authAdminDeleteAccount(\'' + esc(username) + '\')">🗑 Delete account permanently</button>';
+    var deleteBtn = '<button class="btn btn-ghost admin-btn admin-danger" id="adminDeleteBtn" onclick="authAdminDeleteAccount(\'' + esc(username) + '\')">🗑 Delete account permanently</button>';
     if (!(r.ok && r.data.ok)){
       card.innerHTML = '<p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load cloud save.') + '</p>' +
         '<div class="admin-actions">' + deleteBtn + '</div>';
@@ -460,9 +460,16 @@
     var typed = window.prompt('Permanently DELETE the account “' + username + '” and all its cloud data?\n\nType the username to confirm:');
     if (typed == null) return;
     if (normalizeUsername(typed) !== normalizeUsername(username)){ alert('Username did not match — nothing deleted.'); return; }
+    // Save/Reset both show "Saving…/Resetting…" before their await; Delete jumped straight to the
+    // fetch with no sign the click registered — added the same in-progress state here for parity.
+    var btn = document.getElementById('adminDeleteBtn');
+    if (btn){ btn.disabled = true; btn.textContent = '🗑 Deleting…'; }
     var r = await api('/api/admin/account', { body: { username: username, action: 'delete' }, auth: true });
     if (r.ok && r.data.ok){ alert('Account “' + username + '” deleted.'); openAdmin(); }
-    else alert((r.data && r.data.error) || 'Delete failed.');
+    else {
+      alert((r.data && r.data.error) || 'Delete failed.');
+      if (btn){ btn.disabled = false; btn.textContent = '🗑 Delete account permanently'; }
+    }
   };
   function normalizeUsername(u){ return String(u == null ? '' : u).trim().toLowerCase(); }
 

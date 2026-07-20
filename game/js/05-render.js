@@ -651,10 +651,33 @@
     });
   }
 
+  // A stray earlier setTimeout used to be able to hide a NEWER toast early: two showToast() calls
+  // less than 1800ms apart left two pending hide-timers racing, and whichever had fired first
+  // (scheduled from the earlier call) could clear the 'show' class while the later message still
+  // had time left, cutting it short. Tracking (and clearing) the pending timer means every call
+  // always gets its own full 1800ms, no matter how soon after the previous one it fires.
+  var _toastHideTimer = null;
   function showToast(msg){
     el.toast.textContent = msg;
+    if (_toastHideTimer) clearTimeout(_toastHideTimer);
+    if (el.toast.classList.contains('show')){
+      // Already visible — just refresh how long it stays up; no need to re-trigger the entrance.
+      _toastHideTimer = setTimeout(function(){ el.toast.classList.remove('show'); _toastHideTimer = null; }, 1800);
+      return;
+    }
+    // Calling showToast() in the same tick as other DOM work (a chest opening, a view switching —
+    // exactly what advanceToNextLevel/handleBattleVictory do right before their toasts) can land
+    // the class-add in the same style/layout pass as that other work, leaving the slide-down
+    // transition with no committed "before" frame to animate away from: confirmed via testing,
+    // the toast then sits fully opaque but pinned in its off-screen resting position — invisible
+    // despite 'show' being applied and never erroring. Forcing a synchronous reflow (reading
+    // offsetHeight) BEFORE adding the class commits the resting position first, so the browser
+    // always has a real starting point to transition from. Deliberately not requestAnimationFrame
+    // here — rAF is throttled/paused on a backgrounded tab and would silently reintroduce the
+    // exact same failure mode; a forced reflow has no such dependency.
+    void el.toast.offsetHeight;
     el.toast.classList.add('show');
-    setTimeout(function(){ el.toast.classList.remove('show'); }, 1800);
+    _toastHideTimer = setTimeout(function(){ el.toast.classList.remove('show'); _toastHideTimer = null; }, 1800);
   }
 
   // ---------- Question chances: 3 wrong on ONE question = reveal the answer & move on ----------
@@ -874,7 +897,14 @@
     _as.solves++;
     if (rating === 3) _as.stars3 = (_as.stars3 || 0) + 1;   // perfect (par) solves
     state.solveClock = (state.solveClock || 0) + 1; // the Farm's growth clock (18-farm.js)
-    
+    // A crop/animal maturing was previously silent (the Farm view is closed while solving) —
+    // announce it the moment it actually crosses ready, not just whenever the player next
+    // happens to check. Delayed so it doesn't fight the "Solved!" line for the player's attention.
+    if (typeof farmCheckNewlyReady === 'function'){
+      var _farmMsg = farmCheckNewlyReady();
+      if (_farmMsg) setTimeout(function(){ showToast(_farmMsg); }, 2200);
+    }
+
     // Gate logic moved to the end of handleSolved
 
     addHeroXp(xpEarned);

@@ -116,6 +116,34 @@
     return { ready: remain === 0, remain: remain, hungry: false, elapsed: elapsed, need: FARM_ANIMAL_SOLVES };
   }
 
+  // Call once per solveClock tick (from handleSolved in 05-render.js). Crops/animals mature purely
+  // by comparing solveClock deltas, but the Farm view is mutually exclusive with the equation/
+  // battle views where solving happens — so nothing was ever checking "did anything just cross
+  // its ready threshold" at the moment it actually happened. Without this, a ripe crop or grown
+  // animal was only discoverable by chance, next time the player happened to reopen the Farm.
+  // Compares progress at THIS clock tick against the tick before it — "ready now, not ready one
+  // solve ago" means it matured on exactly this solve, not that it's been sitting ready a while
+  // (which would otherwise re-fire the toast on every subsequent solve).
+  function farmCheckNewlyReady(){
+    if (!state.farm) return null;
+    var f = ensureFarmShape(), now = farmClock(), justNow = [];
+    f.plots.forEach(function(p){
+      if (!p || !p.crop) return;
+      if (cropProgress(p, now).ready && !cropProgress(p, now - 1).ready){
+        var c = FARM_CROPS[p.crop];
+        if (c) justNow.push(c.icon + ' ' + c.name);
+      }
+    });
+    f.animals.forEach(function(a){
+      if (!a || !a.type) return;
+      if (animalProgress(a, now).ready && !animalProgress(a, now - 1).ready){
+        var an = FARM_ANIMALS[a.type];
+        if (an) justNow.push(an.icon + ' ' + an.name);
+      }
+    });
+    return justNow.length ? ('🌾 Ready on the Farm: ' + justNow.join(', ') + '!') : null;
+  }
+
   // ---------- Shared "the deed is done" plumbing ----------
   // Success: buy-beep + HUD refresh (updateStats also autosaves). Failure: sad beep.
   // Either way: toast the message and re-render the farm if it's on screen.

@@ -603,7 +603,13 @@
     border-radius: 12px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     transition: transform 0.4s ease;
-    z-index: 20;
+    /* Was 20 — every in-game modal/overlay this can legitimately fire alongside sits at 60-200
+       (.chst-overlay:60, .bossgate-overlay/.chipv-overlay:200, etc.), so a toast could silently
+       render fully hidden behind one (confirmed: the victory chest hid the "Trophy obtained"
+       toast completely). A toast is meant to always be seen, so it now outranks every gameplay
+       overlay — only the true system-level layers (tooltip 100000, settings 90000) still sit
+       above it, which is the right order if those ever happen to coincide. */
+    z-index: 500;
     font-size: 14px;
     text-align:center;
   }
