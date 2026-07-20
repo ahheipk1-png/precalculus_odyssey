@@ -136,8 +136,42 @@
     document.querySelectorAll('.view-container').forEach(function(v){ v.classList.remove('active'); });
     var eq = document.getElementById('equationView');
     if (eq) eq.classList.add('active');
-    if (typeof loadProblem === 'function') loadProblem();
     if (typeof playMusic === 'function') playMusic('practice');
+    // Coming back to Practice right after clearing an arena — even after a detour through
+    // Wonderland/Earth Hub/etc. in between — ask once whether to keep going into the new arena
+    // or jump to the Star Atlas to pick a different one, instead of silently dropping the player
+    // into whatever arena they landed on (player: "ask...challenge the next arena by default, or
+    // bring player to the atlas to choose"). Cleared immediately so it only asks once per advance,
+    // no matter how long the detour before the player next clicks Practice.
+    if (state.justAdvancedArena){
+      state.justAdvancedArena = false;
+      if (typeof showNextArenaChoice === 'function'){ showNextArenaChoice(); return; }
+    }
+    if (typeof loadProblem === 'function') loadProblem();
+  }
+
+  // The choice screen itself + its two outcomes.
+  function showNextArenaChoice(){
+    var ov = document.getElementById('nextArenaChoiceOverlay');
+    if (!ov){ if (typeof loadProblem === 'function') loadProblem(); return; }   // markup missing — just proceed
+    var titleEl = document.getElementById('nextArenaChoiceTitle');
+    if (titleEl){
+      var arena = (typeof getArena === 'function') ? getArena(state.level) : null;
+      titleEl.textContent = 'Ready for Arena ' + state.level + (arena && arena.topic ? ' · ' + arena.topic : '') + '?';
+    }
+    ov.hidden = false;
+    if (typeof playSfx === 'function') playSfx('machine');
+  }
+  function confirmPracticeNextArena(){
+    var ov = document.getElementById('nextArenaChoiceOverlay');
+    if (ov) ov.hidden = true;
+    if (typeof loadProblem === 'function') loadProblem();
+  }
+  function chooseFromAtlasInstead(){
+    var ov = document.getElementById('nextArenaChoiceOverlay');
+    if (ov) ov.hidden = true;
+    if (typeof openStarAtlas === 'function') openStarAtlas();
+    else if (typeof openCodex === 'function') openCodex('atlas');
   }
 
   // ------------------------------------------------------------------

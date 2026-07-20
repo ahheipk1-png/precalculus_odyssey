@@ -358,6 +358,12 @@
     var starSuffix = isNewStar ? ' ⭐ Perfect clear!' : '';
     if (state.level < state.maxLevel) {
       state.level++;
+      // Consumed by returnToPractice() (15-map.js) — if the player leaves (Wonderland, Earth Hub,
+      // anywhere) and comes back via the header's "📚 Practice" button, THAT's when they get asked
+      // "challenge this arena, or pick a different one from the Atlas" rather than being silently
+      // dropped into the new arena. Continuing directly here (post-victory, or "Move to Next
+      // Arena" from the clear notice) is its own explicit choice already — no need to ask again.
+      state.justAdvancedArena = true;
       if (byTraining) {
         showToast('Arena ' + state.level + ' mastered through training! 🎓🎉' + starSuffix);
       } else {
