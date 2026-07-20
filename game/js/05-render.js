@@ -794,9 +794,20 @@
   // feedback line) announcing the gate is open, so the player can't miss it. Clicking OK just
   // closes the modal — it does NOT force the player into the boss-choice screen; the persistent
   // yellow "⚔️ Boss Gate Open!" button (header, top of the page) is what opens that (showGateScreen).
+  // Leads with "Arena Clear!" — the old copy jumped straight to "Boss Gate Open!" without ever
+  // telling the player they'd just finished the arena (player: "please first show...arena is
+  // clear. and boss gate is open").
   function showBossGateNotice(){
     var ov = document.getElementById('bossGateOverlay');
     if (!ov) { showGateScreen(); return; }   // fallback if the overlay markup is ever missing
+    var n = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(state.level) : state.level;
+    var goal = (typeof ARENA_GOAL !== 'undefined') ? ARENA_GOAL : 10;
+    var iconEl = ov.querySelector('.gameover-emoji');
+    var titleEl = ov.querySelector('.bossgate-title');
+    var textEl = ov.querySelector('.gameover-text');
+    if (iconEl) iconEl.textContent = '🌟';
+    if (titleEl) titleEl.textContent = 'Arena ' + n + ' Clear!';
+    if (textEl) textEl.innerHTML = 'You solved all ' + goal + ' questions here — nice work! The <b>⚔️ Boss Gate is now open</b> at the top whenever you\'re ready to challenge the planet boss, or keep training first.';
     ov.hidden = false;
     if (typeof playSfx === 'function') playSfx('machine');
     setGateButton(true);   // reveal the top button, gold + open, now
@@ -897,12 +908,14 @@
         // The Second Chance: a pure quiz, no boss — resolve completion directly (js/52-comeback-arena.js).
         setTimeout(function(){ if (typeof handleComebackComplete === 'function') handleComebackComplete(); }, reduceMotion ? 150 : 900);
       } else {
-        // Reached the arena goal (10) — open the Boss Gate. The gate opens ONLY after the
-        // finale question; there is no "skip the boss" shortcut (removed).
+        // Reached the arena goal (10) — open the Boss Gate. No more questions load after this:
+        // the notice is now the arena's stopping point, offering exactly two ways forward
+        // (challenge the boss, or move on via training) — it used to auto-load another practice
+        // question underneath itself, which buried that choice (player: "the screen shouldn't
+        // show the question anymore...there should be only two choices").
         state.gatePending = true;
         state.bossGateUnlocked = true;
         setTimeout(showBossGateNotice, reduceMotion ? 150 : 1300);
-        setTimeout(loadProblem, reduceMotion ? 150 : 1300);   // keep practising underneath the notice
       }
     } else {
       setTimeout(loadProblem, reduceMotion ? 150 : 1300);

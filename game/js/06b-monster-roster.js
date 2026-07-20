@@ -308,10 +308,11 @@
     return !!(a && a.special === 'blackhole');
   }
 
+  // The hero-level gate (player: "remove the level restriction for arenas") is gone — reaching
+  // the monster's arena is the only lock left.
   function getMonsterLockReason(monster) {
     if (state.testMode) return '';   // admin/test account: every monster is unlocked (non-persistent, re-derived each session)
     if (monster.room > state.level) return 'Reach Arena ' + monster.room;
-    if (state.heroLvl < monster.requiredHeroLvl) return 'Hero Lv. ' + monster.requiredHeroLvl;
     return '';
   }
   // Reads the REAL per-save defeated map for EVERYONE, including admin — a monster you've actually

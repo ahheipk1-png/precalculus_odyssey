@@ -65,7 +65,10 @@
   // Gone Fishin' 🎣 — catch the fish whose number matches the rule.
   // ===========================================================================
   var FISH_MAX_LEVEL = 5;
-  var FISH = { active: false, timer: 0, spawner: 0, score: 0, combo: 0, best: 0, rule: null, catches: 0, wrong: 0, seq: 0, level: 1, target: 0 };
+  // Rule-pill background rotation — a new colour each time the rule changes, so the swap itself
+  // catches the eye (not just the new text).
+  var FISH_RULE_BG = ['#ffd86b', '#ff6f91', '#66e0ff', '#9a6cff', '#72f4c7', '#ffb454'];
+  var FISH = { active: false, timer: 0, spawner: 0, score: 0, combo: 0, best: 0, rule: null, catches: 0, wrong: 0, seq: 0, level: 1, target: 0, ruleColorIdx: -1 };
 
   function fishConf(diff){
     if (diff === 'hard')   return { min: 1, max: 30, dur: 3.4, spawn: 560 };
@@ -86,7 +89,7 @@
     return { min: base.min, max: base.max,
       dur: Math.max(2.2, base.dur - (lv - 1) * 0.5),
       spawn: Math.max(320, base.spawn - (lv - 1) * 70),
-      target: 4 + lv * 2 };   // 6, 8, 10, 12, 14 catches to clear levels 1-5
+      target: 6 + lv * 4 };   // 10, 14, 18, 22, 26 catches to clear levels 1-5
   }
 
   // PURE: a catch rule + its label.
@@ -227,7 +230,12 @@
 
   function fishUpdateRule(){
     var r = document.getElementById('fishRule');
-    if (r && FISH.rule) r.innerHTML = '🎣 ' + FISH.rule.label;
+    if (!r || !FISH.rule) return;
+    r.innerHTML = '🎣 ' + FISH.rule.label;
+    var next = rand(0, FISH_RULE_BG.length - 1);
+    while (FISH_RULE_BG.length > 1 && next === FISH.ruleColorIdx) next = rand(0, FISH_RULE_BG.length - 1);
+    FISH.ruleColorIdx = next;
+    r.style.background = FISH_RULE_BG[next];
   }
   function fishUpdateHud(){
     var hud = document.getElementById('fishHud');

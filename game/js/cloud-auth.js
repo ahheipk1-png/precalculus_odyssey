@@ -210,7 +210,11 @@
     }
     if (sess && !document.getElementById('authLogoutBtn')){
       var lb = document.createElement('button');
-      lb.className = 'reset-btn'; lb.id = 'authLogoutBtn'; lb.type = 'button';
+      // reset-btn-signout: on the phone/iPad "☰ Menu" dropdown (styles.css) this gets a divider
+      // + coral tint so it doesn't blend into the row of nav pills above it (player: "cannot find
+      // log out button in mobile version" — it was there, just visually identical to Practice/
+      // Profile/Earth Hub/etc and easy to miss as the very last item in the list).
+      lb.className = 'reset-btn reset-btn-signout'; lb.id = 'authLogoutBtn'; lb.type = 'button';
       lb.title = 'Log out of ' + esc(sess.username); lb.textContent = '🚪 Log out'; lb.onclick = window.authLogout;
       bar.appendChild(lb);
     }
@@ -309,6 +313,7 @@
     var r = await api('/api/admin/player?username=' + encodeURIComponent(username), { method: 'GET', auth: true });
     if (!(r.ok && r.data.ok)){ body.innerHTML = '<button class="btn btn-ghost" onclick="authOpenAdmin()">← Back</button><p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load player.') + '</p>'; return; }
     body.innerHTML = renderPlayerDetail(r.data.account, r.data.progress);
+    if (r.data.account && !r.data.account.isAdmin) loadAdminSaveTools(r.data.account.username);
   };
 
   function row(label, val){ return '<div class="pd-row"><span class="pd-k">' + label + '</span><span class="pd-v">' + val + '</span></div>'; }
@@ -369,8 +374,97 @@
       var mgRows = mgKeys.map(function(k){ var m = mg[k] || {}; return row('🎮 ' + esc(k), 'high ' + (m.highScore != null ? m.highScore : (m.unlockedCount != null ? ('level ' + m.unlockedCount) : '—')) + ' · plays ' + (m.plays || 0)); }).join('');
       h += '<div class="pd-card"><div class="pd-title">🕹️ Mini-games</div>' + mgRows + '</div>';
     }
+
+    // Admin tools — edit the player's authoritative cloud save (not for the admin/test account).
+    if (!a.isAdmin){
+      h += '<div class="pd-card admin-tools" id="adminToolsCard">' +
+        '<div class="pd-title">🛠️ Admin tools — edit cloud save</div>' +
+        '<p class="admin-empty" id="adminToolsBody">Loading cloud save…</p></div>';
+    }
     return h;
   }
+
+  // Curated, safe-to-edit numeric fields — must mirror CURATED in functions/api/admin/save.js.
+  var ADMIN_SAVE_FIELDS = [
+    { key: 'level',        label: '🪐 Arena / level',   min: 1, max: 65 },
+    { key: 'coins',        label: '💵 Cash',            min: 0, max: 1e9 },
+    { key: 'gold',         label: '🥇 Gold',            min: 0, max: 1e9 },
+    { key: 'silver',       label: '🥈 Silver',          min: 0, max: 1e9 },
+    { key: 'heroLvl',      label: '🦸 Hero level',      min: 1, max: 999 },
+    { key: 'playerMaxHp',  label: '❤️ Max HP',          min: 1, max: 1e7 },
+    { key: 'playerHp',     label: '❤️ Current HP',      min: 0, max: 1e7 },
+    { key: 'playerMaxMp',  label: '💧 Max MP',          min: 0, max: 1e7 },
+    { key: 'playerMp',     label: '💧 Current MP',      min: 0, max: 1e7 },
+    { key: 'wonderPasses', label: '🎟️ Wonderland passes', min: 0, max: 1e6 }
+  ];
+
+  // Load the player's latest cloud save and render the editable admin-tools card.
+  async function loadAdminSaveTools(username){
+    var card = document.getElementById('adminToolsBody');
+    if (!card) return;
+    var r = await api('/api/admin/save?username=' + encodeURIComponent(username), { method: 'GET', auth: true });
+    var deleteBtn = '<button class="btn btn-ghost admin-btn admin-danger" onclick="authAdminDeleteAccount(\'' + esc(username) + '\')">🗑 Delete account permanently</button>';
+    if (!(r.ok && r.data.ok)){
+      card.innerHTML = '<p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load cloud save.') + '</p>' +
+        '<div class="admin-actions">' + deleteBtn + '</div>';
+      return;
+    }
+    if (!r.data.hasSave){
+      card.innerHTML = '<p class="admin-empty">No cloud save yet — this player hasn’t enabled Cloud Save or hasn’t synced. Values become editable once they do. You can still remove the account.</p>' +
+        '<div class="admin-actions">' + deleteBtn + '</div>';
+      return;
+    }
+    var f = r.data.fields || {};
+    var inputs = ADMIN_SAVE_FIELDS.map(function(fld){
+      var val = (f[fld.key] == null ? '' : f[fld.key]);
+      return '<label class="admin-field"><span class="admin-field-label">' + fld.label + '</span>' +
+        '<input class="admin-field-input" type="number" id="adminfld_' + fld.key + '" value="' + esc(val) +
+        '" min="' + fld.min + '" max="' + fld.max + '" step="1"></label>';
+    }).join('');
+    card.innerHTML =
+      '<p class="admin-tools-note">Editing profile <b>' + esc(r.data.playerName || username) + '</b> (revision ' + esc(r.data.revision) + '). ' +
+        'Changes write straight to the cloud save; the player picks them up on their next sync (a “newer cloud save” prompt) or on cloud recovery.</p>' +
+      '<div class="admin-field-grid">' + inputs + '</div>' +
+      '<p class="auth-msg" id="adminToolsMsg"></p>' +
+      '<div class="admin-actions">' +
+        '<button class="btn btn-primary admin-btn" onclick="authAdminSaveOverride(\'' + esc(username) + '\')">💾 Save overrides</button>' +
+        '<button class="btn btn-ghost admin-btn" onclick="authAdminResetPlayer(\'' + esc(username) + '\')">↺ Reset to beginning</button>' +
+        deleteBtn +
+      '</div>';
+  }
+  window.loadAdminSaveTools = loadAdminSaveTools;
+
+  function adminToolsMsg(text, kind){ var m = document.getElementById('adminToolsMsg'); if (m){ m.textContent = text || ''; m.className = 'auth-msg' + (kind ? (' auth-' + kind) : ''); } }
+
+  window.authAdminSaveOverride = async function(username){
+    var fields = {};
+    ADMIN_SAVE_FIELDS.forEach(function(fld){
+      var inp = document.getElementById('adminfld_' + fld.key);
+      if (inp && inp.value !== '') fields[fld.key] = inp.value;
+    });
+    adminToolsMsg('Saving…');
+    var r = await api('/api/admin/save', { body: { username: username, action: 'override', fields: fields }, auth: true });
+    if (r.ok && r.data.ok){ adminToolsMsg('Saved. Cloud save is now revision ' + r.data.revision + '.', 'ok'); }
+    else adminToolsMsg((r.data && r.data.error) || 'Save failed.', 'err');
+  };
+
+  window.authAdminResetPlayer = async function(username){
+    if (!window.confirm('Reset ' + username + ' to the very beginning? Their cloud save progress (arena, cash, gear-driven stats) is wiped on their next sync. This cannot be undone.')) return;
+    adminToolsMsg('Resetting…');
+    var r = await api('/api/admin/save', { body: { username: username, action: 'reset' }, auth: true });
+    if (r.ok && r.data.ok){ adminToolsMsg('Reset. The player restarts from Arena 1 on their next cloud sync.', 'ok'); loadAdminSaveTools(username); }
+    else adminToolsMsg((r.data && r.data.error) || 'Reset failed.', 'err');
+  };
+
+  window.authAdminDeleteAccount = async function(username){
+    var typed = window.prompt('Permanently DELETE the account “' + username + '” and all its cloud data?\n\nType the username to confirm:');
+    if (typed == null) return;
+    if (normalizeUsername(typed) !== normalizeUsername(username)){ alert('Username did not match — nothing deleted.'); return; }
+    var r = await api('/api/admin/account', { body: { username: username, action: 'delete' }, auth: true });
+    if (r.ok && r.data.ok){ alert('Account “' + username + '” deleted.'); openAdmin(); }
+    else alert((r.data && r.data.error) || 'Delete failed.');
+  };
+  function normalizeUsername(u){ return String(u == null ? '' : u).trim().toLowerCase(); }
 
   window.authAdminAction = async function (username, action){
     var r = await api('/api/admin/account', { body: { username: username, action: action }, auth: true });

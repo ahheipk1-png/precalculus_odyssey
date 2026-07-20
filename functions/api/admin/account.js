@@ -1,5 +1,5 @@
 // POST /api/admin/account — admin-only actions on one account (item 2):
-//   approve | reject | disable | enable | makeAdmin | setPassword (override).
+//   approve | reject | disable | enable | makeAdmin | setPassword (override) | delete.
 import { json, bad, nowIso, authAdmin, normalizeUsername, validPassword, newSalt, hashPassword } from '../cloud/_shared.js';
 
 export async function onRequestPost(context) {
@@ -40,6 +40,15 @@ export async function onRequestPost(context) {
       const salt = newSalt(), h = await hashPassword(salt, pw);
       await DB.prepare(`UPDATE cloud_accounts SET password_hash=?1, password_salt=?2, password_plain=?3, updated_at=?4 WHERE account_id=?5`).bind(h, salt, pw, now, acc.account_id).run();
       await revokeSessions();   // force re-login with the new password
+      break;
+    }
+    case 'delete': {
+      // Hard-delete the account and everything it owns. Guard: never delete an
+      // admin account (avoids locking out the dashboard); demote it first.
+      if (acc.is_admin) return bad('IS_ADMIN', 'Cannot delete an admin account. Remove admin rights first.', 400);
+      await DB.prepare(`DELETE FROM cloud_sessions WHERE account_id=?1`).bind(acc.account_id).run();
+      await DB.prepare(`DELETE FROM player_profiles WHERE account_id=?1`).bind(acc.account_id).run();
+      await DB.prepare(`DELETE FROM cloud_accounts WHERE account_id=?1`).bind(acc.account_id).run();
       break;
     }
     default:

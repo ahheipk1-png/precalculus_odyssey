@@ -20,7 +20,7 @@
     materials: {},     // legacy (pre-chips); kept empty for back-compat / migration
     schemaVersion: 2,  // save-migration version (see migrateSave in 03-save.js)
     codex: { bodies: {}, fragments: {} }, // Star Log: unlocked astronomy bodies + boss memory fragments. See 14-lore.js.
-    wonderPasses: 0,   // Wonderland entry tickets (earned by finishing rooms; see awardWonderPasses in 09-items.js)
+    wonderPasses: 5,   // Wonderland entry tickets — 5 given to start (player: "given 5 wonderland passes to start"); more earned by finishing rooms, see awardWonderPasses in 09-items.js
     passEarns: {},     // level -> { first: bool, perfects: n } — drives the diminishing pass schedule
     inventory: {},     // consumables/ingredients: item id -> count (see ITEMS in 09-items.js)
     poisonArmed: false,// a Poison Vial was used — the NEXT battle's monster takes poison damage

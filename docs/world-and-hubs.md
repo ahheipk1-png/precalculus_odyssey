@@ -54,7 +54,8 @@ buttons call the start function directly, bypassing `wonderPlay`) is free until 
 lobby. Bullseye Numbers and Merry Math-Go-Round were removed from the lobby grid; only:
 - **Gone Fishin' 🎣** (`openFishin` → `fishStart(diff)`) remains, and was reworked **2026-07-16 from
   timed-score to LEVEL-BASED**: each of `FISH_MAX_LEVEL` (5) levels has a `target` catch count
-  (`fishLevelConf`, 6/8/10/12/14 fish) that scales spawn speed up each level; catching `target` matching
+  (`fishLevelConf`, **10/14/18/22/26 fish** — raised **2026-07-19**, player: "too easy... add more
+  targets", was 6/8/10/12/14) that scales spawn speed up each level; catching `target` matching
   fish (`fishLevelUp`) advances to a faster, harder level; clearing all 5 pays a completion bonus.
   Ends on `fishEnd(allCleared)`. (This also fixed a latent bug: the old code called a since-deleted
   `bullReward`, which would have thrown; replaced with a local `fishReward`.)

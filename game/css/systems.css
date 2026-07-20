@@ -250,6 +250,19 @@
   .pd-table th{ color:var(--chalk-dim); font-weight:700; }
   .pd-table td:first-child, .pd-table th:first-child{ text-align:left; }
 
+  /* ---------- Admin tools: edit a player's cloud save (cloud-auth.js) ---------- */
+  .pd-card.admin-tools{ border-color:rgba(240,180,90,0.35); background:rgba(240,180,90,0.06); }
+  .admin-tools-note{ color:var(--chalk-dim); font-size:13.5px; line-height:1.5; margin:0 0 10px; }
+  .admin-tools-note b{ color:var(--chalk); }
+  .admin-field-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px 14px; margin-bottom:10px; }
+  .admin-field{ display:flex; flex-direction:column; gap:3px; }
+  .admin-field-label{ color:var(--chalk-dim); font-size:12.5px; }
+  .admin-field-input{ background:rgba(0,0,0,0.28); border:1px solid rgba(244,241,232,0.18); border-radius:8px;
+    color:var(--chalk); font-size:15px; padding:6px 9px; font-variant-numeric:tabular-nums; width:100%; box-sizing:border-box; }
+  .admin-field-input:focus{ outline:2px solid var(--sky); outline-offset:1px; border-color:var(--sky); }
+  .admin-btn.admin-danger{ color:var(--coral); border-color:rgba(230,110,95,0.5); margin-left:auto; }
+  .admin-btn.admin-danger:hover{ background:rgba(230,110,95,0.14); }
+
   /* ---------- Cloud Save (cloud-ui.js) ---------- */
   #cloudBtn.cst-ok{ color:#7bd88f; border-color:#7bd88f; }
   #cloudBtn.cst-busy{ color:var(--sky); border-color:var(--sky); }
@@ -568,7 +581,11 @@
   .inf-score{ font-size:26px; font-weight:800; color:var(--chalk); margin-bottom:8px; font-variant-numeric:tabular-nums; }
   .inf-rewards{ font-size:16px; color:var(--sky); margin-bottom:18px; line-height:1.5; }
   .inf-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-  @media (max-width:560px){ .inf-choices{ grid-template-columns:1fr; } }
+  .inf-rounds{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px; }
+  .inf-round-btn{ display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; }
+  .inf-round-n{ font-size:17px; }
+  .inf-round-pay{ font-family:'Patrick Hand',cursive; font-size:20px; color:var(--yellow); }
+  @media (max-width:560px){ .inf-choices{ grid-template-columns:1fr; } .inf-rounds{ grid-template-columns:1fr; } }
 
   /* ---- New question styles: Identify (mcOnly) & Compute (directInput) ---- */
   .question-prompt{ text-align:center; padding:18px 14px; min-height:120px; display:flex; flex-direction:column; justify-content:center; gap:10px; }

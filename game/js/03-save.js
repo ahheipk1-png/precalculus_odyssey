@@ -141,6 +141,14 @@
   }
 
   function applySnapshotToState(snap){
+    // An admin "Reset to beginning" writes an `_adminReset` marker into the cloud
+    // save (functions/api/admin/save.js). When the player adopts that save, honour
+    // it: wipe to a fresh start instead of loading the (zeroed) snapshot, then let
+    // the normal save loop persist the clean state under the same profile id/name.
+    if (snap && snap._adminReset){
+      if (typeof resetPlayerState === 'function') resetPlayerState();
+      return;
+    }
     migrateSave(snap);
     state.level = snap.level;
     // Curriculum shrank 187 -> 65 arenas (Bible rebuild). Clamp any old save that was
@@ -235,7 +243,7 @@
     state.schemaVersion = 2;
     state.materials = {};
     state.codex = { bodies: {}, fragments: {} };
-    state.wonderPasses = 0;
+    state.wonderPasses = 5;   // 5 starting passes (player: "given 5 wonderland passes to start")
     state.passEarns = {};
     state.inventory = {};
     state.poisonArmed = false;

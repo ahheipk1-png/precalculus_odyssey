@@ -2106,6 +2106,17 @@
     .header-actions.header-menu-open .reset-btn{
       display:flex; align-items:center; width:100%; justify-content:flex-start; text-align:left;
     }
+    /* Log out otherwise looks identical to every nav pill above it and gets lost as the very
+       last item in the list (player: "cannot find log out button in mobile version") — a divider
+       + coral tint (matches --coral, used elsewhere for exit/attention actions) sets it apart as
+       a session action, not another destination to navigate to. Desktop's inline row is untouched. */
+    .header-actions.header-menu-open .reset-btn-signout{
+      margin-top:8px; border-top:1px solid rgba(255,111,145,0.35); padding-top:18px!important;
+      color:var(--coral)!important; border-color:rgba(255,111,145,0.5)!important;
+    }
+    .header-actions.header-menu-open .reset-btn-signout:hover{
+      background:rgba(255,111,145,0.14)!important;
+    }
   }
   @media (max-width:640px){
     .header-actions.header-menu-open{ max-width:min(90vw, 280px); }

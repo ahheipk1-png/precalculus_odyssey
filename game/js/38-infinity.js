@@ -7,6 +7,15 @@
   // which need the balance UI). Globals, no IIFE.
   // ============================================================================
   var INF = { active: false, q: null, arena: 0, asked: 0, correct: 0, streak: 0, best: 0, target: 10, locked: false, _t: null };
+  // Player picks the round length up front — each length pays a FIXED pass reward for finishing
+  // it (not scaled by accuracy), with the longest round paying better than straight-line so going
+  // the distance is worth it (player: "3 questions...1 pass; 6 questions...2 passes; 10
+  // questions...5 passes...add those buttons to choose").
+  var INF_ROUNDS = [
+    { target: 3, passes: 1 },
+    { target: 6, passes: 2 },
+    { target: 10, passes: 5 }
+  ];
 
   function _infMaxArena(){
     var cap = (typeof CURRICULUM_MAX === 'number' && CURRICULUM_MAX > 0) ? CURRICULUM_MAX : 65;
@@ -58,11 +67,35 @@
   }
 
   function openArenaInfinity(){
-    INF.active = true; INF.asked = 0; INF.correct = 0; INF.streak = 0; INF.best = 0; INF.locked = false;
+    INF.active = false;   // not counting as "in a round" until a length is actually picked
     if (INF._t){ clearTimeout(INF._t); INF._t = null; }
     document.querySelectorAll('.view-container.active').forEach(function(x){ x.classList.remove('active'); });
     _infView().classList.add('open');
     if (typeof playMusic === 'function') playMusic('practice');
+    infRenderPicker();
+  }
+
+  function infRenderPicker(){
+    var v = document.getElementById('infinityView'); if (!v) return;
+    v.innerHTML =
+      '<div class="inf-card">' +
+        '<button class="inf-close" onclick="closeArenaInfinity()" title="Leave Arena Infinity">✕</button>' +
+        '<div class="inf-kicker">♾️ Arena Infinity</div>' +
+        '<div class="inf-headline">Choose a round</div>' +
+        '<div class="inf-topic">Mixed-review questions from arenas you\'ve already cleared. Finish the whole round to collect the passes — leaving early pays nothing.</div>' +
+        '<div class="inf-rounds">' + INF_ROUNDS.map(function(r){
+          return '<button type="button" class="inf-choice inf-round-btn" onclick="infStartRound(' + r.target + ')">' +
+            '<span class="inf-round-n">' + r.target + ' Questions</span>' +
+            '<span class="inf-round-pay">🎟️ ' + r.passes + ' Pass' + (r.passes > 1 ? 'es' : '') + '</span></button>';
+        }).join('') +
+        '</div>' +
+      '</div>';
+  }
+
+  function infStartRound(target){
+    var round = INF_ROUNDS.filter(function(r){ return r.target === target; })[0] || INF_ROUNDS[INF_ROUNDS.length - 1];
+    INF.active = true; INF.asked = 0; INF.correct = 0; INF.streak = 0; INF.best = 0; INF.locked = false;
+    INF.target = round.target;
     infNextQuestion();
   }
 
@@ -147,7 +180,10 @@
   function infFinish(){
     var correct = INF.correct, target = INF.target;
     var xp = correct * 10;
-    var passes = Math.max(1, Math.floor(correct / 3));
+    // Passes are a FIXED reward for the chosen round length (INF_ROUNDS), not scaled by
+    // accuracy — finishing the round is what counts, per the same table shown on the picker.
+    var round = INF_ROUNDS.filter(function(r){ return r.target === target; })[0];
+    var passes = round ? round.passes : Math.max(1, Math.floor(correct / 3));
     var cash = correct * 15;
     var loot = { gold: Math.ceil(correct / 4), silver: Math.ceil(correct / 2), chips: { energy_core: Math.max(1, Math.ceil(correct / 3)) } };
     if (typeof addHeroXp === 'function') addHeroXp(xp);

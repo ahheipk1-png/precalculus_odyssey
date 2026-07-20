@@ -25,20 +25,13 @@
     if (typeof playMusic === 'function') playMusic('arena');
   }
 
-  // Aggregate lock reason for a gauntlet card: same-room check once, hero-level check against
-  // the STRONGEST member (clearing the gate for the hardest link clears it for the whole chain).
-  // `bonus` pushes the requirement ABOVE what the members alone would need — the 3-Boss card uses
-  // this deliberately so it's not clearable just by meeting the normal arena-boss gate: reaching it
-  // for real requires extra hero levels, i.e. Arena Infinity grinding (the only repeatable combat-XP
-  // source, since regular monster kills are one-time) and/or Cash for early gear upgrades.
-  function cardLockReason(members, bonus) {
+  // Lock reason for a gauntlet card: the only remaining gate is reaching the arena the chain's
+  // first member lives in. The hero-level gate (player: "remove the level restriction for
+  // arenas") is gone — clearing a gauntlet's arena-boss requirement is enough to start it.
+  function cardLockReason(members) {
     if (!members.length) return '';
     if (state.testMode) return '';
     if (members[0].room > state.level) return 'Reach Arena ' + members[0].room;
-    var maxLvl = 0;
-    members.forEach(function(m){ if (m.requiredHeroLvl > maxLvl) maxLvl = m.requiredHeroLvl; });
-    maxLvl += (bonus || 0);
-    if (state.heroLvl < maxLvl) return 'Hero Lv. ' + maxLvl;
     return '';
   }
   function gauntletMembersHtml(members) {
@@ -53,8 +46,8 @@
         (i < members.length - 1 ? '<div class="gauntlet-arrow">→</div>' : '');
     }).join('');
   }
-  function buildGauntletCard(members, label, icon, bonus) {
-    var lockReason = cardLockReason(members, bonus);
+  function buildGauntletCard(members, label, icon) {
+    var lockReason = cardLockReason(members);
     var isLocked = !!lockReason;
     var deadCount = members.filter(function(m){ return isMonsterDefeated(monsterKey(m)); }).length;
     var fullyCleared = deadCount === members.length;
@@ -68,8 +61,7 @@
       (fullyCleared ? '<div class="gauntlet-cleared-banner">☑️ CLEARED</div>' : '') +
       '<div class="gauntlet-row">' + gauntletMembersHtml(members) + '</div>' +
       (deadCount > 0 && !fullyCleared ? '<div class="monster-select-stat gauntlet-progress">⏳ ' + deadCount + '/' + members.length + ' defeated — resume from here</div>' : '') +
-      (isLocked ? ('<div class="monster-lock-note">🔒 Locked: ' + lockReason +
-        (bonus ? ' — ♾️ grind Arena Infinity for extra hero XP to reach it' : '') + '</div>') : '');
+      (isLocked ? ('<div class="monster-lock-note">🔒 Locked: ' + lockReason + '</div>') : '');
     if (!fullyCleared && !isLocked) {
       card.addEventListener('click', function(){ startGauntletCard(members); });
     }
@@ -129,8 +121,8 @@
     var grid = document.createElement('div');
     grid.className = 'monster-choices-grid';
     if (easy) grid.appendChild(buildEasyCard(easy));
-    grid.appendChild(buildGauntletCard(chain2, '2-Boss Gauntlet', '⚔️⚔️', 2));
-    grid.appendChild(buildGauntletCard(chain3, '3-Boss Gauntlet', '⚔️⚔️⚔️', 5));
+    grid.appendChild(buildGauntletCard(chain2, '2-Boss Gauntlet', '⚔️⚔️'));
+    grid.appendChild(buildGauntletCard(chain3, '3-Boss Gauntlet', '⚔️⚔️⚔️'));
     wrap.appendChild(grid);
 
     return wrap;
@@ -153,7 +145,7 @@
       var grid = document.createElement('div');
       grid.className = 'monster-choices-grid';
       grid.style.gridTemplateColumns = '1fr';   // one wide card for the 10-chain
-      grid.appendChild(buildGauntletCard(chain, '☠️ THE SINGULARITY — 10-Boss Gauntlet', '⚫', 0));
+      grid.appendChild(buildGauntletCard(chain, '☠️ THE SINGULARITY — 10-Boss Gauntlet', '⚫'));
       wrap.appendChild(grid);
       el.monsterChoices.appendChild(wrap);
       if (el.arenaAdvanceRow) el.arenaAdvanceRow.style.display = 'none';
