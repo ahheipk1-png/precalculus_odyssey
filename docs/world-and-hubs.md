@@ -624,6 +624,35 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-20 batch #33 — Wonderland phone fixes: D-pad no longer scrolls the page; Hoo Hey How
+now shows exactly one back button.** User (phone testers): "hard to control... when the arrow is
+pressed, the screen also moved... there should only one back arrow in the gaming mode... remove
+all other buttons while playing with phone since there are not enough spaces to see everything."
+- **D-pad touch-scroll bug.** The shared on-screen D-pad (`.a2-pad`/`.a2-pad .btn`,
+  `wonderland.css`) used by 6 arcade games — Comet Muncher, Snake, Bubble Blast, Blast Bot, Cargo
+  Bay, Glacier Push, Astro Drop — had no `touch-action` set, so a finger that drifted even slightly
+  during a press was free to be read as a native page pan. This REFINES, not contradicts, batch
+  #32's "touch-control coverage — all clean" conclusion: that audit confirmed the D-pad buttons
+  functionally drive the game (a dispatched click moves the character), but never checked whether
+  *touching* them also triggers the browser's own scroll gesture — a different failure mode.
+  **Fix:** added `touch-action: none;` to both `.a2-pad` and `.a2-pad .btn` — the exact technique
+  already proven on the game canvases (`.a2-canvas`/`.wond-canvas`, commit `afcdb27`). One CSS edit
+  covers all 6 games regardless of whether their buttons use `onclick` (Comet Muncher) or
+  `onpointerdown`/`onpointerup` (Bubble Blast's hold-to-move left/right). Verified live at 375×812:
+  a real drag gesture starting on a D-pad button produced `window.scrollY === 0` before and after
+  (screenshot pixel-identical), spot-checked on Comet Muncher, Bubble Blast, and Cargo Bay.
+- **Hoo Hey How was the one game with multiple back buttons.** Every OTHER Wonderland game already
+  hid the full app header/HUD while playing via `body:has(#wonderlandView.active) ...{display:none
+  !important}` (width-independent, added in the "Wonderland: focused full-screen play mode"
+  commit) — giving 22 of 23 games exactly one visible exit ("← Back"). Hoo Hey How alone renders
+  into its own separate, older container (`#hooHeyView`, `js/27-hoohey.js`) that this selector
+  never matched, so the full global header (Practice/Earth Hub/Atlas/☰ Menu and its dropdown) stayed
+  on screen next to Hoo Hey How's own "← Wonderland" button. **Fix:** extended the selector to
+  `body:has(#wonderlandView.active, #hooHeyView.active)` (`:has()` accepts a comma list) — no
+  changes to Hoo Hey How's own JS/lifecycle needed. Verified live: Hoo Hey How's interactive
+  elements are now just "← Wonderland" + the bet buttons, no header/menu leaking through.
+- Cache token bumped `20260719r → 20260720a`.
+
 **2026-07-19 batch #32 — Full computer/iPad/phone pass: header nav collapses into a "☰ Menu"
 dropdown; a real touch-breaking Weapon Store overflow bug found + fixed; ~15 screens + 15
 keyboard-driven arcade games audited for responsive/touch coverage.** User (screenshot of the

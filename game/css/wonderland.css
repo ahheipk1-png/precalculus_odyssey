@@ -379,18 +379,21 @@
 .wond-item-chip{ border-color: var(--sky); }
 
 /* ============================================================================
-   FOCUSED PLAY MODE â€” while a Wonderland game room is open (#wonderlandView is
-   the active view), hide the whole app chrome (header nav, HUD stats, hero bar,
-   trophies, progress) so the game gets the entire screen. Each game keeps its
-   own top bar with a â† Back button + compact player info (Cash / Passes).
+   FOCUSED PLAY MODE - while a Wonderland game room is open (#wonderlandView) OR
+   Hoo Hey How is open (#hooHeyView - an older, separate container that predates
+   the shared Wonderland shell and never migrated onto it), hide the whole app
+   chrome (header nav, HUD stats, hero bar, trophies, progress) so the game gets
+   the entire screen and phones aren't left with multiple back/nav buttons on top
+   of each other. Each game keeps its own top bar with a Back button + compact
+   player info (Cash / Passes).
    ============================================================================ */
-body:has(#wonderlandView.active) .board-header,
-body:has(#wonderlandView.active) .hud-shell,
-body:has(#wonderlandView.active) .stats-row,
-body:has(#wonderlandView.active) .hero-stats-row,
-body:has(#wonderlandView.active) #trophiesPanel,
-body:has(#wonderlandView.active) .level-progress,
-body:has(#wonderlandView.active) #warpPanel{ display: none !important; }
+body:has(#wonderlandView.active, #hooHeyView.active) .board-header,
+body:has(#wonderlandView.active, #hooHeyView.active) .hud-shell,
+body:has(#wonderlandView.active, #hooHeyView.active) .stats-row,
+body:has(#wonderlandView.active, #hooHeyView.active) .hero-stats-row,
+body:has(#wonderlandView.active, #hooHeyView.active) #trophiesPanel,
+body:has(#wonderlandView.active, #hooHeyView.active) .level-progress,
+body:has(#wonderlandView.active, #hooHeyView.active) #warpPanel{ display: none !important; }
 body:has(#wonderlandView.active) .board{ max-width: 1200px; }
 body:has(#wonderlandView.active) #wonderlandView{ min-height: 80vh; }
 
@@ -484,9 +487,9 @@ body:has(#wonderlandView.active) .wond-tip{ font-size: 16px; }
   border-radius:12px; background:#0b1626; touch-action:none; display:block; margin:0 auto; border:2px solid rgba(102,224,255,.18);
 }
 body:has(#wonderlandView.active) .a2-canvas{ width: min(760px, 92vw, 72vh * var(--ar)); }
-.a2-pad{ display:flex; flex-direction:column; align-items:center; gap:8px; margin:12px 0 4px; }
+.a2-pad{ display:flex; flex-direction:column; align-items:center; gap:8px; margin:12px 0 4px; touch-action:none; }
 .a2-pad > div{ display:flex; gap:8px; }
-.a2-pad .btn{ min-width:56px; font-size:20px; padding:10px 14px; }
+.a2-pad .btn{ min-width:56px; font-size:20px; padding:10px 14px; touch-action:none; }
 
 /* ---- Star Slots 🎰 (5x5 grid) ---- */
 .sl-grid-wrap{ position:relative; display:flex; justify-content:center; margin:14px 0 10px; }
