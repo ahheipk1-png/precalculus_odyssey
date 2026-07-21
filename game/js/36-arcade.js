@@ -420,7 +420,11 @@
   // jackpot, a 2×2 block or a complete tic-tac-toe line pay well, holding the
   // centre pays a small consolation.
   // ===========================================================================
-  var POP_CELLS = 9, POP_BALLS = 4, POP_MAX_ROLLS = 5;
+  // At most ONE fix-and-reroll per round (user 2026-07-20: "at most one chance to fix and roll
+  // and done") — roll 1 lands the initial 4 balls, fix whichever you want to keep, roll 2 (the
+  // "Second Chance" button) rerolls the rest and immediately settles. Score Now can still bank
+  // after roll 1 without spending the second roll at all.
+  var POP_CELLS = 9, POP_BALLS = 4, POP_MAX_ROLLS = 2;
   var POP_CORNERS = [0, 2, 6, 8];
   var POP_DIAMOND = [1, 3, 5, 7];   // the four edge-midpoints — a plus/diamond (user 2026-07-18: "a good pattern too")
   // Rows AND columns both count as a "line" (POP_LINES holds all 3 rows, 3 cols, 2 diagonals) —

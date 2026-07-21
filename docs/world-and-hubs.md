@@ -624,6 +624,42 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-20 batch #36 — Casino roll/spin counts corrected (doc backfill + a same-day reversal for
+Pop-a-Tic-Tac-Toe).** Two related changes that landed the same day this doc's batches #34/#35 were
+written, neither recorded at the time:
+- **Hoo Hey How / Star Slots: `HH_MAX_ROLLS`/`SL_MAX_SPINS` 3 → 5** (earlier the same day as batch
+  #34, undocumented until now) — one Wonderland Pass now buys 5 rolls/spins instead of 3 for these
+  two; every hardcoded "3" in their Play Again buttons and out-of-rolls toasts was fixed alongside
+  the constant (they'd been separate string literals, not derived from it).
+  See lines ~148/217 above for the ORIGINAL "3" implementation these superseded.
+- **Pop-a-Tic-Tac-Toe: `POP_MAX_ROLLS` reverted from 5 back down to 2.** User, after seeing the
+  "Second Chance" relabel (batch #34) in practice: "there should be at most one chance to fix and
+  roll and done." POP was never really on the same "N per Wonderland Pass" axis as HH/SL in the
+  first place — a pass buys UNLIMITED free replay rounds for POP (`wonderPlay` only charges on
+  entry; batch #5-era note: "replay is free once in"), and `POP_MAX_ROLLS` instead governs a
+  different axis entirely: how many ball-reshuffle attempts happen WITHIN one round. Set to 2 (roll
+  1 lands the initial 4 balls; fix whichever you want to keep; roll 2 — the "Second Chance" button —
+  rerolls the rest and the round immediately auto-settles, same as running out of rolls always did).
+  Verified live: after the 2nd roll `POP.rollsLeft` hit 0 and `_popSettle()` fired immediately (no
+  3rd roll reachable), with the result modal correctly showing the real bet/pattern/win math.
+- Cache token bumped `20260720d → 20260720e`.
+
+**2026-07-20 batch #35 — Wonderland Hub/Casino/Arcade back button moved to the top-right corner.**
+User (screenshot of the Arcade page): "move wonderland button to top right corner like other
+pages." All three hub-level pages (`wondHubHtml`/`wondCasinoHtml`/`wondArcadeHtml`, `17-wonderland.js`)
+put their only back button in a `.wond-footer` centered BELOW the entire card grid — on Arcade
+specifically that meant scrolling past ~20 game cards to find it. Every other page with a similar
+title+back-button pairing (Star Atlas, Hoo Hey How, ...) uses `.rpg-header` — `display:flex;
+justify-content:space-between` — putting the button at the top, opposite the title. Rather than
+adopt `.rpg-header` itself (it doesn't support the centered icon+title+subtitle block these 3 pages
+use), added an equivalent wrapper: `.wond-head-row` (new, `wonderland.css`) is the same flex/
+space-between row, with the existing centered `.wond-head` block taking the flexible left/center
+space and a new `.wond-head-back` button pinned top-right. The old bottom `.wond-footer` button was
+removed (not duplicated) on all 3 pages — same "exactly one back button" rule from batch #33.
+Verified live on all three: button genuinely top-right (`getBoundingClientRect` — top<150,
+right>700), old footer confirmed gone, and a real click from Arcade correctly lands back on the
+Wonderland hub. Cache token bumped `20260720c → 20260720d`.
+
 **2026-07-20 batch #34 — Casino result modals with the cash math shown; Pop-a-Tic-Tac-Toe "Second
 Chance" relabel; right-side next-piece preview panel (Virus Lab, Crystal Cascade, Astro Drop).**
 User: "after play chooses the ball to fix, the roll button should become 'second chance'... after

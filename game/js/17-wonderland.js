@@ -273,9 +273,12 @@
     var passes = wonderPassCount();
     return '' +
       '<div class="wond-board">' +
-        '<div class="wond-head">' +
-          '<h2 class="wond-title"><span class="wond-wheel">🎡</span> Wonderland</h2>' +
-          '<p class="wond-sub">Step right up! Where to first?</p>' +
+        '<div class="wond-head-row">' +
+          '<div class="wond-head">' +
+            '<h2 class="wond-title"><span class="wond-wheel">🎡</span> Wonderland</h2>' +
+            '<p class="wond-sub">Step right up! Where to first?</p>' +
+          '</div>' +
+          '<button type="button" class="btn btn-ghost wond-head-back" onclick="wonderBackToMap()">← Back to Earth</button>' +
         '</div>' +
         '<div class="wond-passrow">' +
           '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
@@ -294,9 +297,6 @@
             '<span class="wond-hub-desc">Skill games &amp; puzzles</span>' +
           '</button>' +
         '</div>' +
-        '<div class="wond-footer">' +
-          '<button type="button" class="btn btn-ghost" onclick="wonderBackToMap()">← Back to Earth</button>' +
-        '</div>' +
       '</div>';
   }
 
@@ -305,9 +305,12 @@
     var passes = wonderPassCount();
     return '' +
       '<div class="wond-board">' +
-        '<div class="wond-head">' +
-          '<h2 class="wond-title wond-title-sm"><span class="wond-wheel">🎰</span> Casino</h2>' +
-          '<p class="wond-sub">Bet Cash on games of chance!</p>' +
+        '<div class="wond-head-row">' +
+          '<div class="wond-head">' +
+            '<h2 class="wond-title wond-title-sm"><span class="wond-wheel">🎰</span> Casino</h2>' +
+            '<p class="wond-sub">Bet Cash on games of chance!</p>' +
+          '</div>' +
+          '<button type="button" class="btn btn-ghost wond-head-back" onclick="openWonderland()">← Wonderland</button>' +
         '</div>' +
         '<div class="wond-passrow">' +
           '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
@@ -322,9 +325,6 @@
           '</div>' +
           _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots', true, 2) +
           _wondCard('🎯', 'Pop-a-Tic-Tac-Toe', 'Roll 4 balls onto the board, FIX the ones you like, reroll the rest — chase the jackpot pattern!', 'openPopTicTacToe', true) +
-        '</div>' +
-        '<div class="wond-footer">' +
-          '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Wonderland</button>' +
         '</div>' +
       '</div>';
   }
@@ -341,9 +341,12 @@
         '<button type="button" class="btn btn-primary wond-play" onclick="openFishin()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button></div>';
     return '' +
       '<div class="wond-board">' +
-        '<div class="wond-head">' +
-          '<h2 class="wond-title wond-title-sm"><span class="wond-wheel">🕹️</span> Arcade</h2>' +
-          '<p class="wond-sub">Skill games &amp; puzzles — spend Wonderland Passes, no betting.</p>' +
+        '<div class="wond-head-row">' +
+          '<div class="wond-head">' +
+            '<h2 class="wond-title wond-title-sm"><span class="wond-wheel">🕹️</span> Arcade</h2>' +
+            '<p class="wond-sub">Skill games &amp; puzzles — spend Wonderland Passes, no betting.</p>' +
+          '</div>' +
+          '<button type="button" class="btn btn-ghost wond-head-back" onclick="openWonderland()">← Wonderland</button>' +
         '</div>' +
         '<div class="wond-passrow">' +
           '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
@@ -401,9 +404,6 @@
           _wondCard('☁️', 'Cloudberry Squadron', 'Ten stages of homing-missile mayhem! Shoot down smart missiles, collect power-ups, and face an escalating final boss.', 'openCloudberry') +
           _wondCard('✈️', 'Sky Squadron 194X', 'A 10-level 194X island campaign! Break enemy formations, grab power-ups, and defeat a different boss commander every mission.', 'openSkySquadron') +
           carnival +
-        '</div>' +
-        '<div class="wond-footer">' +
-          '<button type="button" class="btn btn-ghost" onclick="openWonderland()">← Wonderland</button>' +
         '</div>' +
       '</div>';
   }

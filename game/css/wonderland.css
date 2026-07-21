@@ -8,6 +8,12 @@
 .wond-board{ padding: 6px 2px 10px; }
 
 .wond-head{ text-align: center; margin-bottom: 14px; }
+/* Hub/Casino/Arcade back button, top-right — matches the .rpg-header title+button row used
+   everywhere else (Star Atlas, Hoo Hey How, ...) instead of sitting alone in a footer below a long
+   card grid (user 2026-07-20: "move wonderland button to top right corner like other pages"). */
+.wond-head-row{ display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.wond-head-row .wond-head{ flex: 1; margin-bottom: 0; }
+.wond-head-back{ flex: 0 0 auto; white-space: nowrap; }
 .wond-title{
   font-family: 'Patrick Hand', cursive;
   font-size: clamp(30px, 7vw, 44px);
