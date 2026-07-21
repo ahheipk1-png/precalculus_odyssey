@@ -582,3 +582,36 @@ body:has(#wonderlandView.active) .board{ max-width:none !important; }
 .a2-keylegend{ display:inline-flex; align-items:center; gap:4px; font-size:13px; color:var(--chalk-dim,#9fb3c8);
   background:rgba(244,241,232,0.05); border:1px solid rgba(244,241,232,0.12); border-radius:10px;
   padding:5px 10px; margin:4px auto 8px; width:fit-content; }
+
+/* ---- Casino result modal (showCasinoResult, 34-wonder-games.js) — reuses the shared
+   .gameover-overlay/.bossgate-overlay shell (fixed to the viewport like the boss-gate notice),
+   mint-themed to read as "money result" and stay distinct from every other themed variant
+   (yellow boss gate, sky chip breakdown, violet special store). ---- */
+.cr-overlay{ position:fixed; inset:0; z-index:200; }
+.cr-card{ border-color:var(--mint,#72f4c7); background:linear-gradient(165deg, rgba(114,244,199,0.16), rgba(244,241,232,0.04)); }
+.cr-title{ color:var(--mint,#72f4c7); }
+.cr-calc{ display:flex; flex-direction:column; gap:6px; margin:4px auto 0; max-width:320px; text-align:left; }
+.cr-calc-row{ display:flex; justify-content:space-between; gap:10px; padding:7px 12px;
+  background:rgba(244,241,232,0.05); border:1px solid rgba(244,241,232,0.10); border-radius:10px;
+  font-size:14px; color:var(--chalk-dim,#b9bfd8); }
+.cr-calc-row b{ color:var(--chalk,#f4f1e8); }
+.cr-calc-row.cr-calc-total{ border-color:var(--mint,#72f4c7); background:rgba(114,244,199,0.10); font-size:15px; }
+.cr-calc-row.cr-calc-total b{ color:var(--mint,#72f4c7); }
+
+/* ---- Right-side "next piece" preview panel (wondNextPanelHtml, 34-wonder-games.js) — used by
+   any falling-piece game (Virus Lab, Crystal Cascade, Astro Drop) that wants to show 2 pieces
+   ahead docked beside the board instead of buried in the top HUD strip. Mirrors the flex ratio
+   Hoo Hey How already uses for its history sidebar (main content flexes, panel stays a fixed
+   width), collapsing to a stacked row under the board on phone widths. ---- */
+.wond-side-layout{ display:flex; gap:16px; align-items:flex-start; justify-content:center; }
+.wond-side-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; align-items:center; }
+.wond-side-panel{ flex:0 0 110px; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.14);
+  border-radius:14px; padding:10px 8px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+.wond-side-panel-title{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--chalk-dim,#9fb3c8); }
+.wond-side-slot{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+.wond-side-slot-label{ font-size:11px; color:var(--chalk-dim,#9fb3c8); }
+@media (max-width:760px){
+  .wond-side-layout{ flex-direction:column; align-items:stretch; }
+  .wond-side-panel{ flex:1 1 auto; width:100%; flex-direction:row; justify-content:center; gap:20px; }
+}

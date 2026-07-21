@@ -1,7 +1,7 @@
   // ===========================================================================
   // 🟦 Astro Drop — falling tetrominoes; clear lines, speed rises every 10 lines.
   // ===========================================================================
-  var AD = { COLS: 10, ROWS: 18, CELL: 28, grid: [], cur: null, acc: 0, last: 0,
+  var AD = { COLS: 10, ROWS: 18, CELL: 28, grid: [], cur: null, queue: [], acc: 0, last: 0,
              score: 0, lines: 0, level: 1, startLevel: 1, levelIdx: 0, over: false };
   var AD_SHAPES = [
     [[1,1,1,1]],            // I
@@ -32,12 +32,35 @@
     return false;
   }
   function _adSpawn(){
-    var i = rand(0, AD_SHAPES.length - 1);
+    while (AD.queue.length < 2) AD.queue.push(rand(0, AD_SHAPES.length - 1));   // keep two ready to preview
+    var i = AD.queue.shift();
+    AD.queue.push(rand(0, AD_SHAPES.length - 1));                              // refill so the preview always shows two
     AD.cur = { shape: AD_SHAPES[i].map(function(r){ return r.slice(); }), col: i + 1, x: 3, y: -1 };
+    _adRenderNextPanel();
     if (_adHit(AD.cur.shape, AD.cur.x, AD.cur.y)){
       AD.over = true;
       a2Later(_adGameOver, 500);
     }
+  }
+  // Right-side preview panel — 2 pieces deep (user 2026-07-20: "show the next and next next"),
+  // rendered as a mini shape grid (not just a colour swatch) since a tetromino's SHAPE, not only
+  // its colour, is what a player plans around.
+  function _adRenderNextPanel(){
+    var p = document.getElementById('adNextPanel'); if (!p) return;
+    p.innerHTML = (typeof wondNextPanelHtml === 'function') ? wondNextPanelHtml('Next', [
+      { label: 'Next', contentHtml: _adShapeSwatch(AD.queue[0]) },
+      { label: 'Next Next', contentHtml: _adShapeSwatch(AD.queue[1]) }
+    ]) : '';
+  }
+  function _adShapeSwatch(i){
+    if (i == null) return '';
+    var shape = AD_SHAPES[i], color = AD_COLS[i + 1], cell = 12;
+    return shape.map(function(row){
+      return '<div style="display:flex">' + row.map(function(v){
+        return '<span style="display:inline-block;width:' + cell + 'px;height:' + cell + 'px;margin:1px;' +
+          (v ? 'background:' + color + ';border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.3) inset' : '') + '"></span>';
+      }).join('') + '</div>';
+    }).join('');
   }
   // Custom result screen (not the generic a2Result) so it can also record a leaderboard score.
   function _adGameOver(){
@@ -115,17 +138,19 @@
     var lv = AD_LEVELS[0];
     AD.levelIdx = 0;
     AD.grid = []; for (var r = 0; r < AD.ROWS; r++) AD.grid.push(new Array(AD.COLS).fill(0));
-    AD.score = 0; AD.lines = 0; AD.level = lv.startLevel; AD.startLevel = lv.startLevel; AD.over = false; AD.acc = 0; AD.last = 0;
+    AD.score = 0; AD.lines = 0; AD.level = lv.startLevel; AD.startLevel = lv.startLevel; AD.over = false; AD.acc = 0; AD.last = 0; AD.queue = [];
     a2Shell('🟦 Astro Drop', 'openAstroDrop()',
       '<div class="wond-hud" id="adHud"></div>' + a2KeyLegend('← → move · ↑ rotate · ↓ soft drop · Space hard drop') +
-      '<div class="wond-canvas-wrap"><canvas id="adCanvas" class="a2-canvas" style="--cw:' + (AD.COLS * AD.CELL) + ';--ch:' + (AD.ROWS * AD.CELL) + '" width="' + (AD.COLS * AD.CELL) + '" height="' + (AD.ROWS * AD.CELL) + '"></canvas></div>' +
-      '<div class="a2-pad"><div>' +
-        '<button type="button" class="btn btn-secondary" onclick="_adMove(-1)">◀</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_adRotate()">⟳</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_adDown()">▼</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_adMove(1)">▶</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_adHardDrop()">⬇⬇</button>' +
-      '</div></div>',
+      '<div class="wond-side-layout"><div class="wond-side-main">' +
+        '<div class="wond-canvas-wrap"><canvas id="adCanvas" class="a2-canvas" style="--cw:' + (AD.COLS * AD.CELL) + ';--ch:' + (AD.ROWS * AD.CELL) + '" width="' + (AD.COLS * AD.CELL) + '" height="' + (AD.ROWS * AD.CELL) + '"></canvas></div>' +
+        '<div class="a2-pad"><div>' +
+          '<button type="button" class="btn btn-secondary" onclick="_adMove(-1)">◀</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_adRotate()">⟳</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_adDown()">▼</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_adMove(1)">▶</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_adHardDrop()">⬇⬇</button>' +
+        '</div></div>' +
+      '</div><div class="wond-side-panel" id="adNextPanel"></div></div>',
       '⬅️➡️ move · ⬆️ rotate · ⬇️ soft drop · Space hard drop');
     _adHud(); _adSpawn();
     a2Keys(function(e){

@@ -49,6 +49,51 @@
     return view;
   }
 
+  // ---------- Casino result modal (Pop-a-Tic-Tac-Toe, Hoo Hey How, Star Slots) ----------
+  // A blocking "press OK to leave" popup spelling out exactly how the cash result was calculated
+  // (bet, pattern/matches, multiplier, net) instead of leaving the player to read it off an inline
+  // banner. Reuses the shared .gameover-overlay/.bossgate-overlay shell (zero new markup pattern),
+  // mint-themed via .cr-overlay/.cr-card (wonderland.css) so it reads as a distinct "money result"
+  // rather than the yellow boss-gate or sky chip-breakdown variants of the same shell.
+  function showCasinoResult(opts){
+    opts = opts || {};
+    var ov = document.getElementById('casinoResultOverlay');
+    if (!ov){
+      ov = document.createElement('div');
+      ov.id = 'casinoResultOverlay';
+      ov.className = 'gameover-overlay bossgate-overlay cr-overlay';
+      document.body.appendChild(ov);
+    }
+    var rows = (opts.lines || []).map(function(l){
+      return '<div class="cr-calc-row' + (l.total ? ' cr-calc-total' : '') + '">' +
+        '<span>' + l.label + '</span><b>' + l.value + '</b></div>';
+    }).join('');
+    ov.innerHTML =
+      '<div class="gameover-card bossgate-card cr-card">' +
+        '<div class="gameover-emoji">' + (opts.icon || '💰') + '</div>' +
+        '<h2 class="gameover-title bossgate-title cr-title">' + (opts.headline || '') + '</h2>' +
+        '<div class="cr-calc">' + rows + '</div>' +
+        '<div style="display:flex; justify-content:center; margin-top:16px">' +
+          '<button type="button" class="btn btn-primary" onclick="closeCasinoResult()">✅ OK</button>' +
+        '</div>' +
+      '</div>';
+    ov.hidden = false;
+    if (typeof playSfx === 'function') playSfx('click');
+  }
+  function closeCasinoResult(){
+    var ov = document.getElementById('casinoResultOverlay');
+    if (ov) ov.hidden = true;
+  }
+
+  // ---------- Right-side "next piece" preview panel (Virus Lab, Crystal Cascade, Astro Drop) ----------
+  // slots: array of { label, contentHtml } — typically {label:'Next', ...} and {label:'Next Next', ...}.
+  function wondNextPanelHtml(title, slots){
+    return '<div class="wond-side-panel-title">' + title + '</div>' +
+      (slots || []).map(function(s){
+        return '<div class="wond-side-slot"><div class="wond-side-slot-label">' + s.label + '</div>' + (s.contentHtml || '') + '</div>';
+      }).join('');
+  }
+
   // Stop every carnival-game loop/timer (called by Wonderland nav + each game's open/start).
   function wgStopAll(){
     if (typeof fishStop === 'function') fishStop();

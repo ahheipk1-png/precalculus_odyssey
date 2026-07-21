@@ -18,7 +18,7 @@
     { main: '#9c78ff', edge: '#5731b6', shine: '#ebe3ff' }
   ];
   var CC_DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
-  var CC = { active: false, board: [], piece: null, nextColors: [], particles: [], chainMsg: '',
+  var CC = { active: false, board: [], piece: null, queue: [], particles: [], chainMsg: '',
              score: 0, level: 1, cleared: 0, bestChain: 0, animating: false, lastFall: 0 };
 
   function _ccRandColor(){ return rand(0, CC_COLORS.length - 1); }
@@ -34,8 +34,11 @@
   }
 
   function _ccSpawn(){
-    CC.piece = { col: Math.floor(CC_COLS / 2), row: -3, colors: CC.nextColors.slice() };
-    CC.nextColors = _ccRandColumn();
+    while (CC.queue.length < 2) CC.queue.push(_ccRandColumn());   // keep two ready to preview
+    var nx = CC.queue.shift();
+    CC.queue.push(_ccRandColumn());                               // refill so the preview always shows two
+    CC.piece = { col: Math.floor(CC_COLS / 2), row: -3, colors: nx };
+    _ccRenderNextPanel();                                         // refresh the right-side NEXT preview
     if (!_ccCanOccupy(CC.piece.col, CC.piece.row)) _ccGameOver();
   }
 
@@ -52,20 +55,23 @@
     for (var r = 0; r < CC_ROWS; r++){ var row = []; for (var c = 0; c < CC_COLS; c++) row.push(null); CC.board.push(row); }
     CC.score = 0; CC.level = 1; CC.cleared = 0; CC.bestChain = 0; CC.animating = false; CC.active = true;
     CC.particles = []; CC.chainMsg = ''; CC.lastFall = 0;
-    CC.nextColors = _ccRandColumn();
+    CC.queue = [_ccRandColumn(), _ccRandColumn()];
     _ccSpawn();
     a2Shell('💎 Crystal Cascade', 'openWonderland()',
       '<div class="wond-hud" id="ccHud"></div>' + a2KeyLegend('← → move · ↑/X cycle colors · ↓ soft drop · Space hard drop') +
-      '<div class="wond-canvas-wrap"><canvas id="ccCanvas" class="a2-canvas" style="--cw:' + (CC_COLS * CC_CELL) + ';--ch:' + (CC_ROWS * CC_CELL) + '" width="' + (CC_COLS * CC_CELL) + '" height="' + (CC_ROWS * CC_CELL) + '"></canvas></div>' +
-      '<div class="a2-pad"><div>' +
-        '<button type="button" class="btn btn-secondary" onclick="_ccMove(-1)">◀</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_ccCycle()">⟳</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_ccSoftDrop(true)">▼</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_ccMove(1)">▶</button>' +
-        '<button type="button" class="btn btn-primary" onclick="_ccHardDrop()">⬇⬇</button>' +
-      '</div></div>',
+      '<div class="wond-side-layout"><div class="wond-side-main">' +
+        '<div class="wond-canvas-wrap"><canvas id="ccCanvas" class="a2-canvas" style="--cw:' + (CC_COLS * CC_CELL) + ';--ch:' + (CC_ROWS * CC_CELL) + '" width="' + (CC_COLS * CC_CELL) + '" height="' + (CC_ROWS * CC_CELL) + '"></canvas></div>' +
+        '<div class="a2-pad"><div>' +
+          '<button type="button" class="btn btn-secondary" onclick="_ccMove(-1)">◀</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_ccCycle()">⟳</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_ccSoftDrop(true)">▼</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_ccMove(1)">▶</button>' +
+          '<button type="button" class="btn btn-primary" onclick="_ccHardDrop()">⬇⬇</button>' +
+        '</div></div>' +
+      '</div><div class="wond-side-panel" id="ccNextPanel"></div></div>',
       'Match 3+ gems in a row, column, or either diagonal. Chain reactions score big — cycle the falling gems to set up cascades!');
     _ccHud();
+    _ccRenderNextPanel();   // _ccSpawn() ran before the shell HTML existed, so #ccNextPanel wasn't there yet — render it now
     _ccDraw();
     a2Keys(function(e){
       var k = e.key.toLowerCase();
@@ -211,16 +217,26 @@
       '<span class="wond-chip">🎚️ Level: <b>' + CC.level + '</b></span>' +
       '<span class="wond-chip">💎 Cleared: <b>' + CC.cleared + '</b></span>' +
       '<span class="wond-chip">🔗 Best chain: <b>×' + CC.bestChain + '</b></span>' +
-      '<span class="wond-chip">🔮 Next: ' + _ccNextSwatch() + '</span>' +
       (CC.chainMsg ? '<span class="wond-chip wond-chip-hot">' + CC.chainMsg + '</span>' : '');
   }
-
-  function _ccNextSwatch(){
-    return CC.nextColors.map(function(ci){
+  // Right-side preview panel — 2 triplets deep (was a single next-only swatch buried in the HUD
+  // chip strip; user 2026-07-20: "show the next and next next").
+  function _ccRenderNextPanel(){
+    var p = document.getElementById('ccNextPanel'); if (!p) return;
+    p.innerHTML = (typeof wondNextPanelHtml === 'function') ? wondNextPanelHtml('🔮 Next', [
+      { label: 'Next', contentHtml: _ccTripletSwatch(CC.queue[0]) },
+      { label: 'Next Next', contentHtml: _ccTripletSwatch(CC.queue[1]) }
+    ]) : '';
+  }
+  // Stacked top-to-bottom (not a row) so the swatch matches the actual falling orientation of a
+  // vertical 3-gem piece.
+  function _ccTripletSwatch(colors){
+    if (!colors) return '';
+    return '<div style="display:flex;flex-direction:column;gap:2px;align-items:center">' + colors.map(function(ci){
       var color = CC_COLORS[ci];
-      return '<span style="display:inline-block;width:14px;height:14px;border-radius:50%;margin-left:2px;' +
-        'vertical-align:middle;background:' + color.main + ';box-shadow:0 0 0 1px rgba(0,0,0,.35) inset,-2px -2px 0 rgba(255,255,255,.3) inset"></span>';
-    }).join('');
+      return '<span style="display:inline-block;width:16px;height:16px;border-radius:50%;' +
+        'background:' + color.main + ';box-shadow:0 0 0 1px rgba(0,0,0,.35) inset,-2px -2px 0 rgba(255,255,255,.3) inset"></span>';
+    }).join('') + '</div>';
   }
 
   function _ccDrawGem(c, x, y, size, colorIndex, alpha){

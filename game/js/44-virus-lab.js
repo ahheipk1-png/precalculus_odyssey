@@ -51,7 +51,7 @@
     var nx = VL.queue.shift();
     VL.queue.push(_vlRoll());                               // refill so the preview always shows two
     VL.cur = { x: 3, y: 0, rot: 0, c1: nx.c1, c2: nx.c2 };
-    _vlHud();                                               // refresh the NEXT preview
+    _vlRenderNextPanel();                                   // refresh the right-side NEXT preview
     if (_vlBlocked(VL.cur)){
       VL.over = true;
       var killed = VL.virusTotal - _vlVirusLeft();
@@ -71,8 +71,16 @@
   function _vlHud(){
     var hud = document.getElementById('vlHud');
     if (hud) hud.innerHTML = '<span class="wond-chip">🧪 Lab <b>' + (VL.levelIdx + 1) + ' / ' + VL_LEVELS.length + '</b></span>' +
-      '<span class="wond-chip">🦠 Viruses left: <b>' + _vlVirusLeft() + '</b></span>' +
-      '<span class="wond-chip">💊 Next: ' + _vlPillSwatch(VL.queue[0]) + _vlPillSwatch(VL.queue[1]) + '</span>';
+      '<span class="wond-chip">🦠 Viruses left: <b>' + _vlVirusLeft() + '</b></span>';
+  }
+  // Right-side preview panel — 2 pills deep (Dr. Mario-style NEXT box), docked beside the board
+  // instead of buried in the top HUD chip strip (user 2026-07-20: "show the next and next next").
+  function _vlRenderNextPanel(){
+    var p = document.getElementById('vlNextPanel'); if (!p) return;
+    p.innerHTML = (typeof wondNextPanelHtml === 'function') ? wondNextPanelHtml('💊 Next', [
+      { label: 'Next', contentHtml: _vlPillSwatch(VL.queue[0]) },
+      { label: 'Next Next', contentHtml: _vlPillSwatch(VL.queue[1]) }
+    ]) : '';
   }
   function _vlResolve(){
     var again = true, clearedVirus = false;
@@ -203,13 +211,15 @@
     VL.virusTotal = placed;
     a2Shell('💊 Virus Lab', 'openWonderland()',
       '<div class="wond-hud" id="vlHud"></div>' + a2KeyLegend('← → move · ↑ rotate · ↓ soft · Space HARD drop') +
-      '<div class="wond-canvas-wrap"><canvas id="vlCanvas" class="a2-canvas" style="--cw:' + (VL.COLS * VL.CELL) + ';--ch:' + (VL.ROWS * VL.CELL) + '" width="' + (VL.COLS * VL.CELL) + '" height="' + (VL.ROWS * VL.CELL) + '"></canvas></div>' +
-      '<div class="a2-pad"><div>' +
-        '<button type="button" class="btn btn-secondary" onclick="_vlTry(-1,0,0)">◀</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_vlTry(0,0,1)">⟳</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_vlDown()">▼</button>' +
-        '<button type="button" class="btn btn-secondary" onclick="_vlTry(1,0,0)">▶</button>' +
-      '</div></div>',
+      '<div class="wond-side-layout"><div class="wond-side-main">' +
+        '<div class="wond-canvas-wrap"><canvas id="vlCanvas" class="a2-canvas" style="--cw:' + (VL.COLS * VL.CELL) + ';--ch:' + (VL.ROWS * VL.CELL) + '" width="' + (VL.COLS * VL.CELL) + '" height="' + (VL.ROWS * VL.CELL) + '"></canvas></div>' +
+        '<div class="a2-pad"><div>' +
+          '<button type="button" class="btn btn-secondary" onclick="_vlTry(-1,0,0)">◀</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_vlTry(0,0,1)">⟳</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_vlDown()">▼</button>' +
+          '<button type="button" class="btn btn-secondary" onclick="_vlTry(1,0,0)">▶</button>' +
+        '</div></div>' +
+      '</div><div class="wond-side-panel" id="vlNextPanel"></div></div>',
       'Match 4 of a color in a line to clear. Zap every 🦠 to win! ⬆️ rotates.');
     _vlHud(); _vlSpawn();
     a2Keys(function(e){

@@ -415,12 +415,12 @@
   // 🎯 Pop-a-Tic-Tac-Toe — a redemption-cabinet ball-lock game, NOT adversarial
   // tic-tac-toe. Bet, then ROLL: 4 balls tumble and settle into 4 of the 9 cells.
   // After each roll you may FIX (hold) any of the settled balls, then roll again —
-  // only the unfixed balls re-roll. You get 3 rolls per round (or bank early with
+  // only the unfixed balls re-roll. You get 5 rolls per round (or bank early with
   // "Score Now"). The FINAL 4-cell pattern is paid out: Four Corners is the
   // jackpot, a 2×2 block or a complete tic-tac-toe line pay well, holding the
   // centre pays a small consolation.
   // ===========================================================================
-  var POP_CELLS = 9, POP_BALLS = 4, POP_MAX_ROLLS = 3;
+  var POP_CELLS = 9, POP_BALLS = 4, POP_MAX_ROLLS = 5;
   var POP_CORNERS = [0, 2, 6, 8];
   var POP_DIAMOND = [1, 3, 5, 7];   // the four edge-midpoints — a plus/diamond (user 2026-07-18: "a good pattern too")
   // Rows AND columns both count as a "line" (POP_LINES holds all 3 rows, 3 cols, 2 diagonals) —
@@ -495,7 +495,7 @@
     var hud = document.getElementById('popHud'); if (!hud) return;
     hud.innerHTML = '<span class="wond-chip">💵 Cash: <b>' + ((state && state.coins) || 0) + '</b></span>' +
       '<span class="wond-chip">🎯 Bet: <b>💵' + POP.bet + '</b></span>' +
-      '<span class="wond-chip">🎲 Rolls left: <b>' + POP.rollsLeft + '</b></span>';
+      '<span class="wond-chip">🎲 Rolls left: <b>' + POP.rollsLeft + ' / ' + POP_MAX_ROLLS + '</b></span>';
   }
 
   function _popRenderGrid(){
@@ -522,6 +522,14 @@
     POP.fixed[i] = !POP.fixed[i];
     if (typeof playSfx === 'function') playSfx('click');
     _popRenderGrid();
+    _popUpdateRollLabel();
+  }
+
+  // Once the player has fixed at least one ball, rolling again is a deliberate "Second Chance"
+  // (rerolling around what you kept) rather than a fresh roll — relabel the button to say so.
+  function _popUpdateRollLabel(){
+    var rb = document.getElementById('popRollBtn'); if (!rb) return;
+    rb.textContent = (POP.fixed.indexOf(true) !== -1) ? '🎲 Second Chance' : '🎲 ROLL';
   }
 
   function popRoll(){
@@ -561,6 +569,7 @@
       } else {
         if (rb) rb.disabled = false;
         if (sb) sb.disabled = false;
+        _popUpdateRollLabel();   // resets to "🎲 ROLL" on a fresh round's first roll, or stays "Second Chance" if a ball is already fixed
         var bn = document.getElementById('popBanner'); if (bn) bn.textContent = 'Fix any balls you want to keep, then roll again.';
       }
     }, 650);
@@ -589,7 +598,8 @@
   function _popSettle(){
     POP.over = true;
     var result = popEvaluate(POP.balls);
-    var win = Math.round(_popTotalBet() * result.mult);
+    var bet = _popTotalBet();
+    var win = Math.round(bet * result.mult);
     var banner = document.getElementById('popBanner'), cls = 'sl-banner';
     var msg;
     if (win > 0){
@@ -616,4 +626,23 @@
     // the grid). Doing this synchronously avoids a delayed-reset race with a fast double-click.
     POP.balls = []; POP.fixed = [false,false,false,false]; POP.rollsLeft = POP_MAX_ROLLS; POP.over = false;
     _popHud();
+    // Show the calculation ~500ms later so the winning-cell highlight is visible first, THEN the
+    // modal explains the math behind the number (user: "pop up the cash you earn or lose with the
+    // calculation... press ok to leave").
+    if (typeof showCasinoResult === 'function'){
+      var lines = [
+        { label: 'Bet', value: '💵' + bet },
+        { label: 'Pattern', value: result.label }
+      ];
+      lines.push(win > 0
+        ? { label: '💵' + bet + ' × ' + result.mult, value: '+💵' + win, total: true }
+        : { label: 'No pattern — bet not returned', value: '−💵' + bet, total: true });
+      setTimeout(function(){
+        showCasinoResult({
+          icon: win > 0 ? (result.tier === 'jackpot' ? '🎆' : '🎉') : '💫',
+          headline: win > 0 ? ('+💵' + win) : ('−💵' + bet),
+          lines: lines
+        });
+      }, 500);
+    }
   }

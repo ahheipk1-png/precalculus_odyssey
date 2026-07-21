@@ -6,7 +6,7 @@
   // bet pays 1:1 (plus your stake back). Cash-only, per the design.
   //
   // Entrance: wonderPlay('openHooHey') from the Wonderland lobby, 1 Wonderland
-  // Pass = HH_MAX_ROLLS (3) rolls; once exhausted, Play Again buys 3 more (same
+  // Pass = HH_MAX_ROLLS (5) rolls; once exhausted, Play Again buys 5 more (same
   // pattern as Star Slots). Total bet across all 6 symbols is capped at
   // HH_MAX_BET (1000). A persistent, scrollable history panel records the last
   // rolls (dice, winning symbols, bets, amount, net).
@@ -19,14 +19,14 @@
     { id: 'crab',    icon: '🦀', name: 'Crab' },
     { id: 'shrimp',  icon: '🦐', name: 'Shrimp' }
   ];
-  var HH_MAX_ROLLS = 3, HH_MAX_BET = 1000;
+  var HH_MAX_ROLLS = 5, HH_MAX_BET = 1000;
 
   var _hhBets = {}, _hhDice = null, _hhResult = '';
   var _hhRolling = false, _hhRollTimer = null, _hhOutcome = '';   // outcome: 'win' | 'lose' | 'even'
   var _hhPhaseTimers = [];
   // Per-die skill-stop state — each of the 3 dice can be stopped individually, like the slot reels.
   var _hhDieStopped = [false, false, false];
-  var _hhRollsLeft = HH_MAX_ROLLS;   // one Wonderland Pass buys HH_MAX_ROLLS rolls; Play Again buys 3 more
+  var _hhRollsLeft = HH_MAX_ROLLS;   // one Wonderland Pass buys HH_MAX_ROLLS rolls; Play Again buys HH_MAX_ROLLS more
   var _hhFinal = null, _hhBetsSnapshot = null, _hhTotal = 0;   // decided up front; used once all 3 stop
   var HH_HIST_KEY = 'poHooHeyHistory';
   var _hhHistory = _hhLoadHistory();     // newest first; capped at 60
@@ -43,7 +43,7 @@
     _hhClearTimers();
     _hhBets = {}; _hhDice = null; _hhResult = ''; _hhRolling = false; _hhOutcome = '';
     _hhDieStopped = [false, false, false];
-    _hhRollsLeft = HH_MAX_ROLLS;   // fresh 3 rolls per Wonderland Pass (first entry or Play Again)
+    _hhRollsLeft = HH_MAX_ROLLS;   // fresh HH_MAX_ROLLS rolls per Wonderland Pass (first entry or Play Again)
     document.querySelectorAll('.view-container').forEach(function(v){ v.classList.remove('active'); });
     var v = document.getElementById('hooHeyView');
     if (v) v.classList.add('active');
@@ -144,7 +144,7 @@
           '<div class="hh-grid">' + tiles + '</div>' +
           '<div class="hh-roll-row"><span class="hh-totalbet">Total bet: 💵' + _hhTotalBet() + '</span>' +
           (outOfRolls ?
-            '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openHooHey\')" data-tooltip="Buy 3 more rolls for 1 Wonderland Pass.">🔁 Play Again (1 🎟️ · 3 rolls)</button>' :
+            '<button type="button" class="btn btn-primary" onclick="wonderPlay(\'openHooHey\')" data-tooltip="Buy ' + HH_MAX_ROLLS + ' more rolls for 1 Wonderland Pass.">🔁 Play Again (1 🎟️ · ' + HH_MAX_ROLLS + ' rolls)</button>' :
             '<button class="btn btn-primary hh-roll-btn"' + (_hhRolling ? ' disabled' : '') + ' onclick="hhRoll()" data-tooltip="Roll the three dice. Every die matching a bet pays your stake back plus the same again.">' +
             (_hhRolling ? '🎲 Rolling…' : '🎲 Roll the dice!') + '</button>' +
             (_hhRolling ? '<button class="btn btn-ghost hh-stop-btn" onclick="hhStop()" data-tooltip="Stop every die at once and reveal the result now.">⏹ Stop All</button>' : '')
@@ -159,7 +159,7 @@
 
   function hhBet(id, amt){
     if (_hhRolling) return;
-    if (_hhRollsLeft <= 0){ if (typeof showToast === 'function') showToast('Out of rolls for this pass — Play Again for 3 more!'); return; }
+    if (_hhRollsLeft <= 0){ if (typeof showToast === 'function') showToast('Out of rolls for this pass — Play Again for ' + HH_MAX_ROLLS + ' more!'); return; }
     if (state.coins < amt){ showToast('Not enough Cash to bet.'); return; }
     if (_hhTotalBet() + amt > HH_MAX_BET){
       if (typeof showToast === 'function') showToast('Max total bet is 💵' + HH_MAX_BET + '!');
@@ -183,7 +183,7 @@
 
   function hhRoll(){
     if (_hhRolling) return;
-    if (_hhRollsLeft <= 0){ if (typeof showToast === 'function') showToast('Out of rolls for this pass — Play Again for 3 more!'); return; }
+    if (_hhRollsLeft <= 0){ if (typeof showToast === 'function') showToast('Out of rolls for this pass — Play Again for ' + HH_MAX_ROLLS + ' more!'); return; }
     var total = _hhTotalBet();
     if (total <= 0){ showToast('Place a bet first!'); return; }
     if (total > HH_MAX_BET){   // defensive — hhBet()'s cap already prevents reaching this, but stay safe
@@ -247,10 +247,15 @@
     _hhRolling = false;
     _hhDice = _hhFinal;
     var winnings = 0, jackpotHit = false;
+    var calcLines = [];   // per-symbol breakdown for the result modal
     for (var id in _hhBetsSnapshot){
       var matches = _hhDice.filter(function(d){ return d === id; }).length;
-      if (matches > 0) winnings += _hhBetsSnapshot[id] * (1 + matches); // stake back + 1× per match
+      var sub = matches > 0 ? (_hhBetsSnapshot[id] * (1 + matches)) : 0;   // stake back + 1× per match
+      if (sub > 0) winnings += sub;
       if (matches === 3) jackpotHit = true;   // all 3 dice landed on one bet animal — the rarest win
+      var sym = _hhSym(id);
+      calcLines.push({ label: sym.icon + ' ' + sym.name + ': 💵' + _hhBetsSnapshot[id] + ' bet, ' + matches + '× match',
+        value: sub > 0 ? ('+💵' + sub) : '💵0' });
     }
     state.coins += winnings;
     var net = winnings - _hhTotal;
@@ -269,4 +274,18 @@
     _hhSaveHistory();
     _hhBets = {};
     renderHooHey();
+    // Show the calculation ~500ms later so the dice reveal/bowl-lift is visible first (user:
+    // "pop up the cash you earn or lose with the calculation... press ok to leave — same for
+    // Hoo Hey How for star slots").
+    if (typeof showCasinoResult === 'function'){
+      calcLines.push({ label: 'Total bet', value: '💵' + _hhTotal });
+      calcLines.push({ label: 'Net', value: (net >= 0 ? '+💵' : '−💵') + Math.abs(net), total: true });
+      setTimeout(function(){
+        showCasinoResult({
+          icon: jackpotHit ? '🎰' : (net > 0 ? '🎉' : (net === 0 ? '➖' : '💸')),
+          headline: jackpotHit ? ('JACKPOT! +💵' + winnings) : (net > 0 ? ('+💵' + net) : (net === 0 ? 'Broke Even' : ('−💵' + Math.abs(net)))),
+          lines: calcLines
+        });
+      }, 500);
+    }
   }

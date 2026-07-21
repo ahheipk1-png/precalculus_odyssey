@@ -624,6 +624,54 @@ in the same commit: see rpg-combat-economy.md 2026-07-18.)
   30px (was 22px emoji) with a layered green glow; twinkle animation kept. Verified on the Sol
   system card.
 
+**2026-07-20 batch #34 — Casino result modals with the cash math shown; Pop-a-Tic-Tac-Toe "Second
+Chance" relabel; right-side next-piece preview panel (Virus Lab, Crystal Cascade, Astro Drop).**
+User: "after play chooses the ball to fix, the roll button should become 'second chance'... after
+score now or second chance, it should pop up the cash you earn or lose with the calculation in a
+notification panel (press ok to leave)... same for Hoo Hey How for star slots... in Crystal
+Cascade/Virus Lab/Astro Drop, show the next and next next [pieces] on the right hand side."
+- **`showCasinoResult()` (new, `js/34-wonder-games.js`).** A blocking "press OK to leave" popup
+  reusing the shared `.gameover-overlay`/`.bossgate-overlay` shell (zero new markup pattern) with a
+  new mint-green theme (`.cr-overlay`/`.cr-card`, `wonderland.css`) so it reads as a distinct "money
+  result" rather than the yellow boss-gate or sky chip-breakdown variants of the same shell. Takes
+  an icon, headline, and an array of `{label, value}` calculation rows (`.cr-calc-row`, a final
+  `total:true` row gets the emphasized mint style). Wired into all 3 Casino games' settle functions,
+  ~500ms after the win/loss highlight so the player sees that first:
+  - **Pop-a-Tic-Tac-Toe** (`_popSettle`, `36-arcade.js`): bet, pattern name, `bet × multiplier = win`
+    (or "bet not returned" on a miss).
+  - **Hoo Hey How** (`_hhFinishRoll`, `27-hoohey.js`): one row per symbol actually bet on — bet
+    amount, dice-match count, that symbol's payout — then total bet and net.
+  - **Star Slots** (`_slSettle`, `41-slots.js`): one row per winning payline (symbol run × bet ×
+    pay × run-multiplier) plus a row per jackpot hit, then the total.
+  - All three verified live against real rolls/spins with hand-checked arithmetic (e.g. a Hoo Hey
+    How roll of gourd/shrimp/deer against bets of 50-on-Deer/30-on-Fish correctly showed Deer
+    +💵100, Fish 💵0, net +💵20; a forced Star Slots grid with a 💎💎💎 middle line plus all-4-corners
+    jackpot at bet 100×3 lines correctly showed +💵4000 and +💵1200 summing to +💵5200).
+- **Pop-a-Tic-Tac-Toe "Second Chance" relabel (`_popUpdateRollLabel`, `36-arcade.js`).** Once the
+  player fixes at least one ball, `#popRollBtn` relabels from "🎲 ROLL" to "🎲 Second Chance" for the
+  rest of that round (reactive to `POP.fixed` each time it's called, so un-fixing the last ball
+  reverts it); explicitly recomputed on a fresh round's first roll so it doesn't stay stuck on the
+  prior round's "🎲 New Round" text.
+- **Right-side "next piece" panel (`wondNextPanelHtml()`, new, `34-wonder-games.js`; layout CSS
+  `.wond-side-layout`/`.wond-side-main`/`.wond-side-panel`, `wonderland.css`, modeled on Hoo Hey
+  How's existing `.hh-layout` history-sidebar flex ratio — main content flexes, panel stays a fixed
+  110px column, collapsing to a stacked full-width row under the board at ≤760px).** All 3 games'
+  own `_xxSpawn()` now calls its own `_xxRenderNextPanel()` right after mutating its queue, so the
+  panel can never desync from what's actually about to fall regardless of caller order:
+  - **Virus Lab** already had a 2-deep `VL.queue` — its "💊 Next:" swatch just moved out of the
+    `#vlHud` top-strip chip into `#vlNextPanel`.
+  - **Crystal Cascade** only buffered 1 triplet ahead (`CC.nextColors`) — replaced with a 2-deep
+    `CC.queue` mirroring Virus Lab's shift-and-refill pattern; its swatch now stacks the 3 gems
+    top-to-bottom (matching the piece's actual falling orientation) instead of a horizontal row.
+  - **Astro Drop had no look-ahead at all** — added `AD.queue` (2-deep) and `_adShapeSwatch()`,
+    which renders the actual tetromino shape as a small grid (not just a colour dot, since a
+    tetromino's SHAPE is what a player plans around, not just its colour).
+  - Verified live at desktop width (panel genuinely right of the canvas, `getBoundingClientRect`
+    confirms `panelLeft ≥ canvasRight`) and at 375px phone width (panel drops below the canvas,
+    `panelTop ≥ canvasBottom`, matching the same collapse breakpoint already proven for Hoo Hey
+    How's sidebar).
+- Cache token bumped `20260720a → 20260720c`.
+
 **2026-07-20 batch #33 — Wonderland phone fixes: D-pad no longer scrolls the page; Hoo Hey How
 now shows exactly one back button.** User (phone testers): "hard to control... when the arrow is
 pressed, the screen also moved... there should only one back arrow in the gaming mode... remove
