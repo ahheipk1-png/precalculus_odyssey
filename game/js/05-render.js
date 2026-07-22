@@ -177,7 +177,7 @@
     saveGame();
   }
 
-  // Cash · Gold · Silver · Passes · Chips HUD strip (user-required currency display).
+  // Cash · Gold · Silver · Chips · Passes HUD strip (user-required currency display).
   function updateCurrencyBar(){
     var chips = (typeof chipTotal === 'function') ? chipTotal() : 0;
     var cb = document.getElementById('currencyBar');
@@ -187,9 +187,8 @@
       '<span class="cur-chip cur-cash" title="Cash — earned by solving arenas, spent in shops">💵 <b>' + state.coins + '</b> Cash</span>' +
       '<span class="cur-chip" title="Gold — premium currency from bosses and trading">🥇 <b>' + (c.gold || 0) + '</b> Gold</span>' +
       '<span class="cur-chip" title="Silver — mid-tier currency from bosses and trading">🥈 <b>' + (c.silver || 0) + '</b> Silver</span>' +
-      '<span class="cur-chip" title="Wonderland Passes — spend them on carnival games in Wonderland">🎟️ <b>' + (state.wonderPasses || 0) + '</b> Passes</span>' +
-      '<span class="cur-chip" title="AI chips — spend them to upgrade gear. Click “view” to see each type you own.">🧩 <b>' + chips + '</b> All Chips</span>' +
-      '<button type="button" class="cur-chip cur-chip-view" title="See a breakdown of every AI-chip type you own" onclick="viewChips()">🔍 view</button>';
+      '<button type="button" class="cur-chip cur-chip-view" title="See a breakdown of every AI-chip type you own" onclick="viewChips()">🧩 Chips: <b>' + chips + '</b> 🔍</button>' +
+      '<span class="cur-chip" title="Wonderland Passes — spend them on carnival games in Wonderland">🎟️ <b>' + (state.wonderPasses || 0) + '</b> Passes</span>';
   }
 
   // "All Chips" HUD tile is a rollup of 7 different AI-chip types — this modal breaks it down so the

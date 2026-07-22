@@ -220,7 +220,7 @@ status-effect spell system** (freeze/burn/armor-break/elemental attacks) is mast
 **Currencies & chips (config-driven).** `Cash` = `state.coins`; `state.currencies` = `{gold, silver}`
 (tradeable); `state.chips` = AI components (`energy_core, robotic_alloy, cpu, gpu, neural_chip,
 quantum_chip, alien_processor`) — the **upgrade** input (config: `economy.config.js`). HUD strip shows
-**Cash · Gold · Silver · Passes · Chips** (`updateCurrencyBar`, `05-render.js`). Old `state.materials`
+**Cash · Gold · Silver · Chips · Passes** (`updateCurrencyBar`, `05-render.js`). Old `state.materials`
 is retired; a v1→v2 `migrateSave` (`03-save.js`) converts essence→energy_core, gem→quantum_chip,
 gold+gems→gold, silver→silver.
 - **2026-07-22 — Passes joined the currency bar; the old page-wide progress bar retired.** Previously
@@ -239,6 +239,11 @@ gold+gems→gold, silver→silver.
   duplicate. `#passBarPill`/`#chipsBarPill`/`.lp-pill` and all `.level-progress` CSS (base rule,
   `.hero-hud-stack` scoping, 3 responsive breakpoints, the Wonderland-focus-mode hide list) removed
   as dead code — the element they targeted no longer exists.
+  - **Follow-up same day**: the currency bar's two-piece Chips display ("🧩 N All Chips" span +
+    separate "🔍 view" button) got merged into ONE clickable pill — `<button class="cur-chip
+    cur-chip-view" onclick="viewChips()">🧩 Chips: N 🔍</button>` — matching the format the retired
+    `#chipsBarPill` used to have. Passes moved to be the LAST item in the bar (after Chips), per
+    user: "put passes right hand side of view". Order is now Cash · Gold · Silver · Chips · Passes.
 
 **Enemies drop chips + gold/silver** (`rollMonsterLoot`, `09-items.js`) → the victory **chest**
 (`16-chest.js`). Every enemy has a deterministic Wu Xing `element` (`getMonsterElement`).
