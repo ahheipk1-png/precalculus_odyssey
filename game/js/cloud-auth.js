@@ -240,7 +240,17 @@
     if (!loaded && typeof resetPlayerState === 'function') resetPlayerState();
     var ss = document.getElementById('startScreen'); if (ss) ss.hidden = true;
     if (typeof startGame === 'function') startGame();
-    if (!loaded && typeof showOpeningNarration === 'function' && typeof state === 'object' && !state.testMode) showOpeningNarration();
+    if (!loaded && typeof showOpeningNarration === 'function' && typeof state === 'object' && !state.testMode) {
+      showOpeningNarration();
+    } else if (loaded && typeof openStarAtlas === 'function') {
+      // Returning player: land on the Star Atlas, scoped to the star system their restored
+      // progress puts them in — not straight into an active question (user 2026-07-22: "when i
+      // login, it should start in the most recent star system not answering questions"). A
+      // brand-new player (the showOpeningNarration branch above) has no "most recent" system yet,
+      // so they still start on their actual Arena 1 practice view as before.
+      openStarAtlas();
+      if (typeof atlasOpenSystem === 'function' && typeof _currentSystemId === 'function') atlasOpenSystem(_currentSystemId());
+    }
     injectHeaderAuth();
     authStartProgressSync();
   }

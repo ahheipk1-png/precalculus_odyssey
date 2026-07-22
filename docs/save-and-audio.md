@@ -127,6 +127,18 @@ precomputed `arenasPassed` field the old lightweight summary used to) or by the 
     `/api/admin/bootstrap?key=...` once (idempotent — also seeds `admin`/`admin`). That endpoint's
     key is baked into the public repo; delete `functions/api/admin/bootstrap.js` (or rotate the key
     into a Cloudflare Pages `SEED_KEY` secret) once bootstrapped, since anyone who finds it can hit it.
+  - **Lands on the Star Atlas after login, not mid-question** (2026-07-22, user: "when i login, it
+    should start in the most recent star system not answering questions"). `bridgeToGame()` used to
+    just call `startGame()`, which leaves whatever view was already active in the static HTML
+    (`#equationView`) showing — a live question. Now, whenever existing progress was actually
+    restored (`loaded === true`), it also calls `openStarAtlas()` then `atlasOpenSystem(_currentSystemId())`
+    (both globals from `25-nav.js` — this file has no IIFE wrapper, so its functions are directly
+    callable from `cloud-auth.js`'s own closure) to land on the specific star-system page matching
+    the restored arena. A brand-new player (`loaded === false`, the `showOpeningNarration()` branch)
+    has no "most recent" system yet, so still starts on their real Arena 1 practice view as before.
+    Note: **testing this requires a genuine non-admin test account** — `admin` is deliberately
+    excluded from cloud sync (`authPushProgress` early-returns for it), by design, so it can never be
+    used to verify sync behavior end-to-end.
 
 ## 🛠️ Admin edit/reset a player's progress — `functions/api/admin/save.js` + `game/js/cloud-auth.js`
 
