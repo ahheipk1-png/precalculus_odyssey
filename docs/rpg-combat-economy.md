@@ -220,9 +220,25 @@ status-effect spell system** (freeze/burn/armor-break/elemental attacks) is mast
 **Currencies & chips (config-driven).** `Cash` = `state.coins`; `state.currencies` = `{gold, silver}`
 (tradeable); `state.chips` = AI components (`energy_core, robotic_alloy, cpu, gpu, neural_chip,
 quantum_chip, alien_processor`) — the **upgrade** input (config: `economy.config.js`). HUD strip shows
-**Cash · Gold · Silver · Chips** (`updateCurrencyBar`, `05-render.js`). Old `state.materials` is
-retired; a v1→v2 `migrateSave` (`03-save.js`) converts essence→energy_core, gem→quantum_chip,
+**Cash · Gold · Silver · Passes · Chips** (`updateCurrencyBar`, `05-render.js`). Old `state.materials`
+is retired; a v1→v2 `migrateSave` (`03-save.js`) converts essence→energy_core, gem→quantum_chip,
 gold+gems→gold, silver→silver.
+- **2026-07-22 — Passes joined the currency bar; the old page-wide progress bar retired.** Previously
+  `.level-progress` was a full-width bar (progress dots + "Arena Progress: N/10" text + tries-left
+  hearts + a separate 🎟️ Passes pill + a separate 🧩 Chips pill) sitting ABOVE `#equationView`, built
+  by `08-layout.js`'s `setupWidescreenDashboard()` into `.hero-hud-stack`. User: "move this to the
+  left top corner of the question panel" — split into two destinations instead: (1) the progress
+  dots + text + hearts now live in `.quest-progress-badge` (`id="questProgressBadge"`), a small
+  `position:absolute` badge pinned to `.quest-main-panel`'s own top-left corner (`position:relative`)
+  — moved there by `08-layout.js` at boot, same as `#astroCard`. `.quest-main-panel` got extra
+  `padding-top` (56px desktop / 78px phone, where the badge wraps to 2 lines) reserved specifically
+  so the badge never overlaps the astro card / formula / scale / question-prompt content, which all
+  still start flush at that padding edge in normal flow. (2) The 🎟️ Passes pill and the redundant
+  🧩 Chips pill (the currency bar already had its own "All Chips" tile) both got folded into
+  `updateCurrencyBar()` itself — Passes as a new `.cur-chip`, Chips pill simply deleted as a
+  duplicate. `#passBarPill`/`#chipsBarPill`/`.lp-pill` and all `.level-progress` CSS (base rule,
+  `.hero-hud-stack` scoping, 3 responsive breakpoints, the Wonderland-focus-mode hide list) removed
+  as dead code — the element they targeted no longer exists.
 
 **Enemies drop chips + gold/silver** (`rollMonsterLoot`, `09-items.js`) → the victory **chest**
 (`16-chest.js`). Every enemy has a deterministic Wu Xing `element` (`getMonsterElement`).

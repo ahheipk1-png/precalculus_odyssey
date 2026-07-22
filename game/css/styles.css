@@ -121,13 +121,15 @@
     color: var(--chalk-dim);
   }
 
-  .level-progress{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap: 8px;
-    margin: 2px 0 10px;
-    flex-wrap: wrap;   /* the 🎟️/🧩 pills drop to a second row on narrow screens instead of overflowing */
+  /* Compact badge pinned to the question panel's own top-left corner (user 2026-07-22: "move this
+     to the left top corner of the question panel" — used to be a page-wide bar above the panel;
+     see .quest-main-panel{position:relative} below for the anchor). */
+  .quest-progress-badge{
+    position:absolute; top:10px; left:10px; z-index:3;
+    display:flex; align-items:center; gap:7px; flex-wrap:wrap;
+    background:rgba(11,16,32,0.55); border:1px solid rgba(244,241,232,0.14);
+    border-radius:999px; padding:4px 10px;
+    backdrop-filter:blur(2px);
   }
   .progress-dots{ display:flex; gap:5px; }
   .progress-dot{
@@ -142,17 +144,7 @@
     border-color: var(--yellow);
     transform: scale(1.15);
   }
-  .level-progress-text{ font-size: 18px; font-weight:700; color: var(--chalk-dim); }
-  /* Always-visible pills on the arena-progress bar: 🎟️ pass count + 🧩 chips rollup (opens the
-     viewChips breakdown). Same visual weight as the progress text so the bar reads as one strip. */
-  .lp-pill{
-    display:inline-flex; align-items:center; gap:5px; margin-left:10px; padding:3px 12px;
-    font-size:16px; font-weight:700; color:var(--chalk); white-space:nowrap;
-    background:rgba(244,241,232,0.06); border:1px solid rgba(244,241,232,0.16); border-radius:999px;
-  }
-  .lp-pill b{ color:var(--yellow); }
-  .lp-pill-btn{ cursor:pointer; font-family:inherit; transition:background .15s ease, border-color .15s ease; }
-  .lp-pill-btn:hover{ background:rgba(242,193,78,0.14); border-color:var(--yellow); }
+  .level-progress-text{ font-size: 15px; font-weight:700; color: var(--chalk-dim); white-space:nowrap; }
 
   .formula-caption{
     text-align:center;
@@ -1398,7 +1390,7 @@
     padding:11px 15px!important;
     box-shadow:inset 0 1px rgba(255,255,255,.06);
   }
-  .level-progress{margin:12px 0 15px}.progress-dot{width:12px;height:12px;background:#2a3357;border-color:#465078}.progress-dot.filled{background:linear-gradient(135deg,#ffe27c,#ffac5b);border-color:#ffe27c;box-shadow:0 0 11px rgba(255,216,107,.68)}
+  .progress-dot{width:12px;height:12px;background:#2a3357;border-color:#465078}.progress-dot.filled{background:linear-gradient(135deg,#ffe27c,#ffac5b);border-color:#ffe27c;box-shadow:0 0 11px rgba(255,216,107,.68)}
   .level-progress-text{font-size:18px!important}
 
   .view-container.active{animation:viewReveal .38s ease both}@keyframes viewReveal{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -1685,11 +1677,6 @@
     margin:0!important;
     min-height:62px;
   }
-  .hero-hud-stack .level-progress{
-    margin:0;
-    justify-content:flex-start;
-    padding:0 8px;
-  }
   .hero-hud-stack #trophiesPanel{ margin:0!important; }
 
   #equationView.active{
@@ -1709,9 +1696,13 @@
     box-shadow:inset 0 1px rgba(255,255,255,.055),0 15px 38px rgba(0,0,0,.13);
   }
   .quest-main-panel{
+    position:relative;   /* anchors .quest-progress-badge to this panel's own top-left corner */
     display:flex;
     flex-direction:column;
-    padding:14px;
+    /* Extra top padding reserves room for the absolutely-positioned .quest-progress-badge so it
+       never overlaps the question content (astro card / formula / scale / question prompt), which
+       all start flush at this padding edge regardless of the badge sitting on top of it. */
+    padding:56px 14px 14px;
   }
   .quest-main-panel .formula-caption{
     margin:0 0 7px;
@@ -1958,7 +1949,6 @@
   @media (max-width:1100px){
     .hud-shell{grid-template-columns:1fr}
     .hero-hud-stack{display:grid;grid-template-columns:1fr auto;align-items:center}
-    .hero-hud-stack .level-progress{justify-content:flex-end}
     .hero-hud-stack #trophiesPanel{grid-column:1/-1}
     #equationView.active{grid-template-columns:minmax(0,1.35fr) minmax(310px,.65fr)}
     .quest-main-panel .scene-panel{grid-template-columns:1fr}
@@ -1980,10 +1970,9 @@
     .hud-shell .stats-row{margin:0 0 10px}
     .hero-hud-stack{display:block}
     .hero-hud-stack .hero-stats-row{margin-bottom:8px!important}
-    .hero-hud-stack .level-progress{justify-content:center;margin:8px 0}
     #equationView.active{display:block}
     .quest-main-panel,.quest-control-panel{border-radius:18px}
-    .quest-main-panel{padding:10px}
+    .quest-main-panel{padding:78px 10px 10px}   /* extra top room — the badge wraps to 2 lines at phone widths */
     .quest-main-panel .chalkboard-scale{min-height:0;max-height:none;aspect-ratio:16/9}
     .quest-main-panel .scene-panel{display:none}
     .quest-control-panel{margin-top:12px;padding:17px}

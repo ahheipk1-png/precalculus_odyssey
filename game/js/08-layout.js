@@ -10,9 +10,8 @@
   var stats=document.querySelector('.stats-row');
   var hero=document.querySelector('.hero-stats-row');
   var trophies=document.getElementById('trophiesPanel');
-  var progress=document.querySelector('.level-progress');
 
-  if(board && stats && hero && progress && !document.querySelector('.hud-shell')){
+  if(board && stats && hero && !document.querySelector('.hud-shell')){
     var hud=make('section','hud-shell');
     var heroStack=make('div','hero-hud-stack');
     board.insertBefore(hud,stats);
@@ -20,7 +19,6 @@
     hud.appendChild(heroStack);
     heroStack.appendChild(hero);
     if(trophies) heroStack.appendChild(trophies);
-    heroStack.appendChild(progress);
   }
 
   var eq=document.getElementById('equationView');
@@ -33,6 +31,10 @@
       '<p id="controlHint">Use the same operation on both sides. Keep the balance steady until <strong>x</strong> stands alone.</p>'
     );
 
+    // Progress dots + tries-left hearts sit in this panel's own top-left corner (position:absolute,
+    // see .quest-progress-badge, styles.css) — appended first so it paints under anything else here.
+    var progressBadge=document.getElementById('questProgressBadge');
+    if(progressBadge) main.appendChild(progressBadge);
     // The planet-info card is a slim strip at the TOP of the main quest panel — not its
     // own grid column (that used to steal the wide column and hide the equation).
     var astro=document.getElementById('astroCard');

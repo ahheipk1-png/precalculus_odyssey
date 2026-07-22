@@ -398,7 +398,6 @@ body:has(#wonderlandView.active, #hooHeyView.active) .hud-shell,
 body:has(#wonderlandView.active, #hooHeyView.active) .stats-row,
 body:has(#wonderlandView.active, #hooHeyView.active) .hero-stats-row,
 body:has(#wonderlandView.active, #hooHeyView.active) #trophiesPanel,
-body:has(#wonderlandView.active, #hooHeyView.active) .level-progress,
 body:has(#wonderlandView.active, #hooHeyView.active) #warpPanel{ display: none !important; }
 body:has(#wonderlandView.active) .board{ max-width: 1200px; }
 body:has(#wonderlandView.active) #wonderlandView{ min-height: 80vh; }
