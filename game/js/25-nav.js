@@ -59,17 +59,29 @@
       : ('Arena ' + sorted.join(' & '));
   }
 
-  // Writes the Atlas HTML into whichever container(s) exist right now — #starAtlasView (the
-  // dedicated full-screen Atlas, opened via openStarAtlas()) and/or #codexBody (the "🪐 Star Atlas"
-  // tab inside the 📖 Star Log, opened via openCodex()/setCodexTab('atlas')). Only one is ever
-  // actually visible at a time; mirroring into both means every renderStarAtlas() caller (including
-  // the onclick handlers baked into the returned HTML itself, e.g. atlasOpenSystem/atlasTravel) just
-  // works from either entry point without needing to know which one is on screen.
+  // Writes the Atlas HTML into whichever ONE of these is actually on screen right now —
+  // #starAtlasView (the dedicated full-screen Atlas, opened via openStarAtlas()) or #codexBody
+  // (the "🪐 Star Atlas" tab inside the 📖 Star Log, opened via openCodex()/setCodexTab('atlas')).
+  // Every renderStarAtlas() caller (including onclick handlers baked into the returned HTML itself,
+  // e.g. atlasOpenSystem/atlasTravel) can call this without knowing which one is on screen.
+  //
+  // Used to write into BOTH unconditionally (whichever existed), on the theory that only one is
+  // ever visible — true, but the OTHER one still got the same HTML written into its hidden
+  // container, leaving two live copies of every planet's SVG gradient/clipPath ids (bodyArtSVG's
+  // uid is per-arena only, e.g. "g-sunatlasnav1" — not per-container). Duplicate ids for
+  // fill="url(#...)"/clip-path="url(#...)" targets are undefined behaviour once more than one
+  // element shares an id; confirmed live on production (2026-07-22) via getElementById-style id
+  // scans finding dozens of exact duplicates the moment the Atlas is opened by any route, and the
+  // planet art itself visibly duller/flatter than a clean single-copy render of the identical SVG.
+  // Only writing into the container that's actually `.active` (the same convention openStarAtlas/
+  // openCodex already use to toggle view-container visibility) keeps exactly one live copy of each
+  // id in the DOM at a time.
   function _atlasRenderInto(html){
     var av = document.getElementById('starAtlasView');
-    if (av) av.innerHTML = html;
+    if (av && av.classList.contains('active')) av.innerHTML = html;
+    var cv = document.getElementById('codexView');
     var cb = document.getElementById('codexBody');
-    if (cb) cb.innerHTML = html;
+    if (cb && cv && cv.classList.contains('active')) cb.innerHTML = html;
   }
 
   function renderStarAtlas(){

@@ -46,9 +46,24 @@ The 9 star systems are recorded in `STAR_SYSTEMS` (`worlds.config.js`) for the S
     version, `BODY_ORDER`/`isBodyUnlocked`/`planetSVG`) — since both shared this codebase's one global
     script scope, the later-loaded 25-nav.js version always silently won at call time, and it doesn't
     return an HTML string (it writes straight into `#starAtlasView` and returns `undefined`). Deleted
-    the dead duplicate in 14-lore.js; `renderStarAtlas()` now writes into BOTH `#starAtlasView` and
-    `#codexBody` via a small `_atlasRenderInto(html)` helper, so it works correctly from either entry
-    point (the dedicated Atlas screen, or this tab) without duplicating the rendering logic.
+    the dead duplicate in 14-lore.js; `renderStarAtlas()` writes into whichever of `#starAtlasView` /
+    `#codexBody` is actually on screen via a small `_atlasRenderInto(html)` helper, so it works
+    correctly from either entry point (the dedicated Atlas screen, or this tab) without duplicating
+    the rendering logic.
+    - **Regression, fixed 2026-07-22 (user: "all these pictures are messed up... it was very
+      beautiful")**: this helper originally wrote the SAME html into BOTH containers unconditionally
+      ("only one is ever visible, so mirroring is harmless"). It isn't — `bodyArtSVG`'s SVG
+      `<radialGradient>`/`<clipPath>` uid is per-arena only (e.g. `g-sunatlasnav1`), not per-container,
+      so writing the identical markup into both left TWO live elements sharing the same `id` in the
+      DOM the moment the Atlas was opened by any route (confirmed live: 47 exact duplicate ids).
+      Duplicate SVG ids are undefined behaviour for `fill="url(#...)"`/`clip-path="url(#...)"`
+      resolution — different browsers/engines are free to resolve them differently, which is the
+      likely cause of the planet art rendering duller/flatter on the user's device while looking
+      correct elsewhere. Fixed by only writing into whichever container currently has the `.active`
+      class (the same convention `openStarAtlas`/`openCodex` already use to toggle view-container
+      visibility), so at most one live copy of each id ever exists at a time. Verified live: before
+      the fix, a duplicate-id scan on production found 47 matches; after patching `_atlasRenderInto`
+      in-memory and re-rendering with `#codexBody` cleared (simulating a fresh session), 0 duplicates.
 - **Star Atlas systems list** (`renderStarAtlas`, `25-nav.js`) — each of the 11 system cards shows its
   maths **topic** (world title from `MATH_WORLDS`, matched by `s.worldId`) + **arena range** (from
   `s.arenaStart/arenaEnd`), e.g. "📚 Numbers · Arena 1–24" (`.atlas-sys-topic`).
