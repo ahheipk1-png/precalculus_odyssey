@@ -1,17 +1,22 @@
-// Admin-only: read and edit a player's authoritative CLOUD save directly (item: admin tools).
-//   GET  /api/admin/save?username=NAME            → latest cloud profile: curated fields + meta
-//   POST /api/admin/save {username, action, ...}   → override | reset | deleteSave
+// Admin-only: read and edit a player's authoritative account progress directly (item: admin tools).
+//   GET  /api/admin/save?username=NAME            → curated fields + sync meta
+//   POST /api/admin/save {username, action, ...}   → override | reset
 //
-// Edits bump the profile's monotonic `revision`. The player's client carries a
-// stale expectedRevision, so its next cloud sync returns 409 and the existing
-// conflict UI (onCloudConflict in cloud-ui.js) offers "Use the cloud save",
-// which pulls the admin-edited blob onto their device. A `reset` writes an
-// `_adminReset` marker that applySnapshotToState honours by wiping progress.
-import { json, bad, nowIso, authAdmin, normalizeUsername } from '../cloud/_shared.js';
+// Operates on cloud_accounts.progress_json — the SAME full-snapshot field the account-login system
+// (cloud-auth.js) reads/writes (getSaveSnapshot() shape). This used to target the older, separate
+// `player_profiles` table from the Cloud Save layer (cloud-save.js) instead — but that layer's own
+// upload UI (#cloudBtn) was never wired into index.html, so no real username/password player ever
+// populates player_profiles; every edit made through the old version of this file was silently
+// invisible to every real player (2026-07-21, found while diagnosing "admin should see everything").
+//
+// Edits/resets set admin_override = 1 (migration 0007). The player's client (authPushProgress,
+// cloud-auth.js) checks for this on its next heartbeat push — live sessions pick up the change
+// within ~25s, not just on next login — see functions/api/auth/progress.js's POST handler.
+import { json, bad, nowIso, authAdmin, normalizeUsername, readJsonBody } from '../cloud/_shared.js';
 
-// Curated numeric fields an admin may override, with the path inside the save
-// blob (getSaveSnapshot shape) and a defensive clamp. Nothing else is editable
-// here — gear arrays, codex, arena stats, etc. are left untouched.
+// Curated numeric fields an admin may override, with the path inside the progress snapshot
+// (getSaveSnapshot shape) and a defensive clamp. Nothing else is editable here — gear arrays,
+// codex, arena stats, etc. are left untouched. Must mirror ADMIN_SAVE_FIELDS in cloud-auth.js.
 const CURATED = [
   { key: 'level',        path: ['level'],               min: 1, max: 65,      fresh: 1 },
   { key: 'coins',        path: ['coins'],               min: 0, max: 1e9,     fresh: 0 },
@@ -44,20 +49,10 @@ function clampInt(v, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-async function accountId(env, username) {
-  const acc = await env.DB.prepare(
-    `SELECT account_id, is_admin FROM cloud_accounts WHERE username = ?1`
-  ).bind(username).first();
-  return acc || null;
-}
-
-async function latestProfile(env, accId) {
+async function loadAccount(env, username) {
   return env.DB.prepare(
-    `SELECT profile_id, player_name, save_version, revision, save_json, updated_at
-       FROM player_profiles
-      WHERE account_id = ?1 AND deleted_at IS NULL
-      ORDER BY updated_at DESC LIMIT 1`
-  ).bind(accId).first();
+    `SELECT account_id, progress_json, progress_at FROM cloud_accounts WHERE username = ?1`
+  ).bind(username).first();
 }
 
 export async function onRequestGet(context) {
@@ -67,75 +62,63 @@ export async function onRequestGet(context) {
   const username = normalizeUsername(url.searchParams.get('username'));
   if (!username) return bad('MISSING', 'username required.');
 
-  const acc = await accountId(context.env, username);
+  const acc = await loadAccount(context.env, username);
   if (!acc) return bad('NO_ACCOUNT', 'No such account.', 404);
-  const prof = await latestProfile(context.env, acc.account_id);
-  if (!prof) return json(200, { ok: true, hasSave: false });
+  if (!acc.progress_json) return json(200, { ok: true, hasProgress: false });
 
   let save = {};
-  try { save = JSON.parse(prof.save_json) || {}; } catch (e) { save = {}; }
+  try { save = JSON.parse(acc.progress_json) || {}; } catch (e) { save = {}; }
   const fields = {};
   for (const f of CURATED) { const v = getPath(save, f.path); fields[f.key] = (v == null ? null : v); }
-  return json(200, {
-    ok: true, hasSave: true, username,
-    profileId: prof.profile_id, playerName: prof.player_name,
-    revision: prof.revision, updatedAt: prof.updated_at, fields
-  });
+  return json(200, { ok: true, hasProgress: true, username, progressAt: acc.progress_at || '', fields });
 }
 
 export async function onRequestPost(context) {
   const admin = await authAdmin(context);
   if (!admin) return bad('FORBIDDEN', 'Admin access required.', 403);
 
-  const body = await context.request.json().catch(() => ({}));
+  let body;
+  try { body = await readJsonBody(context.request); } catch (e) { return bad('BAD_JSON', 'Bad request body.'); }
   const username = normalizeUsername(body.username);
   const action = String(body.action || '');
   if (!username) return bad('MISSING', 'username required.');
 
-  const acc = await accountId(context.env, username);
+  const acc = await loadAccount(context.env, username);
   if (!acc) return bad('NO_ACCOUNT', 'No such account.', 404);
   const DB = context.env.DB, now = nowIso();
-  const prof = await latestProfile(context.env, acc.account_id);
-  if (!prof) return bad('NO_SAVE', 'This player has no cloud save to edit yet.', 404);
 
   let save = {};
-  try { save = JSON.parse(prof.save_json) || {}; } catch (e) { save = {}; }
+  try { save = acc.progress_json ? (JSON.parse(acc.progress_json) || {}) : {}; } catch (e) { save = {}; }
 
   if (action === 'override') {
     const incoming = (body.fields && typeof body.fields === 'object') ? body.fields : {};
-    const applied = {};
     for (const f of CURATED) {
       if (!(f.key in incoming) || incoming[f.key] === '' || incoming[f.key] == null) continue;
       const v = clampInt(incoming[f.key], f.min, f.max);
       if (v == null) return bad('BAD_FIELD', 'Field ' + f.key + ' must be a number.');
       setPath(save, f.path, v);
-      applied[f.key] = v;
     }
     if (!save.currencies || typeof save.currencies !== 'object') save.currencies = { gold: 0, silver: 0 };
-    save._adminEditedAt = now;
+    save.schemaVersion = save.schemaVersion || 2;   // guard migrateSave()'s legacy-save path, see 03-save.js
   } else if (action === 'reset') {
-    // Mark the save so the client wipes progress on adopt, and also zero the
-    // curated fields so a cloud recovery that ignores the marker still starts near scratch.
+    // Zero the curated fields (so THIS dashboard reflects it immediately) AND set the `_adminReset`
+    // marker applySnapshotToState() (03-save.js) already knows how to honour — it calls the real,
+    // tested resetPlayerState() client-side instead of loading a merely-zeroed snapshot, so gear,
+    // codex, arena stats etc. all genuinely reset too, not just these curated numbers.
     for (const f of CURATED) setPath(save, f.path, f.fresh);
+    save.schemaVersion = save.schemaVersion || 2;
     save._adminReset = now;
-  } else if (action === 'deleteSave') {
-    await DB.prepare(
-      `UPDATE player_profiles SET deleted_at = ?1 WHERE profile_id = ?2 AND account_id = ?3 AND deleted_at IS NULL`
-    ).bind(now, prof.profile_id, acc.account_id).run();
-    return json(200, { ok: true, action, deletedSave: true });
   } else {
     return bad('BAD_ACTION', 'Unknown action.');
   }
 
-  const nextRev = (prof.revision || 0) + 1;
   const saveJson = JSON.stringify(save);
-  if (saveJson.length > 512 * 1024) return bad('TOO_LARGE', 'Edited save too large.', 413);
+  if (saveJson.length > 512 * 1024) return bad('TOO_LARGE', 'Edited progress too large.', 413);
   await DB.prepare(
-    `UPDATE player_profiles SET save_json = ?1, revision = ?2, updated_at = ?3
-      WHERE profile_id = ?4 AND account_id = ?5`
-  ).bind(saveJson, nextRev, now, prof.profile_id, acc.account_id).run();
+    `UPDATE cloud_accounts SET progress_json = ?1, progress_at = ?2, admin_override = 1 WHERE account_id = ?3`
+  ).bind(saveJson, now, acc.account_id).run();
 
-  return json(200, { ok: true, action, username, revision: nextRev });
+  return json(200, { ok: true, action, username });
 }
 
 export const onRequest = (ctx) => {

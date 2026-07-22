@@ -62,6 +62,22 @@ precomputed `arenasPassed` field the old lightweight summary used to) or by the 
   OTHER live session for that username (except the `admin` test account). Confirmed intentional
   (user 2026-07-21: "does it make sense?" — yes, keep it) — logging in elsewhere is meant to sign
   you out elsewhere, not run two devices concurrently under one identity.
+  - **The revoked device used to find out passively — now it's a forced kick-out** (same day, user:
+    "the login in this computer should be kicked out with a notification"). Previously, a 401 on the
+    heartbeat push just stopped the sync timer and showed a one-time toast; the player kept playing
+    locally, indistinguishable from being properly logged in, silently accumulating progress that
+    could never reach the cloud — and which could look "more advanced" than the account's real
+    (other-device) progress on a later re-login, since `bridgeToGame`'s "cloud wins only if further"
+    comparison (see below) trusted that orphaned local state at face value. Now `handleSessionRevoked()`
+    (cloud-auth.js) fires the instant a 401 is seen — either at boot (`bridgeToGame`'s initial
+    `GET /api/auth/progress`, for a stored session token that died while the tab was closed) or on
+    the next heartbeat (`authPushProgress`) — and immediately shows a blocking `#accountKickOverlay`
+    ("🔒 Logged Out — your account was logged in on another device…"), clears the local session, and
+    reloads to the login screen on **OK**. This also directly fixes "log out and back in should go to
+    the most recent star system": since local play can no longer silently drift past the point of
+    takeover, `bridgeToGame`'s cloud-vs-local comparison stays sound, and a fresh login correctly
+    restores the account's real latest arena/star system (verified: mocked a level-45 cloud snapshot,
+    confirmed the header reads "🌌 Ross 128 · Arena 45 of 65" post-login, not Arena 1/Sol).
 - **2026-07-21 — a player's progress from a second computer was invisible everywhere; fixed in two
   passes the same day.** Root cause was two SEPARATE bugs compounding with the single-session design
   above: (1) `authPushProgress` called its API request without awaiting or checking the result — a
@@ -104,6 +120,47 @@ precomputed `arenasPassed` field the old lightweight summary used to) or by the 
     and doesn't repeat it. The actual D1-backed request/response could not be exercised from this
     environment (no wrangler/Cloudflare credentials configured here) — verify against the real
     deployment after pushing.
+  - **Confirmed live 2026-07-21**: the `progress_json`/`progress_at` columns (migration `0006`) had
+    never actually been applied to the production D1 database — pushing code to GitHub never runs a
+    migration, that's a separate one-time step. Symptom: admin dashboard showed "This player hasn't
+    played" for a real player (Jayden) who *had* logged in and played. Fixed by hitting
+    `/api/admin/bootstrap?key=...` once (idempotent — also seeds `admin`/`admin`). That endpoint's
+    key is baked into the public repo; delete `functions/api/admin/bootstrap.js` (or rotate the key
+    into a Cloudflare Pages `SEED_KEY` secret) once bootstrapped, since anyone who finds it can hit it.
+
+## 🛠️ Admin edit/reset a player's progress — `functions/api/admin/save.js` + `game/js/cloud-auth.js`
+
+Per-player admin dashboard page (`renderPlayerDetail`/`loadAdminSaveTools`) has an editable field
+grid (level, cash, gold/silver, hero level, HP/MP, Wonderland passes — the `CURATED` list, mirrored
+client-side as `ADMIN_SAVE_FIELDS`) plus **💾 Save overrides** and **↺ Reset to beginning**.
+
+- **2026-07-21 — this used to be silently useless for every real player.** The whole feature
+  (`GET`/`POST /api/admin/save`) originally targeted `player_profiles` (the older, separate Cloud
+  Save layer's table, `cloud-save.js`) — but that layer's own upload button (`#cloudBtn`) was never
+  wired into `index.html`, so no real username/password player ever populates `player_profiles`;
+  every edit made through the old code silently vanished. Rewritten to operate on
+  `cloud_accounts.progress_json` — the SAME full-snapshot field the account-login system actually
+  reads/writes — so edits now genuinely reach real players (found while diagnosing "admin should be
+  able to see everything and override everything").
+- **Reaches an already-logged-in, LIVE player within ~25s, not just on next login.** New
+  `admin_override` flag (migration `0007`): an edit/reset sets it; `POST /api/auth/progress`
+  (the player's own 25s heartbeat push) checks it BEFORE accepting a normal push — if set, it
+  rejects the push and hands back the admin's snapshot instead (`{ok:false, error:'OVERRIDE_PENDING',
+  progress}`), so the player's own stale local state can't silently clobber the admin's edit before
+  the client ever pulls it. `authPushProgress` (cloud-auth.js) applies that snapshot locally via
+  `applySnapshotToState()`, saves, toasts "🛠️ An admin updated your progress — refreshed!", then
+  re-pushes with `{ack:true}` to clear the flag and resume normal syncing. A `_applyingOverride`
+  guard flag suppresses the nested `authPushProgress()` call `saveGame()` itself triggers as a side
+  effect while applying the override, so the ack push doesn't race a redundant duplicate.
+- **Reset reuses the existing `_adminReset` marker** `applySnapshotToState()` already knows how to
+  honour (originally built for the old `player_profiles`-based version of this feature) — it zeroes
+  the curated fields (so this dashboard reflects it immediately) AND sets `_adminReset`, which makes
+  the CLIENT call the real, tested `resetPlayerState()` instead of just loading a zeroed snapshot —
+  so gear, codex, arena stats, everything genuinely resets, not just the curated numbers.
+- Verified client-side end-to-end by mocking `window.fetch` (override applies + persists to
+  localStorage; reset correctly calls `resetPlayerState()`; exactly 2 network calls per flow, no
+  duplicate/racing push) — the real D1-backed round trip couldn't be exercised from this environment
+  (no wrangler/Cloudflare credentials here); verify against the real deployment after pushing.
 
 ## ⚠️ The 4-place persistence rule (do this for EVERY new saved field)
 

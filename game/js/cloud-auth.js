@@ -178,6 +178,28 @@
 
   window.authLogout = async function (){ try { await api('/api/auth/logout', { auth: true }); } catch (e) {} clearSession(); try { location.reload(); } catch (e) {} };
 
+  // Single-active-session enforcement: logging in elsewhere revokes this device's session
+  // server-side (login.js). Previously discovering that only stopped the background cloud sync
+  // with a passive toast — the player kept right on playing locally, indistinguishable from being
+  // properly logged in, silently piling up progress that could never reach the cloud and would
+  // look "more advanced" than the account's real (other-device) progress on a later re-login,
+  // quietly overwriting it (user 2026-07-21: "the login in this computer should be kicked out with
+  // a notification"). Now: the moment a revoked session (401) is detected — either right at boot
+  // (bridgeToGame's initial fetch) or on the next heartbeat (authPushProgress) — this device is
+  // force-logged-out immediately via a blocking modal, so local play can never keep drifting past
+  // the point the account was actually taken over elsewhere.
+  var _kickedOut = false;
+  function handleSessionRevoked(){
+    if (_kickedOut) return;
+    _kickedOut = true;
+    if (_progTimer){ clearInterval(_progTimer); _progTimer = null; }
+    clearSession();
+    var ov = document.getElementById('accountKickOverlay');
+    if (ov) ov.hidden = false;
+    else { window.alert('Your account was logged in on another device — you have been logged out here.'); location.reload(); }
+  }
+  window.ackAccountKick = function(){ location.reload(); };
+
   // Hand off to the existing game with `username` as the active profile.
   // Prefers the account's CLOUD save over a local profile whenever the cloud is further along (a
   // new device, or this account played further elsewhere more recently) — logging in should show
@@ -199,6 +221,10 @@
     var cloudProgress = null;
     try {
       var pr = await api('/api/auth/progress', { method: 'GET', auth: true });
+      // The stored session token (boot() resuming a prior login) is already dead — most likely
+      // this account was logged into on another device while this tab was closed. Bounce straight
+      // to the kick-out screen rather than silently starting the game on stale local data.
+      if (pr.status === 401){ handleSessionRevoked(); return; }
       if (pr.ok && pr.data && pr.data.ok && pr.data.progress) cloudProgress = pr.data.progress;
     } catch (e) {}
     var cloudIsFurther = cloudProgress && (!localMine || (cloudProgress.level || 1) > (localMine.level || 1));
@@ -258,23 +284,39 @@
   // never actually catch an async failure) — a revoked/expired session, or any transient network
   // error, failed EVERY sync silently forever with no sign to the player or the admin dashboard
   // (2026-07-21, diagnosing why a player's progress on a second computer never showed up anywhere).
-  var _progTimer = null, _progFailStreak = 0, _progLoggedOutWarned = false;
-  window.authPushProgress = async function(){
+  var _progTimer = null, _progFailStreak = 0, _applyingOverride = false;
+  // opts.ack: this push is CONFIRMING an admin override was just applied locally (see the
+  // OVERRIDE_PENDING branch below) — lets the server clear admin_override so normal pushes resume.
+  window.authPushProgress = async function(opts){
+    // saveGame() (03-save.js) itself calls authPushProgress() on every save as a side effect — while
+    // we're mid-way through applying an override (saveGame() below persists it locally), suppress
+    // that nested call so it doesn't race our own explicit ack push with a second, redundant one.
+    if (_applyingOverride) return;
     var sess = loadSession();
     if (!sess || !sess.token || (sess.username || '').toLowerCase() === 'admin') return;   // don't sync the admin/test account
+    var ack = !!(opts && opts.ack);
     var r;
-    try { r = await api('/api/auth/progress', { body: { progress: authProgressSummary() }, auth: true }); }
+    try { r = await api('/api/auth/progress', { body: { progress: authProgressSummary(), ack: ack }, auth: true }); }
     catch (e) { r = { ok: false, status: 0 }; }
     if (r.ok && r.data && r.data.ok){ _progFailStreak = 0; return; }
+    // An admin edited or reset this player's progress (admin/save.js) — apply it locally right now
+    // (even for an already-logged-in, live session, not just on next login) rather than letting this
+    // push overwrite the admin's version with our own stale local state, then confirm with ack:true
+    // so the flag clears and normal pushes resume. Guarded by `ack` itself so a confirm push that
+    // somehow gets OVERRIDE_PENDING again doesn't recurse forever — just let the next heartbeat retry.
+    if (!ack && r.data && r.data.error === 'OVERRIDE_PENDING' && r.data.progress){
+      _applyingOverride = true;
+      if (typeof applySnapshotToState === 'function') applySnapshotToState(r.data.progress);
+      if (typeof saveGame === 'function') saveGame();
+      _applyingOverride = false;
+      if (typeof showToast === 'function') showToast('🛠️ An admin updated your progress — refreshed!');
+      return window.authPushProgress({ ack: true });
+    }
     if (r.status === 401){
-      // The session was revoked server-side — most likely this account was logged into on another
-      // device (login.js enforces single-active-session by design). Stop hammering a dead session;
-      // local play still saves fine on THIS device, it just won't reach the cloud until re-login.
-      if (_progTimer){ clearInterval(_progTimer); _progTimer = null; }
-      if (!_progLoggedOutWarned){
-        _progLoggedOutWarned = true;
-        if (typeof showToast === 'function') showToast('🔒 This account was logged in somewhere else, so progress has stopped syncing here. Log out and back in to resume.');
-      }
+      // The session was revoked server-side — this account was logged into on another device
+      // (login.js enforces single-active-session by design). Force this device out immediately
+      // (handleSessionRevoked) rather than quietly continuing to play on stale local data.
+      handleSessionRevoked();
       return;
     }
     _progFailStreak++;
@@ -282,7 +324,7 @@
   };
   function authStartProgressSync(){
     if (_progTimer) clearInterval(_progTimer);
-    _progFailStreak = 0; _progLoggedOutWarned = false;
+    _progFailStreak = 0;
     window.authPushProgress();
     _progTimer = setInterval(function(){ if (loadSession()) window.authPushProgress(); else { clearInterval(_progTimer); _progTimer = null; } }, 25000);
   }
@@ -443,19 +485,24 @@
     { key: 'wonderPasses', label: '🎟️ Wonderland passes', min: 0, max: 1e6 }
   ];
 
-  // Load the player's latest cloud save and render the editable admin-tools card.
+  // Load the player's account progress and render the editable admin-tools card. Operates on
+  // cloud_accounts.progress_json (the account-login system's full save snapshot) — NOT the older,
+  // separate Cloud Save layer's player_profiles table, which no real username/password player ever
+  // populates (its own upload UI was never wired into index.html). Edits here reach even an
+  // already-logged-in player within ~25s via the admin_override flag (migration 0007) — see
+  // authPushProgress's OVERRIDE_PENDING handling below.
   async function loadAdminSaveTools(username){
     var card = document.getElementById('adminToolsBody');
     if (!card) return;
     var r = await api('/api/admin/save?username=' + encodeURIComponent(username), { method: 'GET', auth: true });
     var deleteBtn = '<button class="btn btn-ghost admin-btn admin-danger" id="adminDeleteBtn" onclick="authAdminDeleteAccount(\'' + esc(username) + '\')">🗑 Delete account permanently</button>';
     if (!(r.ok && r.data.ok)){
-      card.innerHTML = '<p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load cloud save.') + '</p>' +
+      card.innerHTML = '<p class="auth-msg auth-err">' + esc((r.data && r.data.error) || 'Could not load progress.') + '</p>' +
         '<div class="admin-actions">' + deleteBtn + '</div>';
       return;
     }
-    if (!r.data.hasSave){
-      card.innerHTML = '<p class="admin-empty">No cloud save yet — this player hasn’t enabled Cloud Save or hasn’t synced. Values become editable once they do. You can still remove the account.</p>' +
+    if (!r.data.hasProgress){
+      card.innerHTML = '<p class="admin-empty">This player hasn’t synced any progress yet — values become editable once they log in and play a bit. You can still remove the account.</p>' +
         '<div class="admin-actions">' + deleteBtn + '</div>';
       return;
     }
@@ -467,13 +514,13 @@
         '" min="' + fld.min + '" max="' + fld.max + '" step="1"></label>';
     }).join('');
     card.innerHTML =
-      '<p class="admin-tools-note">Editing profile <b>' + esc(r.data.playerName || username) + '</b> (revision ' + esc(r.data.revision) + '). ' +
-        'Changes write straight to the cloud save; the player picks them up on their next sync (a “newer cloud save” prompt) or on cloud recovery.</p>' +
+      '<p class="admin-tools-note">Editing <b>' + esc(username) + '</b>’s live progress (last synced ' + esc(when(r.data.progressAt)) + '). ' +
+        'Changes reach them within ~25 seconds if they’re online right now, or on their next login otherwise.</p>' +
       '<div class="admin-field-grid">' + inputs + '</div>' +
       '<p class="auth-msg" id="adminToolsMsg"></p>' +
       '<div class="admin-actions">' +
         '<button class="btn btn-primary admin-btn" onclick="authAdminSaveOverride(\'' + esc(username) + '\')">💾 Save overrides</button>' +
-        '<button class="btn btn-ghost admin-btn" onclick="authAdminResetPlayer(\'' + esc(username) + '\')">↺ Reset to beginning</button>' +
+        '<button class="btn btn-ghost admin-btn admin-danger" onclick="authAdminResetPlayer(\'' + esc(username) + '\')">↺ Reset to beginning</button>' +
         deleteBtn +
       '</div>';
   }
@@ -489,15 +536,15 @@
     });
     adminToolsMsg('Saving…');
     var r = await api('/api/admin/save', { body: { username: username, action: 'override', fields: fields }, auth: true });
-    if (r.ok && r.data.ok){ adminToolsMsg('Saved. Cloud save is now revision ' + r.data.revision + '.', 'ok'); }
+    if (r.ok && r.data.ok){ adminToolsMsg('Saved — reaches ' + username + ' within ~25s if online, or on next login.', 'ok'); }
     else adminToolsMsg((r.data && r.data.error) || 'Save failed.', 'err');
   };
 
   window.authAdminResetPlayer = async function(username){
-    if (!window.confirm('Reset ' + username + ' to the very beginning? Their cloud save progress (arena, cash, gear-driven stats) is wiped on their next sync. This cannot be undone.')) return;
+    if (!window.confirm('Reset ' + username + ' to the very beginning? Their arena, cash, and gear-driven stats reset. This cannot be undone.')) return;
     adminToolsMsg('Resetting…');
     var r = await api('/api/admin/save', { body: { username: username, action: 'reset' }, auth: true });
-    if (r.ok && r.data.ok){ adminToolsMsg('Reset. The player restarts from Arena 1 on their next cloud sync.', 'ok'); loadAdminSaveTools(username); }
+    if (r.ok && r.data.ok){ adminToolsMsg('Reset — takes effect within ~25s if online, or on next login.', 'ok'); loadAdminSaveTools(username); }
     else adminToolsMsg((r.data && r.data.error) || 'Reset failed.', 'err');
   };
 

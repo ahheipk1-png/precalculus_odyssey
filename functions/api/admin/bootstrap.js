@@ -38,7 +38,8 @@ export async function onRequest(context) {
       "ALTER TABLE cloud_accounts ADD COLUMN reg_country TEXT",
       "ALTER TABLE cloud_accounts ADD COLUMN reg_region TEXT",
       "ALTER TABLE cloud_accounts ADD COLUMN progress_json TEXT",   // player's synced progress for the admin dashboard
-      "ALTER TABLE cloud_accounts ADD COLUMN progress_at TEXT"
+      "ALTER TABLE cloud_accounts ADD COLUMN progress_at TEXT",
+      "ALTER TABLE cloud_accounts ADD COLUMN admin_override INTEGER NOT NULL DEFAULT 0"   // pending admin edit/reset, see migrations/0007
     ];
     for (const sql of alters) { try { await DB.prepare(sql).run(); } catch (e) { /* column already exists — fine */ } }
     try { await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cloud_accounts_username ON cloud_accounts(username)").run(); } catch (e) {}

@@ -179,7 +179,18 @@
     // by their own _arenaVisible() reveal condition (comebackUnlocked()/galaxyUnlocked()), which
     // already keeps them out of `arenas` entirely until earned — this is only an EXTRA AND-ed
     // guard for ordinary arenas, never a replacement for that logic.
-    var locked = (a.n > state.level) && !state.testMode && !a.special;
+    // Also exempt: any arena already beaten (state.bossDefeated) — atlasTravel() sets state.level
+    // to whatever arena you jump to, including backward to replay an earlier one, which used to
+    // make every already-cleared arena AHEAD of that point look freshly "🔒 Locked" (dimmed/
+    // greyscale) again the moment you traveled back (user 2026-07-21: "the picture of the planets
+    // shouldn't be darker if cleared"). Progress-gating should only ever block arenas never reached.
+    var alreadyCleared = !!(state.bossDefeated && state.bossDefeated[a.n]);
+    var locked = (a.n > state.level) && !alreadyCleared && !state.testMode && !a.special;
+    // Only the SINGLE immediate-next arena gets the dark/greyscale "locked" treatment — every arena
+    // further out is still non-enterable (same disabled button + lock note below) but stays visually
+    // normal, so browsing a system doesn't turn into a wall of dimmed cards the moment you're only a
+    // couple of arenas in (user 2026-07-22: "everything is dark... only locked one should be dark").
+    var lockedDim = locked && (a.n === state.level + 1);
     var b = a.body || { name: 'Arena ' + displayNum, kind: '', fact: '', real: true };
     var accent = _bodyAccent(b);
     var art = (typeof bodyArtSVG === 'function')
@@ -198,7 +209,7 @@
       : (cleared ? '<div class="atlas-status-badge cleared" title="Cleared">✓ Cleared</div>' : '');
     var prevDisplayNum = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(a.n - 1) : (a.n - 1);
     var lockNote = locked ? '<div class="atlas-planet-lock-note">Clear Arena ' + prevDisplayNum + ' first</div>' : '';
-    return '<div class="atlas-planet ' + (current ? 'current' : '') + (perfect ? ' perfect' : '') + (b.real ? '' : ' imagined') + (locked ? ' locked' : '') + '" style="--astro-accent:' + accent + '">' +
+    return '<div class="atlas-planet ' + (current ? 'current' : '') + (perfect ? ' perfect' : '') + (b.real ? '' : ' imagined') + (lockedDim ? ' locked' : '') + '" style="--astro-accent:' + accent + '">' +
       starBadge +
       '<div class="atlas-planet-art">' + art + '</div>' +
       '<div class="atlas-planet-name">Arena ' + displayNum + ' · ' + b.name + '</div>' +

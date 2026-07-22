@@ -54,10 +54,22 @@ The 9 star systems are recorded in `STAR_SYSTEMS` (`worlds.config.js`) for the S
   `s.arenaStart/arenaEnd`), e.g. "📚 Numbers · Arena 1–24" (`.atlas-sys-topic`).
 - **Arena cards are progress-locked** (`_atlasArenaCard`, `25-nav.js`, added 2026-07-21 — user:
   "why all arena is open? ... not until i finish arena 1,2,3, arena 4 should be locked"). An arena
-  card is locked when `a.n > state.level` (and not `state.testMode`) — shows "🔒 Locked" with a
-  disabled Enter button, a "Clear Arena N-1 first" note, and dimmed/greyscale styling
-  (`.atlas-planet.locked`, `systems.css`). Already-cleared and the current arena stay freely
-  re-enterable (unchanged). The two special end-game arenas (888/999) are exempt from this check —
+  card is locked when `a.n > state.level` AND it's never been beaten (`!state.bossDefeated[a.n]`,
+  and not `state.testMode`) — shows "🔒 Locked" with a disabled Enter button, a "Clear Arena N-1
+  first" note, and dimmed/greyscale styling (`.atlas-planet.locked`, `systems.css`).
+  - **The `bossDefeated` exemption was added same-day** (user: "the picture of the planets shouldn't
+    be darker if cleared") — the first version only checked `a.n > state.level`, so `atlasTravel(room)`
+    setting `state.level = room` to REPLAY an earlier arena would make every already-cleared arena
+    ahead of that point look freshly "🔒 Locked" (dimmed/greyscale) again the moment you traveled
+    back. Progress-gating now only ever blocks arenas that have genuinely never been reached.
+  - **Only the single immediate-next arena gets the dark/greyscale treatment** (`lockedDim`,
+    2026-07-22 — user: "everything is dark... only locked one should be dark", after discovering
+    the `bossDefeated` exemption above hadn't actually reached production yet). Every arena further
+    out stays non-enterable (same disabled button + "Clear Arena N-1 first" note) but renders at
+    full opacity/no greyscale — browsing a 24-arena system three arenas in no longer means staring
+    at 21 dimmed cards; only the one you'd actually unlock next looks locked.
+  - Already-cleared and the current arena stay freely re-enterable (unchanged). The two special
+    end-game arenas (888/999) are exempt from this check —
   they have their own separate `_arenaVisible()` reveal condition and shouldn't be double-gated once
   earned. The "ℹ️ About this ..." astronomy-info button stays clickable even when locked (it's
   reference content, not a progress skip). Note: the lock is UI-only on the card's button (no
