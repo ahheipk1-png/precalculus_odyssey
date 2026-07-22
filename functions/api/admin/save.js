@@ -15,8 +15,9 @@
 import { json, bad, nowIso, authAdmin, normalizeUsername, readJsonBody } from '../cloud/_shared.js';
 
 // Curated numeric fields an admin may override, with the path inside the progress snapshot
-// (getSaveSnapshot shape) and a defensive clamp. Nothing else is editable here — gear arrays,
-// codex, arena stats, etc. are left untouched. Must mirror ADMIN_SAVE_FIELDS in cloud-auth.js.
+// (getSaveSnapshot shape) and a defensive clamp. Equipped gear and chips are handled separately
+// below (GEAR_SLOTS/CHIP_IDS) — codex, arena stats, inventory, etc. remain untouched. Must mirror
+// ADMIN_SAVE_FIELDS in cloud-auth.js.
 const CURATED = [
   { key: 'level',        path: ['level'],               min: 1, max: 65,      fresh: 1 },
   { key: 'coins',        path: ['coins'],               min: 0, max: 1e9,     fresh: 0 },
@@ -29,6 +30,34 @@ const CURATED = [
   { key: 'playerMp',     path: ['playerMp'],            min: 0, max: 1e7,     fresh: 20 },
   { key: 'wonderPasses', path: ['wonderPasses'],        min: 0, max: 1e6,     fresh: 0 },
 ];
+
+// Gear catalogue ids/names — this file (a Cloudflare Pages Function / ES module) can't `import` the
+// browser's classic-script config (game/config/gear.config.js, a plain global `var` file with no
+// bundler), so the ids are duplicated here for validation, same manual-sync convention as CURATED
+// mirroring ADMIN_SAVE_FIELDS in cloud-auth.js. Keep in sync if gear.config.js's ids ever change.
+// Each entry's `arrayKey` is the progress-snapshot array holding {id, owned, upgradeLvl} objects
+// (getSaveSnapshot shape, game/js/03-save.js); `equipKey` is the scalar equipped-id field.
+const GEAR_SLOTS = [
+  { slot: 'weapon', label: 'Weapon', arrayKey: 'weapons', equipKey: 'equippedWeapon', def: 'wood_sword', ids: [
+    'wood_sword', 'bronze_dagger', 'iron_broadsword',
+    'axiom_blade', 'solar_meridian', 'tidal_paradox', 'verdant_recursion', 'gravity_keystone', 'infinity_vector'
+  ] },
+  { slot: 'shield', label: 'Shield', arrayKey: 'shields', equipKey: 'equippedShield', def: 'leather_buckler', ids: [
+    'leather_buckler', 'wood_shield', 'iron_shield', 'aegis_shield', 'crystal_shield',
+    'aegis_of_sol', 'tide_bulwark', 'grove_rampart', 'tectonic_wall', 'mirror_paradox', 'eternity_bastion'
+  ] },
+  { slot: 'armor', label: 'Armor', arrayKey: 'armor', equipKey: 'equippedArmor', def: 'cloth_tunic', ids: [
+    'cloth_tunic', 'solar_carapace', 'abyssal_plate', 'bramble_mail', 'bedrock_aegis', 'chrome_exosuit', 'singularity_plate'
+  ] },
+  { slot: 'shoes', label: 'Shoes', arrayKey: 'shoes', equipKey: 'equippedShoes', def: 'basic_boots', ids: [
+    'basic_boots', 'swift_equation_boots', 'cloud_strider_treads', 'tidal_surfer_greaves',
+    'inferno_dashers', 'stonewall_stompers', 'quantum_striders'
+  ] },
+];
+
+// Mirrors CHIPS/CHIP_ORDER in game/config/economy.config.js. `chips` in the snapshot is a flat
+// {chipId: count} map (not an array), so no owned/upgradeLvl reconciliation is needed here.
+const CHIP_IDS = ['energy_core', 'robotic_alloy', 'cpu', 'gpu', 'neural_chip', 'quantum_chip', 'alien_processor'];
 
 function getPath(obj, path) {
   let cur = obj;
@@ -47,6 +76,20 @@ function clampInt(v, min, max) {
   const n = Math.round(Number(v));
   if (!Number.isFinite(n)) return null;
   return Math.max(min, Math.min(max, n));
+}
+
+// Equip `itemId` into `slotCfg`'s slot AND flag it owned on the matching array entry (creating one
+// if the save predates this catalogue id). Setting only the equipped-id field is NOT enough — the
+// client's _validEquip (03-save.js) silently reverts any equipped id back to the slot default the
+// moment it isn't also owned:true, which would make an admin's edit here silently vanish on load.
+function setGearSlot(save, slotCfg, itemId, upgradeLvl) {
+  if (!Array.isArray(save[slotCfg.arrayKey])) save[slotCfg.arrayKey] = [];
+  const arr = save[slotCfg.arrayKey];
+  let entry = arr.find((x) => x && x.id === itemId);
+  if (!entry) { entry = { id: itemId, owned: true, upgradeLvl: 0 }; arr.push(entry); }
+  entry.owned = true;
+  if (upgradeLvl != null) entry.upgradeLvl = upgradeLvl;
+  save[slotCfg.equipKey] = itemId;
 }
 
 async function loadAccount(env, username) {
@@ -70,7 +113,18 @@ export async function onRequestGet(context) {
   try { save = JSON.parse(acc.progress_json) || {}; } catch (e) { save = {}; }
   const fields = {};
   for (const f of CURATED) { const v = getPath(save, f.path); fields[f.key] = (v == null ? null : v); }
-  return json(200, { ok: true, hasProgress: true, username, progressAt: acc.progress_at || '', fields });
+
+  const gear = {};
+  for (const g of GEAR_SLOTS) {
+    const equipped = getPath(save, [g.equipKey]) || g.def;
+    const arr = Array.isArray(save[g.arrayKey]) ? save[g.arrayKey] : [];
+    const entry = arr.find((x) => x && x.id === equipped);
+    gear[g.slot] = { equipped, upgradeLvl: entry ? (entry.upgradeLvl || 0) : 0 };
+  }
+  const chips = {};
+  for (const id of CHIP_IDS) { const v = getPath(save, ['chips', id]); chips[id] = (v == null ? 0 : v); }
+
+  return json(200, { ok: true, hasProgress: true, username, progressAt: acc.progress_at || '', fields, gear, chips });
 }
 
 export async function onRequestPost(context) {
@@ -99,6 +153,33 @@ export async function onRequestPost(context) {
       setPath(save, f.path, v);
     }
     if (!save.currencies || typeof save.currencies !== 'object') save.currencies = { gold: 0, silver: 0 };
+
+    const gear = (body.gear && typeof body.gear === 'object') ? body.gear : null;
+    if (gear) {
+      for (const g of GEAR_SLOTS) {
+        const itemId = gear[g.slot];
+        if (!itemId) continue;
+        if (!g.ids.includes(itemId)) return bad('BAD_FIELD', 'Unknown ' + g.slot + ' id: ' + itemId);
+        let lvl = null;
+        const lvlRaw = gear[g.slot + 'UpgradeLvl'];
+        if (lvlRaw !== '' && lvlRaw != null) {
+          lvl = clampInt(lvlRaw, 0, 3);
+          if (lvl == null) return bad('BAD_FIELD', 'Upgrade level for ' + g.slot + ' must be 0-3.');
+        }
+        setGearSlot(save, g, itemId, lvl);
+      }
+    }
+    const chipsIn = (body.chips && typeof body.chips === 'object') ? body.chips : null;
+    if (chipsIn) {
+      if (!save.chips || typeof save.chips !== 'object') save.chips = {};
+      for (const id of CHIP_IDS) {
+        if (!(id in chipsIn) || chipsIn[id] === '' || chipsIn[id] == null) continue;
+        const v = clampInt(chipsIn[id], 0, 999999);
+        if (v == null) return bad('BAD_FIELD', 'Chip ' + id + ' must be a number.');
+        save.chips[id] = v;
+      }
+    }
+
     save.schemaVersion = save.schemaVersion || 2;   // guard migrateSave()'s legacy-save path, see 03-save.js
   } else if (action === 'reset') {
     // Zero the curated fields (so THIS dashboard reflects it immediately) AND set the `_adminReset`

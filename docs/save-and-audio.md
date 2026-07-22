@@ -188,6 +188,42 @@ client-side as `ADMIN_SAVE_FIELDS`) plus **💾 Save overrides** and **↺ Reset
   deleted the test account afterward via `/api/admin/account` (`action:'delete'`). **Lesson**: a
   migration this codebase depends on can still be un-applied on production even after being told to
   re-run bootstrap — always confirm with a REAL non-admin account, not just code review.
+- **2026-07-22 — extended to cover equipped gear + chips**, per the player's own follow-up ("where
+  is XP, the weapons/armour/shield/etc and the levels of them and chips"). Two additions, in the
+  same `override` action:
+  - **Read-only**: `renderPlayerDetail` now shows an "⚔️ Equipped gear" card (weapon/shield/armor/
+    shoes names + `+upgradeLvl` if >0) and a "🧩 Chips" card (non-zero chip types only, icon+name×
+    count) — both read names/icons straight from the REAL global catalogues (`WEAPONS`/`SHIELDS`/
+    `ARMOR`/`SHOES`/`CHIPS`/`CHIP_ORDER`, `game/config/gear.config.js` + `economy.config.js`), which
+    this page already loads as classic-script globals, so these can never drift out of sync.
+  - **Editable**: 4 gear-slot `<select>` dropdowns (options built from those same real catalogues)
+    each paired with a 0–3 upgrade-level number input, plus 7 chip-type number inputs (one per
+    `CHIP_ORDER` id) — all added to the existing edit-tools field grid, submitted alongside the
+    curated scalar fields in one `override` POST.
+  - **The silent-discard trap, avoided**: just writing `equippedWeapon` (etc.) is NOT enough — the
+    client's `_validEquip` (`03-save.js`) silently reverts any equipped id back to the slot default
+    the instant it isn't also `owned:true` on that item's array entry, which would make an admin's
+    gear edit vanish the moment the player's client applies the snapshot. `setGearSlot`
+    (`functions/api/admin/save.js`) sets `owned:true` (+ `upgradeLvl` if given) on the matching
+    `weapons`/`shields`/`armor`/`shoes` array entry — creating the entry if a very old save predates
+    that catalogue id — THEN sets the equip pointer, so the edit survives the player's own
+    `_validEquip` check.
+  - **Server can't import the browser's classic-script catalogue** (`gear.config.js`/
+    `economy.config.js` are plain global `var` files, no bundler) — `functions/api/admin/save.js` is
+    a separate ES-module runtime (Cloudflare Function), so `GEAR_SLOTS`/`CHIP_IDS` duplicate the ids
+    there for validation only, same manual-sync convention as `CURATED`/`ADMIN_SAVE_FIELDS`. The
+    CLIENT side needs no duplication — `cloud-auth.js` runs on the same page as the game, so it
+    reads `WEAPONS`/`SHIELDS`/`ARMOR`/`SHOES`/`CHIPS`/`CHIP_ORDER` directly as real globals for both
+    the read-only display and the dropdown option lists.
+  - Verified client-side by mocking `window.fetch` through the actual exposed entry points
+    (`authShowPlayer` → `renderPlayerDetail`, `loadAdminSaveTools`, `authAdminSaveOverride`): confirmed
+    read-only rows render correct names + upgrade-level suffixes and correctly hide zero-count chips;
+    confirmed the 4 selects pre-populate with the right catalogue options and the right item
+    pre-selected; confirmed changing a dropdown + upgrade level + a chip count and saving produces
+    the exact expected POST body; confirmed the post-save re-render reflects the new values. Not yet
+    live-tested against the real D1 backend (would need a push first, per standing convention) — the
+    server logic mirrors the already-battle-tested `CURATED`/`setPath`/`clampInt` pattern from the
+    scalar fields above.
 
 ## ⚠️ The 4-place persistence rule (do this for EVERY new saved field)
 

@@ -412,6 +412,15 @@
   };
 
   function row(label, val){ return '<div class="pd-row"><span class="pd-k">' + label + '</span><span class="pd-v">' + val + '</span></div>'; }
+  // Look up a gear item's display name from the real catalogue + its upgrade level from the
+  // player's own saved array (upgradeLvl lives per-player, not in the shared config).
+  function _adminGearRow(icon, label, catalog, playerArr, equippedId, def){
+    var id = equippedId || def;
+    var item = Array.isArray(catalog) ? catalog.find(function(x){ return x.id === id; }) : null;
+    var entry = Array.isArray(playerArr) ? playerArr.find(function(x){ return x && x.id === id; }) : null;
+    var lvl = entry ? (entry.upgradeLvl || 0) : 0;
+    return row(icon + ' ' + label, esc(item ? item.name : id) + (lvl > 0 ? ' +' + lvl : ''));
+  }
   function renderPlayerDetail(a, p){
     var h = '<button class="btn btn-ghost" onclick="authOpenAdmin()" data-tooltip="Back to the account list.">← All accounts</button>';
     h += '<h2 class="admin-h2">' + esc(a.username) + ' <span class="admin-status admin-' + esc(a.status) + '">' + esc(a.status) + (a.isAdmin ? ' · admin' : '') + '</span></h2>';
@@ -448,6 +457,27 @@
       row('💵 Cash', (p.coins || 0) + ' · 🥇' + ((p.currencies && p.currencies.gold) || 0) + ' 🥈' + ((p.currencies && p.currencies.silver) || 0)) +
       row('🎟️ Wonderland passes', (p.wonderPasses || 0)) +
       (p.testMode ? row('🧪 Mode', 'TEST account') : '') + '</div>';
+
+    // Gear & chips — read from the REAL global catalogues (WEAPONS/SHIELDS/ARMOR/SHOES/CHIPS,
+    // game/config/gear.config.js + economy.config.js) since this page already loads them as
+    // classic globals — names/icons can never drift out of sync the way a duplicated list would.
+    h += '<div class="pd-card"><div class="pd-title">⚔️ Equipped gear</div>' +
+      _adminGearRow('⚔️', 'Weapon', (typeof WEAPONS !== 'undefined' ? WEAPONS : []), p.weapons, p.equippedWeapon, 'wood_sword') +
+      _adminGearRow('🛡️', 'Shield', (typeof SHIELDS !== 'undefined' ? SHIELDS : []), p.shields, p.equippedShield, 'leather_buckler') +
+      _adminGearRow('🧥', 'Armor', (typeof ARMOR !== 'undefined' ? ARMOR : []), p.armor, p.equippedArmor, 'cloth_tunic') +
+      _adminGearRow('👟', 'Shoes', (typeof SHOES !== 'undefined' ? SHOES : []), p.shoes, p.equippedShoes, 'basic_boots') +
+      '</div>';
+
+    var chipsMap = p.chips || {};
+    var chipOrder = (typeof CHIP_ORDER !== 'undefined') ? CHIP_ORDER : [];
+    var chipCat = (typeof CHIPS !== 'undefined') ? CHIPS : {};
+    var chipRows = chipOrder.map(function(id){
+      var n = chipsMap[id] || 0; if (n <= 0) return '';
+      var c = chipCat[id] || {};
+      return row((c.icon || '🧩') + ' ' + esc(c.name || id), n);
+    }).join('');
+    h += '<div class="pd-card"><div class="pd-title">🧩 Chips</div>' +
+      (chipRows || '<p class="admin-empty">No chips collected yet.</p>') + '</div>';
 
     // Per-arena performance
     var as = p.arenaStats || {};
@@ -495,6 +525,18 @@
     { key: 'wonderPasses', label: '🎟️ Wonderland passes', min: 0, max: 1e6 }
   ];
 
+  // Editable gear slots — options are built from the REAL global catalogues (WEAPONS/SHIELDS/
+  // ARMOR/SHOES, game/config/gear.config.js) since this page already loads them as classic globals,
+  // so the dropdowns can never drift out of sync with the actual game data. The server
+  // (functions/api/admin/save.js) still validates ids against its own duplicated list — it's a
+  // separate runtime (Cloudflare Function) that can't import this classic-script config.
+  var ADMIN_GEAR_SLOTS = [
+    { key: 'weapon', label: '⚔️ Weapon', catalog: function(){ return (typeof WEAPONS !== 'undefined') ? WEAPONS : []; } },
+    { key: 'shield', label: '🛡️ Shield', catalog: function(){ return (typeof SHIELDS !== 'undefined') ? SHIELDS : []; } },
+    { key: 'armor',  label: '🧥 Armor',  catalog: function(){ return (typeof ARMOR !== 'undefined')  ? ARMOR  : []; } },
+    { key: 'shoes',  label: '👟 Shoes',  catalog: function(){ return (typeof SHOES !== 'undefined')  ? SHOES  : []; } }
+  ];
+
   // Load the player's account progress and render the editable admin-tools card. Operates on
   // cloud_accounts.progress_json (the account-login system's full save snapshot) — NOT the older,
   // separate Cloud Save layer's player_profiles table, which no real username/password player ever
@@ -523,10 +565,38 @@
         '<input class="admin-field-input" type="number" id="adminfld_' + fld.key + '" value="' + esc(val) +
         '" min="' + fld.min + '" max="' + fld.max + '" step="1"></label>';
     }).join('');
+
+    var gearData = r.data.gear || {};
+    var gearInputs = ADMIN_GEAR_SLOTS.map(function(g){
+      var cur = (gearData[g.key] && gearData[g.key].equipped) || '';
+      var curLvl = (gearData[g.key] && gearData[g.key].upgradeLvl) || 0;
+      var opts = g.catalog().map(function(it){
+        return '<option value="' + esc(it.id) + '"' + (it.id === cur ? ' selected' : '') + '>' + esc(it.name) + '</option>';
+      }).join('');
+      return '<label class="admin-field"><span class="admin-field-label">' + g.label + '</span>' +
+          '<select class="admin-field-input" id="admingear_' + g.key + '">' + opts + '</select></label>' +
+        '<label class="admin-field"><span class="admin-field-label">' + g.label + ' upgrade (+0–3)</span>' +
+          '<input class="admin-field-input" type="number" id="admingearlvl_' + g.key + '" value="' + curLvl + '" min="0" max="3" step="1"></label>';
+    }).join('');
+
+    var chipsData = r.data.chips || {};
+    var chipCat = (typeof CHIPS !== 'undefined') ? CHIPS : {};
+    var chipOrder = (typeof CHIP_ORDER !== 'undefined') ? CHIP_ORDER : Object.keys(chipCat);
+    var chipInputs = chipOrder.map(function(id){
+      var c = chipCat[id] || {};
+      var val = (chipsData[id] != null ? chipsData[id] : 0);
+      return '<label class="admin-field"><span class="admin-field-label">' + (c.icon || '🧩') + ' ' + esc(c.name || id) + '</span>' +
+        '<input class="admin-field-input" type="number" id="adminchip_' + id + '" value="' + val + '" min="0" max="999999" step="1"></label>';
+    }).join('');
+
     card.innerHTML =
       '<p class="admin-tools-note">Editing <b>' + esc(username) + '</b>’s live progress (last synced ' + esc(when(r.data.progressAt)) + '). ' +
         'Changes reach them within ~25 seconds if they’re online right now, or on their next login otherwise.</p>' +
       '<div class="admin-field-grid">' + inputs + '</div>' +
+      '<p class="admin-tools-note">⚔️ Equipped gear — picking an item automatically marks it owned, so it survives their next sync.</p>' +
+      '<div class="admin-field-grid">' + gearInputs + '</div>' +
+      '<p class="admin-tools-note">🧩 Chips</p>' +
+      '<div class="admin-field-grid">' + chipInputs + '</div>' +
       '<p class="auth-msg" id="adminToolsMsg"></p>' +
       '<div class="admin-actions">' +
         '<button class="btn btn-primary admin-btn" onclick="authAdminSaveOverride(\'' + esc(username) + '\')">💾 Save overrides</button>' +
@@ -544,9 +614,22 @@
       var inp = document.getElementById('adminfld_' + fld.key);
       if (inp && inp.value !== '') fields[fld.key] = inp.value;
     });
+    var gear = {};
+    ADMIN_GEAR_SLOTS.forEach(function(g){
+      var sel = document.getElementById('admingear_' + g.key);
+      var lvlInp = document.getElementById('admingearlvl_' + g.key);
+      if (sel && sel.value) gear[g.key] = sel.value;
+      if (lvlInp && lvlInp.value !== '') gear[g.key + 'UpgradeLvl'] = lvlInp.value;
+    });
+    var chips = {};
+    var chipIds = (typeof CHIP_ORDER !== 'undefined') ? CHIP_ORDER : Object.keys((typeof CHIPS !== 'undefined') ? CHIPS : {});
+    chipIds.forEach(function(id){
+      var inp = document.getElementById('adminchip_' + id);
+      if (inp && inp.value !== '') chips[id] = inp.value;
+    });
     adminToolsMsg('Saving…');
-    var r = await api('/api/admin/save', { body: { username: username, action: 'override', fields: fields }, auth: true });
-    if (r.ok && r.data.ok){ adminToolsMsg('Saved — reaches ' + username + ' within ~25s if online, or on next login.', 'ok'); }
+    var r = await api('/api/admin/save', { body: { username: username, action: 'override', fields: fields, gear: gear, chips: chips }, auth: true });
+    if (r.ok && r.data.ok){ adminToolsMsg('Saved — reaches ' + username + ' within ~25s if online, or on next login.', 'ok'); loadAdminSaveTools(username); }
     else adminToolsMsg((r.data && r.data.error) || 'Save failed.', 'err');
   };
 
