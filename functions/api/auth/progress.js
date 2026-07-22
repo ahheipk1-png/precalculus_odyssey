@@ -16,23 +16,35 @@ export async function onRequestPost(context) {
     // own heartbeat push would otherwise silently overwrite an admin's edit within ~25s, before the
     // client ever had a chance to pull and apply it. Reject the push (returning the admin's version
     // instead) unless the client is explicitly confirming it just applied that override (ack:true —
-    // see authPushProgress, cloud-auth.js).
+    // see authPushProgress, cloud-auth.js). Wrapped in its own try/catch — like the GET handler
+    // below already does for progress_json/progress_at — so a DB that predates migration 0007 still
+    // accepts ordinary progress pushes instead of hard-500ing on every single sync (confirmed live
+    // 2026-07-22: this exact gap broke cloud sync entirely for a brand-new test account until fixed).
     if (!body || !body.ack) {
-      const pending = await context.env.DB.prepare(
-        `SELECT admin_override, progress_json FROM cloud_accounts WHERE account_id = ?1`
-      ).bind(acc.accountId).first();
-      if (pending && pending.admin_override) {
-        let overrideProgress = null;
-        try { overrideProgress = pending.progress_json ? JSON.parse(pending.progress_json) : null; } catch (e) { overrideProgress = null; }
-        return json(200, { ok: false, error: 'OVERRIDE_PENDING', progress: overrideProgress });
-      }
+      try {
+        const pending = await context.env.DB.prepare(
+          `SELECT admin_override, progress_json FROM cloud_accounts WHERE account_id = ?1`
+        ).bind(acc.accountId).first();
+        if (pending && pending.admin_override) {
+          let overrideProgress = null;
+          try { overrideProgress = pending.progress_json ? JSON.parse(pending.progress_json) : null; } catch (e) { overrideProgress = null; }
+          return json(200, { ok: false, error: 'OVERRIDE_PENDING', progress: overrideProgress });
+        }
+      } catch (e) { /* admin_override column not present yet (pre-migration-0007 DB) — push normally */ }
     }
     const progress = body && body.progress ? body.progress : body;
     let text = '';
     try { text = JSON.stringify(progress); } catch (e) { return bad('BAD_JSON', 'Bad progress payload.'); }
     if (text.length > 512 * 1024) return bad('TOO_LARGE', 'Progress too large.');   // matches MAX_SAVE_BYTES in _shared.js (the other save pipeline's tested cap) — now a full save, not just a summary
-    await context.env.DB.prepare(`UPDATE cloud_accounts SET progress_json = ?1, progress_at = ?2, admin_override = 0 WHERE account_id = ?3`)
-      .bind(text, nowIso(), acc.accountId).run();
+    const now = nowIso();
+    try {
+      await context.env.DB.prepare(`UPDATE cloud_accounts SET progress_json = ?1, progress_at = ?2, admin_override = 0 WHERE account_id = ?3`)
+        .bind(text, now, acc.accountId).run();
+    } catch (e) {
+      // Same pre-migration-0007 fallback as the guard above — write the two columns every DB has.
+      await context.env.DB.prepare(`UPDATE cloud_accounts SET progress_json = ?1, progress_at = ?2 WHERE account_id = ?3`)
+        .bind(text, now, acc.accountId).run();
+    }
     return json(200, { ok: true });
   } catch (e) {
     return bad('SERVER_ERROR', 'Could not save progress: ' + (e && e.message ? e.message : 'unknown'), 500);

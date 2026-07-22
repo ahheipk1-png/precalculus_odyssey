@@ -114,9 +114,18 @@ export async function onRequestPost(context) {
 
   const saveJson = JSON.stringify(save);
   if (saveJson.length > 512 * 1024) return bad('TOO_LARGE', 'Edited progress too large.', 413);
-  await DB.prepare(
-    `UPDATE cloud_accounts SET progress_json = ?1, progress_at = ?2, admin_override = 1 WHERE account_id = ?3`
-  ).bind(saveJson, now, acc.account_id).run();
+  // Falls back to writing just the two always-present columns on a DB that predates migration
+  // 0007 — the edit still reaches the player on their next login either way, just not within the
+  // usual ~25s live-pickup window until the migration actually runs (re-hit /api/admin/bootstrap).
+  try {
+    await DB.prepare(
+      `UPDATE cloud_accounts SET progress_json = ?1, progress_at = ?2, admin_override = 1 WHERE account_id = ?3`
+    ).bind(saveJson, now, acc.account_id).run();
+  } catch (e) {
+    await DB.prepare(
+      `UPDATE cloud_accounts SET progress_json = ?1, progress_at = ?2 WHERE account_id = ?3`
+    ).bind(saveJson, now, acc.account_id).run();
+  }
 
   return json(200, { ok: true, action, username });
 }
