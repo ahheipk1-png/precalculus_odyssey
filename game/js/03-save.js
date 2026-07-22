@@ -110,6 +110,10 @@
     // Cloud layer (cloud-save.js): debounced, event-based upload. No-op until the player
     // enables Cloud Save (creates an account). localStorage above stays the source of truth locally.
     if (window.Cloud && typeof window.Cloud.queueSave === 'function') window.Cloud.queueSave('save');
+    // Account login & progress sync (cloud-auth.js): push the lightweight progress summary right now
+    // instead of waiting for the 25s interval timer, so a second device sees fresh data sooner.
+    // No-op internally if no active login session — safe to call unconditionally.
+    if (typeof window.authPushProgress === 'function') window.authPushProgress();
   }
 
   // Rebuild a gear array from the config catalogue, overlaying a save's owned/upgradeLvl by id —

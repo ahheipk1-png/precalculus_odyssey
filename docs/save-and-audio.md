@@ -37,6 +37,74 @@ localStorage stays the fast local source of truth; `saveGame()` additionally cal
   Client only calls **relative** `/api/cloud/...`. localStorage keys: `poCloudSession`, `poCloudMeta`,
   `poSavePrefs`, `poCloudPending`.
 
+## 🔐 Account login & progress sync — `js/cloud-auth.js` + `functions/api/auth/*`, `functions/api/admin/*`
+
+Was originally a SEPARATE, lighter-weight system from the Cloud Save layer above (built for admin
+oversight — approve accounts, see each player's status — rather than full save portability). As of
+2026-07-21 it now pushes/pulls the SAME full snapshot shape `getSaveSnapshot()`/`applySnapshotToState()`
+already use for local profiles (see below), so the two systems now overlap in what they carry, even
+though `cloud-save.js`'s own upload pathway (the `#cloudBtn` UI) still doesn't exist in `index.html`
+and stays unreachable for username/password players — this account system is what's actually live.
+
+`authProgressSummary()` (cloud-auth.js) now just returns `getSaveSnapshot()` directly — level, HP/MP,
+equipped weapon/shield/armor/shoes, the full owned-gear arrays, inventory, materials, farm, codex,
+chips, currencies, coins, bossDefeated, arenaStats, miniGames, settings, everything a local profile
+snapshot has. Pushed to `cloud_accounts.progress_json` (TEXT, capped at 512KB matching `MAX_SAVE_BYTES`
+in `_shared.js`) both on the pre-existing 25s heartbeat AND on every `saveGame()` call (`03-save.js`,
+right after the existing `window.Cloud.queueSave('save')` line) — so the cloud copy goes stale for at
+most a few seconds of actual gameplay, not up to 25s. Readable by an admin via `GET /api/admin/player?
+username=` (the full-screen admin dashboard's Details panel — note `renderPlayerDetail`'s "arenas
+passed" count is derived from `bossDefeated` client-side now, since the full snapshot doesn't carry a
+precomputed `arenasPassed` field the old lightweight summary used to) or by the player themself via
+`GET /api/auth/progress`.
+
+- **Single active session by design** (`functions/api/auth/login.js`): every login revokes every
+  OTHER live session for that username (except the `admin` test account). Confirmed intentional
+  (user 2026-07-21: "does it make sense?" — yes, keep it) — logging in elsewhere is meant to sign
+  you out elsewhere, not run two devices concurrently under one identity.
+- **2026-07-21 — a player's progress from a second computer was invisible everywhere; fixed in two
+  passes the same day.** Root cause was two SEPARATE bugs compounding with the single-session design
+  above: (1) `authPushProgress` called its API request without awaiting or checking the result — a
+  revoked/expired session (or any transient error) failed every 25s sync silently, forever, with zero
+  indication to the player or the admin dashboard; (2) `bridgeToGame()` (the post-login handoff) only
+  ever checked THIS device's own local profile list — logging into an account on a device that had
+  never played that profile locally just reset to a fresh Arena-1 game, ignoring whatever was already
+  synced to the cloud. First-pass fix:
+  - `authPushProgress` now awaits its request; a `401` (session revoked elsewhere) stops the sync
+    timer and shows a one-time toast ("logged in somewhere else... log out and back in to resume")
+    instead of retrying a dead session forever; other failures surface a "trouble syncing" toast
+    after 3 consecutive misses.
+  - New `GET /api/auth/progress` (self-serve, `functions/api/auth/progress.js` — previously only the
+    admin-only `GET /api/admin/player` could read `progress_json`).
+  - `bridgeToGame()` fetches the account's cloud progress on every login and compares it against any
+    local profile of the same name: cloud wins (via `applySnapshotToState`) whenever it shows a
+    HIGHER `level` (new device, or played further elsewhere more recently); otherwise the richer
+    local save wins if there is one; otherwise fresh start.
+  - **Second pass, same day — user clarified scope**: "the status of player = all the player's
+    specific info including levels, hp, the arena unlocked, weapon, items, so on." The first pass had
+    only synced a lightweight summary (no gear/inventory/HP), so a cross-device login restored arena
+    number and Cash but dropped the player back to starter gear. Switched `authProgressSummary()` to
+    reuse `getSaveSnapshot()` wholesale and `bridgeToGame()`'s cloud-wins branch to reuse
+    `applySnapshotToState()` (the same functions already trusted for local-profile restores) instead
+    of a bespoke partial-field copier — removed the now-redundant `applyProgressSummaryToState()`
+    entirely rather than keep two parallel restore paths. Also added the `saveGame()` real-time push
+    hook (user: "we need to make sure the db in cloud has been updated real time" — the 25s-only
+    heartbeat wasn't tight enough) and bumped the POST size cap from 200KB to 512KB now that a full
+    save, not a summary, is the payload.
+  - Verified end-to-end both passes by mocking `window.fetch` around the REAL `authLogin`/
+    `bridgeToGame`/`authPushProgress`/`saveGame` code paths (not just reading the source): a mocked
+    full cloud snapshot (including HP, equipped armor/shoes by REAL catalog id, materials, with
+    `schemaVersion:2` set) correctly restored every field including gear/inventory — the first attempt
+    at this test used made-up armor/shoes ids and omitted `schemaVersion`, which correctly triggered
+    this codebase's existing catalog-validation and legacy-migration safety nets (silently discarding
+    unrecognized gear ids, zeroing `materials` for what looked like a pre-v2 save) — both were test-data
+    mistakes, not defects, confirmed by fixing the mock and re-running to a clean pass; `saveGame()`
+    confirmed to call `authPushProgress` on every save via a spy; local-further-than-cloud still
+    correctly keeps the local save; a mocked `401` on push still correctly shows the one-time toast
+    and doesn't repeat it. The actual D1-backed request/response could not be exercised from this
+    environment (no wrangler/Cloudflare credentials configured here) — verify against the real
+    deployment after pushing.
+
 ## ⚠️ The 4-place persistence rule (do this for EVERY new saved field)
 
 A `state` field is only truly saved if added in **all four** places — miss one and it silently

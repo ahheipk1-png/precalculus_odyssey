@@ -59,10 +59,21 @@
       : ('Arena ' + sorted.join(' & '));
   }
 
-  function renderStarAtlas(){
+  // Writes the Atlas HTML into whichever container(s) exist right now — #starAtlasView (the
+  // dedicated full-screen Atlas, opened via openStarAtlas()) and/or #codexBody (the "🪐 Star Atlas"
+  // tab inside the 📖 Star Log, opened via openCodex()/setCodexTab('atlas')). Only one is ever
+  // actually visible at a time; mirroring into both means every renderStarAtlas() caller (including
+  // the onclick handlers baked into the returned HTML itself, e.g. atlasOpenSystem/atlasTravel) just
+  // works from either entry point without needing to know which one is on screen.
+  function _atlasRenderInto(html){
     var av = document.getElementById('starAtlasView');
-    if (!av) return;
-    if (_atlasSystem){ av.innerHTML = _atlasPlanetsHtml(_atlasSystem); return; }
+    if (av) av.innerHTML = html;
+    var cb = document.getElementById('codexBody');
+    if (cb) cb.innerHTML = html;
+  }
+
+  function renderStarAtlas(){
+    if (_atlasSystem){ _atlasRenderInto(_atlasPlanetsHtml(_atlasSystem)); return; }
     var cur = _currentSystemId();
     // TEST MODE (admin) unlocks every star system so the tester can browse them all.
     var testUnlockAll = !!state.testMode;
@@ -96,11 +107,12 @@
         '<div class="atlas-sys-status">' + (s.unlocked ? '✅ Travelable' : (testUnlockAll ? '🔓 Test-mode preview (not charted yet)' : '🔒 Unlocks in a future chapter')) + '</div>' +
       '</div>';
     }).join('');
-    av.innerHTML =
+    _atlasRenderInto(
       '<div class="rpg-header"><h2 class="rpg-title">🪐 Star Atlas</h2>' +
       '<button class="btn btn-ghost" onclick="goToEarth(true)">← Back to Earth</button></div>' +
       '<p class="atlas-intro">The nearby universe. Travel to a star system, then choose a planet to solve on. Only the Sol System is charted so far.</p>' +
-      '<div class="atlas-sys-grid">' + cards + '</div>';
+      '<div class="atlas-sys-grid">' + cards + '</div>'
+    );
   }
 
   function atlasOpenSystem(id){ _atlasSystem = id; renderStarAtlas(); }
@@ -161,27 +173,41 @@
     // whether a (possibly coincidental, possibly absent) ARENA_GENS[a.n] exists.
     var playable = a.special || ((typeof ARENA_GENS !== 'undefined') && !!ARENA_GENS[a.n]);
     var displayNum = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(a.n) : a.n;
+    // Sequential progress lock: an arena ahead of the player's current level stays locked until
+    // Arena N-1 (and everything before it) is cleared — mirrors the .atlas-sys unlocked/locked
+    // convention above (testUnlockAll). Special arenas (888/999) are exempt: they're gated purely
+    // by their own _arenaVisible() reveal condition (comebackUnlocked()/galaxyUnlocked()), which
+    // already keeps them out of `arenas` entirely until earned — this is only an EXTRA AND-ed
+    // guard for ordinary arenas, never a replacement for that logic.
+    var locked = (a.n > state.level) && !state.testMode && !a.special;
     var b = a.body || { name: 'Arena ' + displayNum, kind: '', fact: '', real: true };
     var accent = _bodyAccent(b);
     var art = (typeof bodyArtSVG === 'function')
       ? bodyArtSVG(b, 'atlasnav' + a.n, (typeof ASTRO !== 'undefined' ? ASTRO[a.n] : null))
       : '<div style="width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 38% 35%,' + accent + ',' + _shade(accent, -0.4) + ')"></div>';
     var onclk = isEarth ? 'atlasEarthChoice()' : ('atlasTravel(' + a.n + ')');
-    var label = 'Enter';
-    // Green shiny star (top-right) if this arena was cleared with a PERFECT (0-mistake) run.
+    var label = locked ? '🔒 Locked' : 'Enter';
+    // Green "★ Perfect!" badge if this arena was cleared with a PERFECT (0-mistake) run; a plainer
+    // yellow "✓ Cleared" badge if it's been beaten at all but not perfectly. Spelling the word out
+    // (not just a bare star icon) so the meaning is unambiguous at a glance (user 2026-07-21: "add
+    // the word perfect next to it..or just use yellow color to say cleared").
     var perfect = !!(state.perfectArenas && state.perfectArenas[a.n]);
-    // A text ★ (not the 🌟 emoji) so CSS can paint it a true shiny GREEN — emoji glyphs ignore
-    // CSS color and always render yellow (user 2026-07-18: "make sure the star shiny green").
-    var starBadge = perfect ? '<div class="atlas-perfect-star" title="Perfect clear — no mistakes!">★</div>' : '';
-    return '<div class="atlas-planet ' + (current ? 'current' : '') + (perfect ? ' perfect' : '') + (b.real ? '' : ' imagined') + '" style="--astro-accent:' + accent + '">' +
+    var cleared = !!(state.bossDefeated && state.bossDefeated[a.n]);
+    var starBadge = perfect
+      ? '<div class="atlas-status-badge perfect" title="Perfect clear — no mistakes!">★ Perfect!</div>'
+      : (cleared ? '<div class="atlas-status-badge cleared" title="Cleared">✓ Cleared</div>' : '');
+    var prevDisplayNum = (typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(a.n - 1) : (a.n - 1);
+    var lockNote = locked ? '<div class="atlas-planet-lock-note">Clear Arena ' + prevDisplayNum + ' first</div>' : '';
+    return '<div class="atlas-planet ' + (current ? 'current' : '') + (perfect ? ' perfect' : '') + (b.real ? '' : ' imagined') + (locked ? ' locked' : '') + '" style="--astro-accent:' + accent + '">' +
       starBadge +
       '<div class="atlas-planet-art">' + art + '</div>' +
       '<div class="atlas-planet-name">Arena ' + displayNum + ' · ' + b.name + '</div>' +
       '<div class="atlas-planet-kind">' + b.kind + (b.real ? '' : ' · imagined') + '</div>' +
       '<div class="atlas-planet-topic">' + a.topic + '</div>' +
       '<div class="atlas-planet-style">' + (_ATLAS_STYLE[a.mechanic] || a.mechanic) + (playable ? '' : ' · soon') + '</div>' +
+      lockNote +
       '<div class="atlas-planet-btns">' +
-        '<button class="btn btn-primary atlas-enter" onclick="' + onclk + '">' + label + '</button>' +
+        '<button class="btn btn-primary atlas-enter"' + (locked ? ' disabled title="Clear Arena ' + prevDisplayNum + ' first"' : ' onclick="' + onclk + '"') + '>' + label + '</button>' +
         '<button class="btn btn-ghost atlas-about" onclick="atlasShowBodyInfo(' + a.n + ')">ℹ️ About this ' + _bodyNoun(b) + '</button>' +
       '</div>' +
     '</div>';
@@ -242,6 +268,40 @@
     return f ? (BODY_PHOTO_BASE + f + '?v=' + BODY_PHOTO_VER) : '';
   }
 
+  // AI-generated artist's-impression infographics for imagined (real===false) exoplanets/dwarf
+  // planets we have no real photo of, bundled LOCALLY under game/assets/bodies/ArtistImpressions/.
+  // Honest labeling only — these render behind a "🎨 See artist's impression" button, never the
+  // "📷 See real photo" one. Bump ART_PHOTO_VER if an image is ever replaced.
+  var ART_PHOTO_BASE = 'assets/bodies/ArtistImpressions/';
+  var ART_PHOTO_VER = '1';
+  var ART_PHOTOS = {
+    'eris': 'eris.png',
+    'trappist-1 b': 'trappist-1_b.png', 'trappist-1 c': 'trappist-1_c.png', 'trappist-1 d': 'trappist-1_d.png',
+    'trappist-1 e': 'trappist-1_e.png', 'trappist-1 f': 'trappist-1_f.png', 'trappist-1 g': 'trappist-1_g.png',
+    'trappist-1 h': 'trappist-1_h.png',
+    'tau ceti e': 'tau_ceti_e.png', 'tau ceti f': 'tau_ceti_f.png', 'tau ceti g': 'tau_ceti_g.png',
+    'tau ceti h': 'tau_ceti_h.png',
+    'proxima b': 'proxima_b.png', 'proxima d': 'proxima_d.png',
+    'gliese 876 b': 'gliese_876_b.png', 'gliese 876 c': 'gliese_876_c.png', 'gliese 876 d': 'gliese_876_d.png',
+    'gliese 876 e': 'gliese_876_e.png',
+    'upsilon and b': 'upsilon_and_b.png', 'upsilon and c': 'upsilon_and_c.png', 'upsilon and d': 'upsilon_and_d.png',
+    'ross 128 b': 'ross_128_b.png', 'barnard b': 'barnard_b.png',
+    'kepler-90 b': 'kepler-90_b.png', 'kepler-90 c': 'kepler-90_c.png', 'kepler-90 e': 'kepler-90_e.png',
+    'kepler-90 f': 'kepler-90_f.png', 'kepler-90 g': 'kepler-90_g.png', 'kepler-90 h': 'kepler-90_h.png',
+    'kepler-90 i': 'kepler-90_i.png',
+    'kepler-11 b': 'kepler-11_b.png', 'kepler-11 c': 'kepler-11_c.png', 'kepler-11 d': 'kepler-11_d.png',
+    'kepler-11 e': 'kepler-11_e.png', 'kepler-11 f': 'kepler-11_f.png', 'kepler-11 g': 'kepler-11_g.png',
+    'hd 40307 b': 'hd_40307_b.png', 'hd 40307 c': 'hd_40307_c.png', 'hd 40307 d': 'hd_40307_d.png',
+    'hd 40307 e': 'hd_40307_e.png', 'hd 40307 f': 'hd_40307_f.png'
+  };
+  // Local artist-impression path for a body, or '' if we don't have one (falls back to the
+  // generic procedural art + "no real photo exists yet" label).
+  function bodyArtPhotoUrl(b){
+    if (!b) return '';
+    var f = ART_PHOTOS[_bodyPhotoKey(b.name)];
+    return f ? (ART_PHOTO_BASE + f + '?v=' + ART_PHOTO_VER) : '';
+  }
+
   // "About this planet" info modal — real astronomy for the body.
   function atlasShowBodyInfo(n){
     var a = (typeof getArena === 'function') ? getArena(n) : null; if (!a) return;
@@ -283,12 +343,13 @@
       '<div class="bim-card" style="--astro-accent:' + accent + '">' +
         '<button class="bim-close" onclick="atlasCloseBodyInfo()">✕</button>' +
         '<div class="bim-art">' + art + '</div>' +
-        (bodyPhotoUrl(b) ? '' : '<div class="bim-artlabel">🎨 Artist’s impression — no real photo exists yet</div>') +
+        (bodyPhotoUrl(b) || bodyArtPhotoUrl(b) ? '' : '<div class="bim-artlabel">🎨 Artist’s impression — no real photo exists yet</div>') +
         '<h2 class="bim-name">' + esc(b.name) + '</h2>' +
         '<div class="bim-kind">' + esc(b.kind || '') + (b.real === false ? ' · imagined' : ' · real astronomy') + '</div>' +
         '<p class="bim-fact">' + esc(b.fact || '') + '</p>' +
         '<div class="bim-rows">' + rows + '</div>' +
-        (bodyPhotoUrl(b) ? '<button class="btn btn-ghost bim-photo" onclick="atlasShowPhoto(' + n + ')" data-tooltip="See a real photograph of ' + esc(b.name) + '.">📷 See real photo</button>' : '') +
+        (bodyPhotoUrl(b) ? '<button class="btn btn-ghost bim-photo" onclick="atlasShowPhoto(' + n + ')" data-tooltip="See a real photograph of ' + esc(b.name) + '.">📷 See real photo</button>' :
+          (bodyArtPhotoUrl(b) ? '<button class="btn btn-ghost bim-photo" onclick="atlasShowArtImpression(' + n + ')" data-tooltip="See an artist’s impression of ' + esc(b.name) + '.">🎨 See artist’s impression</button>' : '')) +
         '<button class="btn btn-primary bim-enter" onclick="atlasCloseBodyInfo();' + (n === 1 ? 'atlasEarthChoice()' : 'atlasTravel(' + n + ')') + '">Enter</button>' +
       '</div>';
     m.classList.add('open');
@@ -324,6 +385,34 @@
   function atlasClosePhoto(){ var lb = document.getElementById('bodyPhotoLightbox'); if (lb) lb.classList.remove('open'); }
   window.atlasShowPhoto = atlasShowPhoto;
   window.atlasClosePhoto = atlasClosePhoto;
+
+  // Artist's-impression lightbox — same modal as the real-photo one, but honestly captioned as
+  // AI-generated art, not a real photograph. Only reachable for bodies with no real photo.
+  function atlasShowArtImpression(n){
+    var a = (typeof getArena === 'function') ? getArena(n) : null; if (!a) return;
+    var b = a.body || {};
+    var url = bodyArtPhotoUrl(b);
+    if (!url) return;
+    var esc = (typeof escapeHtmlSafe === 'function') ? escapeHtmlSafe : function(x){ return x; };
+    var lb = document.getElementById('bodyPhotoLightbox');
+    if (!lb){ lb = document.createElement('div'); lb.id = 'bodyPhotoLightbox'; lb.className = 'body-photo-lb'; document.body.appendChild(lb); }
+    lb.innerHTML =
+      '<div class="bpl-backdrop" onclick="atlasClosePhoto()"></div>' +
+      '<div class="bpl-card">' +
+        '<button class="bpl-close" onclick="atlasClosePhoto()" aria-label="Close image">✕</button>' +
+        '<div class="bpl-imgwrap"><div class="bpl-loading">Loading image…</div></div>' +
+        '<div class="bpl-cap"><b>' + esc(b.name) + '</b> — artist’s impression · no real photo exists yet</div>' +
+      '</div>';
+    lb.classList.add('open');
+    var wrap = lb.querySelector('.bpl-imgwrap');
+    var img = new Image();
+    img.className = 'bpl-img';
+    img.alt = 'Artist’s impression of ' + b.name;
+    img.onload = function(){ if (wrap){ wrap.innerHTML = ''; wrap.appendChild(img); } };
+    img.onerror = function(){ if (wrap) wrap.innerHTML = '<p class="bpl-fail">Sorry — couldn’t load the image right now. Please check your connection and try again.</p>'; };
+    img.src = url;
+  }
+  window.atlasShowArtImpression = atlasShowArtImpression;
 
   // Travel to a planet: jump state.level there (like a Worm Hole) with the warp FX.
   function atlasTravel(room){

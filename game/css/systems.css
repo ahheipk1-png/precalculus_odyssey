@@ -444,20 +444,30 @@
   .atlas-planet-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:16px; }
   .atlas-planet{ position:relative; background:rgba(244,241,232,0.04); border:1px solid rgba(244,241,232,0.12); border-top:4px solid var(--astro-accent,var(--sky)); border-radius:16px; padding:16px 14px; text-align:center; display:flex; flex-direction:column; }
   .atlas-planet.current{ box-shadow:0 0 0 2px var(--yellow); } .atlas-planet-art{ width:104px; height:104px; margin:0 auto 6px; }
-  /* Perfect-clear (0-mistake) green shiny star, pinned top-right, with a soft glow + twinkle.
-     Rendered as a text ★ (25-nav.js) so `color` actually paints it green — bright green fill,
-     layered green glow, slightly bigger than the old emoji (user 2026-07-18). */
+  /* Clear-status badge, pinned top-right: green "★ Perfect!" for a 0-mistake run, plainer yellow
+     "✓ Cleared" for a beaten-but-imperfect arena — spelled out in words (not a bare icon) so the
+     meaning reads at a glance (user 2026-07-21). */
   .atlas-planet.perfect{ border-color:rgba(123,216,143,0.55); box-shadow:0 0 14px rgba(123,216,143,0.25); }
-  .atlas-perfect-star{ position:absolute; top:6px; right:9px; font-size:30px; line-height:1; z-index:2;
-    color:#4bf08a; text-shadow:0 0 6px #7bd88f, 0 0 14px rgba(123,216,143,0.85), 0 0 24px rgba(123,216,143,0.45);
+  .atlas-status-badge{ position:absolute; top:6px; right:9px; z-index:2; display:flex; align-items:center; gap:3px;
+    font-family:'Patrick Hand',cursive; font-size:15px; font-weight:700; line-height:1; padding:4px 10px; border-radius:999px; }
+  .atlas-status-badge.perfect{ color:#0d2b16; background:linear-gradient(135deg,#7bd88f,#4bf08a);
+    box-shadow:0 0 6px #7bd88f, 0 0 14px rgba(123,216,143,0.85), 0 0 24px rgba(123,216,143,0.45);
     filter:drop-shadow(0 0 5px #7bd88f); animation:perfectTwinkle 2.2s ease-in-out infinite; }
-  @keyframes perfectTwinkle{ 0%,100%{ transform:scale(1) rotate(0deg); opacity:1; } 50%{ transform:scale(1.18) rotate(8deg); opacity:0.82; } }
-  @media (prefers-reduced-motion: reduce){ .atlas-perfect-star{ animation:none; } }
+  .atlas-status-badge.cleared{ color:#3a2a05; background:linear-gradient(135deg,#f2c14e,#ffd86b);
+    box-shadow:0 0 8px rgba(242,193,78,0.5); }
+  @keyframes perfectTwinkle{ 0%,100%{ transform:scale(1) rotate(0deg); opacity:1; } 50%{ transform:scale(1.08) rotate(3deg); opacity:0.88; } }
+  @media (prefers-reduced-motion: reduce){ .atlas-status-badge{ animation:none; } }
   .atlas-planet-name{ font-family:'Patrick Hand',cursive; font-size:22px; color:var(--chalk); } .atlas-planet-kind{ font-size:14px; color:var(--astro-accent,var(--sky)); margin-bottom:6px; }
   .atlas-planet-fact{ font-size:14px; color:var(--chalk-dim); margin-bottom:12px; }
   .atlas-planet-topic{ font-size:15px; color:var(--chalk); margin:4px 0 2px; line-height:1.3; }
   .atlas-planet-style{ font-size:14px; font-weight:700; color:var(--astro-accent,var(--sky)); margin-bottom:10px; }
   .atlas-planet.imagined{ opacity:0.9; }
+  /* Sequential progress lock (arena ahead of state.level) — same dimmed treatment as
+     .atlas-sys.locked above, plus a muted/disabled Enter button since disabled alone
+     doesn't read as "non-interactive" against the game's bright .btn-primary look. */
+  .atlas-planet.locked{ opacity:0.55; filter:grayscale(0.4); }
+  .atlas-planet-lock-note{ font-size:13px; color:var(--chalk-dim); font-style:italic; margin:2px 0 4px; }
+  .atlas-planet .atlas-enter:disabled{ cursor:not-allowed; background:rgba(244,241,232,0.08); color:var(--chalk-dim); box-shadow:none; }
   /* buttons pinned to the BOTTOM so every card's Enter button lines up */
   .atlas-planet-btns{ margin-top:auto; display:flex; flex-direction:column; gap:8px; }
   .atlas-planet .btn{ width:100%; font-size:16px; padding:11px 10px; }

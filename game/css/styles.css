@@ -2313,12 +2313,14 @@
   }
 
   /* ============================================================
-     Room lives (5 tries), Game Over overlay & Worm-hole warp FX
+     Room lives (2 tries), Game Over overlay & Worm-hole warp FX
      ============================================================ */
   .lives-row{
     display:inline-block; margin-left:12px; font-size:14px; letter-spacing:2px;
     vertical-align:middle; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.4));
   }
+  @keyframes wrongFlash { 0%,100%{ box-shadow:none; } 30%{ box-shadow:0 0 0 6px rgba(240,112,94,0.55); } }
+  #livesRow.wrong-flash{ animation: wrongFlash 0.5s ease; }
 
   .gameover-overlay{
     position:absolute; inset:0; z-index:55;

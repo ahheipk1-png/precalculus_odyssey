@@ -172,21 +172,44 @@
     var r = await api('/api/auth/login', { body: { username: u, password: p } });
     if (r.ok && r.data.ok){
       saveSession({ token: r.data.sessionToken, username: r.data.username, isAdmin: !!r.data.isAdmin, accountId: r.data.accountId });
-      bridgeToGame(r.data.username);
+      await bridgeToGame(r.data.username);
     } else msg((r.data && r.data.error) || 'Login failed.', 'err');
   }
 
   window.authLogout = async function (){ try { await api('/api/auth/logout', { auth: true }); } catch (e) {} clearSession(); try { location.reload(); } catch (e) {} };
 
   // Hand off to the existing game with `username` as the active profile.
-  function bridgeToGame(username){
+  // Prefers the account's CLOUD save over a local profile whenever the cloud is further along (a
+  // new device, or this account played further elsewhere more recently) — logging in should show
+  // your FULL latest status (level, HP, gear, weapons, items, everything — not just a summary),
+  // not silently reset to blank just because this happens to be a new device (2026-07-21: a
+  // player's arena-11 progress from a second computer was invisible on re-login; the first fix
+  // only restored a level/cash summary, not gear/items — this restores the same full snapshot
+  // shape getSaveSnapshot()/applySnapshotToState() already use for local profiles, since the
+  // player confirmed "status" means everything: levels, HP, arenas unlocked, weapons, items).
+  // A full local save on THIS device still wins if it's further along than the cloud copy.
+  async function bridgeToGame(username){
     window.activeProfileName = username;
     var loaded = false;
+    var localMine = null;
     try {
       var list = (typeof loadAllProfiles === 'function') ? loadAllProfiles() : [];
-      var mine = list.filter(function (p){ return (p.name || '').toLowerCase() === username.toLowerCase(); })[0];
-      if (mine && typeof applySnapshotToState === 'function'){ window.activeProfileId = mine.id; applySnapshotToState(mine); loaded = true; }
+      localMine = list.filter(function (p){ return (p.name || '').toLowerCase() === username.toLowerCase(); })[0] || null;
     } catch (e) {}
+    var cloudProgress = null;
+    try {
+      var pr = await api('/api/auth/progress', { method: 'GET', auth: true });
+      if (pr.ok && pr.data && pr.data.ok && pr.data.progress) cloudProgress = pr.data.progress;
+    } catch (e) {}
+    var cloudIsFurther = cloudProgress && (!localMine || (cloudProgress.level || 1) > (localMine.level || 1));
+    if (cloudIsFurther && typeof applySnapshotToState === 'function'){
+      applySnapshotToState(cloudProgress);
+      window.activeProfileId = 'acc_' + String(username).toLowerCase();
+      loaded = true;
+      if (typeof showToast === 'function') showToast('☁️ Welcome back! Restored your full progress from the cloud.');
+    } else if (localMine && typeof applySnapshotToState === 'function'){
+      window.activeProfileId = localMine.id; applySnapshotToState(localMine); loaded = true;
+    }
     if (!window.activeProfileId) window.activeProfileId = 'acc_' + String(username).toLowerCase();
     if (!loaded && typeof resetPlayerState === 'function') resetPlayerState();
     var ss = document.getElementById('startScreen'); if (ss) ss.hidden = true;
@@ -220,26 +243,46 @@
     }
   }
 
-  // ---------- progress sync (so the admin dashboard can see each player's progress) ----------
+  // ---------- progress sync (full save — so a login on a different device restores EVERYTHING:
+  // level, HP, unlocked arenas, weapons, items, not just a level/cash summary — and the admin
+  // dashboard can see each player's real status) ----------
+  // Reuses the exact snapshot shape getSaveSnapshot() already builds for local profile saves
+  // (03-save.js) — same fields applySnapshotToState() already knows how to restore, so cloud
+  // login and local-profile resume are the same code path on the read side.
   function authProgressSummary(){
+    if (typeof getSaveSnapshot === 'function') return getSaveSnapshot();
     var s = (typeof state === 'object' && state) ? state : {};
-    return {
-      level: s.level, maxLevel: s.maxLevel,
-      arenasPassed: s.bossDefeated ? Object.keys(s.bossDefeated).length : 0,
-      bossDefeated: s.bossDefeated || {}, levelSolves: s.levelSolves,
-      streak: s.streak, score: s.score, heroLvl: s.heroLvl, heroXp: s.heroXp,
-      coins: s.coins, currencies: s.currencies, chips: s.chips, wonderPasses: s.wonderPasses,
-      settings: s.settings, miniGames: s.miniGames, arenaStats: s.arenaStats, testMode: !!s.testMode
-    };
+    return { level: s.level, coins: s.coins };   // getSaveSnapshot unavailable — minimal fallback
   }
-  window.authPushProgress = function(){
+  // Was fire-and-forget (called api() without awaiting it, inside a sync try/catch that could
+  // never actually catch an async failure) — a revoked/expired session, or any transient network
+  // error, failed EVERY sync silently forever with no sign to the player or the admin dashboard
+  // (2026-07-21, diagnosing why a player's progress on a second computer never showed up anywhere).
+  var _progTimer = null, _progFailStreak = 0, _progLoggedOutWarned = false;
+  window.authPushProgress = async function(){
     var sess = loadSession();
     if (!sess || !sess.token || (sess.username || '').toLowerCase() === 'admin') return;   // don't sync the admin/test account
-    try { api('/api/auth/progress', { body: { progress: authProgressSummary() }, auth: true }); } catch (e) {}
+    var r;
+    try { r = await api('/api/auth/progress', { body: { progress: authProgressSummary() }, auth: true }); }
+    catch (e) { r = { ok: false, status: 0 }; }
+    if (r.ok && r.data && r.data.ok){ _progFailStreak = 0; return; }
+    if (r.status === 401){
+      // The session was revoked server-side — most likely this account was logged into on another
+      // device (login.js enforces single-active-session by design). Stop hammering a dead session;
+      // local play still saves fine on THIS device, it just won't reach the cloud until re-login.
+      if (_progTimer){ clearInterval(_progTimer); _progTimer = null; }
+      if (!_progLoggedOutWarned){
+        _progLoggedOutWarned = true;
+        if (typeof showToast === 'function') showToast('🔒 This account was logged in somewhere else, so progress has stopped syncing here. Log out and back in to resume.');
+      }
+      return;
+    }
+    _progFailStreak++;
+    if (_progFailStreak === 3 && typeof showToast === 'function') showToast('⚠️ Trouble syncing progress to the cloud — will keep retrying.');
   };
-  var _progTimer = null;
   function authStartProgressSync(){
     if (_progTimer) clearInterval(_progTimer);
+    _progFailStreak = 0; _progLoggedOutWarned = false;
     window.authPushProgress();
     _progTimer = setInterval(function(){ if (loadSession()) window.authPushProgress(); else { clearInterval(_progTimer); _progTimer = null; } }, 25000);
   }
@@ -341,7 +384,9 @@
       row('🔊 SFX volume', (st.sfxVol != null ? st.sfxVol : '—') + '%') + '</div>';
 
     // Progress
-    var passed = p.arenasPassed || 0;
+    // arenasPassed used to be a precomputed field on the old lightweight summary; the full
+    // snapshot (getSaveSnapshot's shape) doesn't include it, so derive it here instead.
+    var passed = p.bossDefeated ? Object.keys(p.bossDefeated).length : 0;
     h += '<div class="pd-card"><div class="pd-title">🚀 Progress</div>' +
       row('🪐 Current arena', 'Arena ' + ((typeof arenaDisplayNumber === 'function') ? arenaDisplayNumber(p.level || 1) : (p.level || 1)) + ' of ' + (p.maxLevel || 65)) +
       row('✅ Arenas passed', passed + ' / ' + (p.maxLevel || 65)) +

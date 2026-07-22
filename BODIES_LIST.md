@@ -1,7 +1,10 @@
 # All 65 Arena Bodies — photo checklist
 
 `YES` = real NASA/Wikimedia photo already bundled in `game/assets/bodies/`.
-`need` = no real photo yet (shows procedural art + "Artist's impression" label).
+`art` = no real photo exists (too far/never photographed) — an AI-generated artist's-impression
+  infographic is bundled instead, in `game/assets/bodies/ArtistImpressions/` (see the "🎨 See
+  artist's impression" button in the Star Atlas info modal).
+`need` = no picture of any kind yet (shows procedural art + "Artist's impression" label only).
 When you find a picture, note the arena # and I'll bundle it locally (~640px JPEG/PNG).
 
 | Arena | Body | Kind | Star System | Photo |
@@ -28,46 +31,46 @@ When you find a picture, note the arena # and I'll bundle it locally (~640px JPE
 | 20 | Neptune | The Windiest Planet | Sol | YES |
 | 21 | Triton | Moon of Neptune | Sol | YES |
 | 22 | Pluto | Dwarf Planet | Sol | YES |
-| 23 | Eris | Distant Dwarf Planet | Sol | **need** |
+| 23 | Eris | Distant Dwarf Planet | Sol | art |
 | 24 | Halley's Comet | Famous Comet | Sol | YES |
-| 25 | TRAPPIST-1 b | Rocky Planet | TRAPPIST-1 | **need** |
-| 26 | TRAPPIST-1 c | Rocky Planet | TRAPPIST-1 | **need** |
-| 27 | TRAPPIST-1 d | Rocky Planet | TRAPPIST-1 | **need** |
-| 28 | TRAPPIST-1 e | Rocky Planet | TRAPPIST-1 | **need** (you found: en.wikipedia.org/wiki/TRAPPIST-1e artist impression 2018) |
-| 29 | TRAPPIST-1 f | Rocky Planet | TRAPPIST-1 | **need** |
-| 30 | TRAPPIST-1 g | Rocky Planet | TRAPPIST-1 | **need** |
-| 31 | TRAPPIST-1 h | Cold Outer Planet | TRAPPIST-1 | **need** |
-| 32 | Tau Ceti e | Super-Earth | Tau Ceti | **need** |
-| 33 | Tau Ceti f | Super-Earth | Tau Ceti | **need** |
-| 34 | Tau Ceti g | Super-Earth | Tau Ceti | **need** |
-| 35 | Tau Ceti h | Super-Earth | Tau Ceti | **need** |
-| 36 | Proxima b | Nearest Exoplanet | Proxima Centauri | **need** |
-| 37 | Proxima d | Tiny Inner Planet | Proxima Centauri | **need** |
-| 38 | Gliese 876 b | Gas Giant | Gliese 876 | **need** |
-| 39 | Gliese 876 c | Gas Giant | Gliese 876 | **need** |
-| 40 | Gliese 876 d | Super-Earth | Gliese 876 | **need** |
-| 41 | Gliese 876 e | Ice Giant | Gliese 876 | **need** |
-| 42 | Upsilon And b | Hot Jupiter | Upsilon Andromedae | **need** |
-| 43 | Upsilon And c | Gas Giant | Upsilon Andromedae | **need** |
-| 44 | Upsilon And d | Gas Giant | Upsilon Andromedae | **need** |
-| 45 | Ross 128 b | Nearby Exoplanet | Ross 128 | **need** |
-| 46 | Barnard b | Super-Earth | Barnard's Star | **need** |
-| 47 | Kepler-90 b | Rocky Planet | Kepler-90 | **need** |
-| 48 | Kepler-90 c | Rocky Planet | Kepler-90 | **need** |
+| 25 | TRAPPIST-1 b | Rocky Planet | TRAPPIST-1 | art |
+| 26 | TRAPPIST-1 c | Rocky Planet | TRAPPIST-1 | art |
+| 27 | TRAPPIST-1 d | Rocky Planet | TRAPPIST-1 | art |
+| 28 | TRAPPIST-1 e | Rocky Planet | TRAPPIST-1 | art |
+| 29 | TRAPPIST-1 f | Rocky Planet | TRAPPIST-1 | art |
+| 30 | TRAPPIST-1 g | Rocky Planet | TRAPPIST-1 | art |
+| 31 | TRAPPIST-1 h | Cold Outer Planet | TRAPPIST-1 | art |
+| 32 | Tau Ceti e | Super-Earth | Tau Ceti | art |
+| 33 | Tau Ceti f | Super-Earth | Tau Ceti | art |
+| 34 | Tau Ceti g | Super-Earth | Tau Ceti | art |
+| 35 | Tau Ceti h | Super-Earth | Tau Ceti | art |
+| 36 | Proxima b | Nearest Exoplanet | Proxima Centauri | art |
+| 37 | Proxima d | Tiny Inner Planet | Proxima Centauri | art |
+| 38 | Gliese 876 b | Gas Giant | Gliese 876 | art |
+| 39 | Gliese 876 c | Gas Giant | Gliese 876 | art |
+| 40 | Gliese 876 d | Super-Earth | Gliese 876 | art |
+| 41 | Gliese 876 e | Ice Giant | Gliese 876 | art |
+| 42 | Upsilon And b | Hot Jupiter | Upsilon Andromedae | art |
+| 43 | Upsilon And c | Gas Giant | Upsilon Andromedae | art |
+| 44 | Upsilon And d | Gas Giant | Upsilon Andromedae | art |
+| 45 | Ross 128 b | Nearby Exoplanet | Ross 128 | art |
+| 46 | Barnard b | Super-Earth | Barnard's Star | art |
+| 47 | Kepler-90 b | Rocky Planet | Kepler-90 | art |
+| 48 | Kepler-90 c | Rocky Planet | Kepler-90 | art |
 | 49 | Kepler-90 d | Warm Planet | Kepler-90 | **need** |
-| 50 | Kepler-90 e | Warm Planet | Kepler-90 | **need** |
-| 51 | Kepler-90 f | Warm Planet | Kepler-90 | **need** |
-| 52 | Kepler-90 g | Gas Giant | Kepler-90 | **need** |
-| 53 | Kepler-90 h | Gas Giant | Kepler-90 | **need** |
-| 54 | Kepler-90 i | Hot Rocky Planet | Kepler-90 | **need** |
-| 55 | Kepler-11 b | Low-Density Planet | Kepler-11 | **need** |
-| 56 | Kepler-11 c | Low-Density Planet | Kepler-11 | **need** |
-| 57 | Kepler-11 d | Sub-Neptune | Kepler-11 | **need** |
-| 58 | Kepler-11 e | Sub-Neptune | Kepler-11 | **need** |
-| 59 | Kepler-11 f | Small Gas Planet | Kepler-11 | **need** |
-| 60 | Kepler-11 g | Outer Planet | Kepler-11 | **need** |
-| 61 | HD 40307 b | Super-Earth | HD 40307 | **need** |
-| 62 | HD 40307 c | Super-Earth | HD 40307 | **need** |
-| 63 | HD 40307 d | Super-Earth | HD 40307 | **need** |
-| 64 | HD 40307 e | Super-Earth | HD 40307 | **need** |
-| 65 | HD 40307 f | Super-Earth | HD 40307 | **need** |
+| 50 | Kepler-90 e | Warm Planet | Kepler-90 | art |
+| 51 | Kepler-90 f | Warm Planet | Kepler-90 | art |
+| 52 | Kepler-90 g | Gas Giant | Kepler-90 | art |
+| 53 | Kepler-90 h | Gas Giant | Kepler-90 | art |
+| 54 | Kepler-90 i | Hot Rocky Planet | Kepler-90 | art |
+| 55 | Kepler-11 b | Low-Density Planet | Kepler-11 | art |
+| 56 | Kepler-11 c | Low-Density Planet | Kepler-11 | art |
+| 57 | Kepler-11 d | Sub-Neptune | Kepler-11 | art |
+| 58 | Kepler-11 e | Sub-Neptune | Kepler-11 | art |
+| 59 | Kepler-11 f | Small Gas Planet | Kepler-11 | art |
+| 60 | Kepler-11 g | Outer Planet | Kepler-11 | art |
+| 61 | HD 40307 b | Super-Earth | HD 40307 | art |
+| 62 | HD 40307 c | Super-Earth | HD 40307 | art |
+| 63 | HD 40307 d | Super-Earth | HD 40307 | art |
+| 64 | HD 40307 e | Super-Earth | HD 40307 | art |
+| 65 | HD 40307 f | Super-Earth | HD 40307 | art |

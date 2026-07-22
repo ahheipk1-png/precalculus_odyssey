@@ -261,7 +261,15 @@
   }
   function renderCodex(tab){
     if (!el.codexBody) return;
-    el.codexBody.innerHTML = (tab === 'atlas') ? renderStarAtlas() : renderStoryTab();
+    // The "atlas" tab delegates to the real Star Atlas (25-nav.js) — it renders itself straight
+    // into #codexBody (see _atlasRenderInto) rather than returning an HTML string, so it's just
+    // called here for its side effect. (There used to be a second, long-superseded renderStarAtlas()
+    // defined right in this file, for the old Sol-only chapter view; since both functions shared the
+    // same name in this codebase's shared global script scope, the later-loaded 25-nav.js version
+    // always won and this file's version was silently dead code — assigning its {undefined} return
+    // into innerHTML rendered the literal text "undefined" here. Removed the dead duplicate below.)
+    if (tab === 'atlas'){ if (typeof renderStarAtlas === 'function') renderStarAtlas(); }
+    else { el.codexBody.innerHTML = renderStoryTab(); }
   }
 
   function renderStoryTab(){
@@ -304,41 +312,10 @@
     return html;
   }
 
-  function renderStarAtlas(){
-    var html = '';
-    html += '<section class="codex-section atlas-star">' +
-      '<div class="atlas-star-art">' + starSVG('atlas') + '</div>' +
-      '<div class="atlas-star-info">' +
-        '<h3 class="codex-h">The Sun</h3>' +
-        '<p class="codex-text">The star at the heart of the Sol System — our home system. It holds 99.8% of all the mass around it, and every planet in Chapter 1 orbits it.</p>' +
-        '<div class="astro-facts"><span>Type: <b>Yellow dwarf star</b></span><span>Surface: <b>about 5,500°C</b></span><span>Age: <b>4.6 billion years</b></span></div>' +
-      '</div></section>';
-
-    var unlockedCount = BODY_ORDER.filter(isBodyUnlocked).length;
-    html += '<h3 class="codex-h">Planets of the Sol System <span class="codex-count">' + unlockedCount + ' / ' + BODY_ORDER.length + ' visited</span></h3>';
-    html += '<div class="atlas-grid">';
-    html += BODY_ORDER.map(function(room){
-      var b = BODIES[room];
-      if (!isBodyUnlocked(room)){
-        return '<div class="atlas-card locked"><div class="atlas-art dim">' + planetSVG(room, 'atlas' + room) + '</div>' +
-          '<div class="atlas-name">🔒 Arena ' + room + '</div>' +
-          '<div class="atlas-kind">Reach this planet to chart it</div></div>';
-      }
-      var factsHtml = b.facts.map(function(f){
-        return '<li><span>' + escapeHtmlSafe(f[0]) + '</span><b>' + escapeHtmlSafe(f[1]) + '</b></li>';
-      }).join('');
-      return '<div class="atlas-card unlocked" style="--astro-accent:' + b.accent + '">' +
-        '<div class="atlas-art">' + planetSVG(room, 'atlas' + room) + '</div>' +
-        '<div class="atlas-name">' + escapeHtmlSafe(b.name) + '</div>' +
-        '<div class="atlas-kind">' + escapeHtmlSafe(b.kind) + '</div>' +
-        '<div class="atlas-blurb">' + escapeHtmlSafe(b.blurb) + '</div>' +
-        '<ul class="atlas-facts">' + factsHtml + '</ul>' +
-        '<div class="atlas-fun">✨ ' + escapeHtmlSafe(b.fun) + '</div>' +
-        '</div>';
-    }).join('');
-    html += '</div>';
-    return html;
-  }
+  // The real Star Atlas renderer (all 65 arenas / star systems, locking, real+artist-impression
+  // photos) lives in js/25-nav.js as the global renderStarAtlas() — this file used to define its
+  // own same-named, Sol-only-chapter version here, but since both shared this codebase's global
+  // script scope, the later-loaded 25-nav.js one always silently won; removed the dead duplicate.
 
   // ---------------------------------------------------------------------------
   // Opening narration overlay (skippable star-field crawl for new players)

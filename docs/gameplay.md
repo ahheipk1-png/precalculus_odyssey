@@ -233,12 +233,25 @@ sees the rendered HTML — and fixes every generator/MC-choice/hint that flows t
 - **Hints** (`💡 Hint`) are now available on **every question** via a 6-level progressive ladder
   (see architecture.md). A `📖 How to play` tutorial and a `🦉 Ask the tutor` Socratic chat sit
   beside it. Bodies with no real photo show a **🎨 Artist's impression** caption.
-- **5 wrong answers on a planet = Game Over → the planet restarts.** `registerFail()` fires only on
-  a *genuine* error (invalid op, wrong bracket expansion, wrong MC choice, wrong formula letter) — a
-  *legal-but-unproductive* balance move does **not** cost a life. UI: `#livesRow` (❤️/🖤),
-  `#gameOverOverlay`, `restartRoom()` (also the **🔄 Restart Arena** button — leave/restart any time).
-  The arena console is now **How to play · Hint · Restart Arena · Boss Gate** — the old "Back to Earth"
+- **Chances per QUESTION (not per arena) — `MAX_ROOM_FAILS`, `05-render.js`.** `registerFail()` /
+  `gradeAnswer()`'s wrong branch fire only on a *genuine* error (invalid op, wrong bracket expansion,
+  wrong MC choice, wrong formula letter) — a *legal-but-unproductive* balance move does **not** cost
+  a chance. UI: `#livesRow` (❤️/🖤), `flashWrongLight()` (a brief red glow on the lives row on every
+  wrong attempt). `restartRoom()` is also the **🔄 Restart Arena** button — leave/restart any time.
+  The arena console is **How to play · Hint · Restart Arena · Boss Gate** — the old "Back to Earth"
   button was removed (Earth is on the global header nav).
+  - History: originally 5 wrong answers *anywhere in the whole arena* = Game Over (this doc's old
+    text). That was softened to 3 chances *per question*, reveal-and-continue, no game over at all
+    (`05-render.js` comment: "the old ... game-over is gone — no scary resets"). **2026-07-21,
+    reverted toward stricter again** (user: "should reduce to 2 chances per questions ... if more
+    than 2 wrong, need to kick out from the arena"): `MAX_ROOM_FAILS` is now **2** per question, and
+    exhausting both no longer silently reveals-and-advances — it shows a blocking modal
+    (`#arenaKickOverlay`, reusing the `.gameover-overlay`/`.bossgate-overlay` shell) stating the
+    correct answer and that the arena must restart; pressing OK calls `restartRoom(true)` (reusing
+    its pre-existing `fromGameOver` toast wording, which had been sitting unused since the "no scary
+    resets" change). So today's change is per-QUESTION-exhaustion → arena restart, not the original
+    per-ARENA wrong-answer-count → game over; a different axis than the original mechanic this
+    replaced the doc text for.
 
 ## Reward scenes
 

@@ -30,12 +30,39 @@ The 9 star systems are recorded in `STAR_SYSTEMS` (`worlds.config.js`) for the S
   arena play** (user preference) — it early-returns after unlocking the body, so the top strip stays
   clear; the planet name still shows in the stat tile and full astronomy lives in the Star Atlas.
   (To re-enable the in-arena card, delete the early-return block.)
-- **📖 Star Log** (`#codexView`, header button) — tabs **Story** (narration + collected memory
-  fragments) and **Star Atlas** (the Sun + 10 planet cards with real facts; visited-planets gating).
-  `openCodex`/`setCodexTab`/`renderStoryTab`/`renderStarAtlas`.
+- **📖 Star Log** (`#codexView`, header button `openCodex()`) — tabs **Story** (narration + collected
+  memory fragments, `renderStoryTab`) and **Star Atlas** (the real, current 65-arena atlas —
+  `setCodexTab('atlas')` just calls the SAME `renderStarAtlas()` (25-nav.js) used by the dedicated
+  full-screen Atlas; see `_atlasRenderInto` below).
+  - **2026-07-21 double bug, fixed**: (1) the header button that opens this view (`openCodex()` with
+    no tab arg, for the Story tab) had been removed at some point — nothing in the live UI could reach
+    `#codexView` at all (the two `openCodex('atlas')` call sites, in `15-map.js` and the astro card's
+    dead-code button, both always fell through to `openStarAtlas()` instead since that function
+    always exists); the post-boss-fight "📖 Memory fragment recovered! Open the Star Log." toast had
+    nowhere to send the player. Re-added a "📖 Star Log" header button (`index.html`) next to
+    "🪐 Space Travel". (2) Even once reached, the Atlas tab rendered the literal text "undefined":
+    `renderCodex()` (14-lore.js) did `el.codexBody.innerHTML = renderStarAtlas()`, but this file used
+    to define its OWN same-named, long-superseded `renderStarAtlas()` (the old Sol-chapter-only
+    version, `BODY_ORDER`/`isBodyUnlocked`/`planetSVG`) — since both shared this codebase's one global
+    script scope, the later-loaded 25-nav.js version always silently won at call time, and it doesn't
+    return an HTML string (it writes straight into `#starAtlasView` and returns `undefined`). Deleted
+    the dead duplicate in 14-lore.js; `renderStarAtlas()` now writes into BOTH `#starAtlasView` and
+    `#codexBody` via a small `_atlasRenderInto(html)` helper, so it works correctly from either entry
+    point (the dedicated Atlas screen, or this tab) without duplicating the rendering logic.
 - **Star Atlas systems list** (`renderStarAtlas`, `25-nav.js`) — each of the 11 system cards shows its
   maths **topic** (world title from `MATH_WORLDS`, matched by `s.worldId`) + **arena range** (from
   `s.arenaStart/arenaEnd`), e.g. "📚 Numbers · Arena 1–24" (`.atlas-sys-topic`).
+- **Arena cards are progress-locked** (`_atlasArenaCard`, `25-nav.js`, added 2026-07-21 — user:
+  "why all arena is open? ... not until i finish arena 1,2,3, arena 4 should be locked"). An arena
+  card is locked when `a.n > state.level` (and not `state.testMode`) — shows "🔒 Locked" with a
+  disabled Enter button, a "Clear Arena N-1 first" note, and dimmed/greyscale styling
+  (`.atlas-planet.locked`, `systems.css`). Already-cleared and the current arena stay freely
+  re-enterable (unchanged). The two special end-game arenas (888/999) are exempt from this check —
+  they have their own separate `_arenaVisible()` reveal condition and shouldn't be double-gated once
+  earned. The "ℹ️ About this ..." astronomy-info button stays clickable even when locked (it's
+  reference content, not a progress skip). Note: the lock is UI-only on the card's button (no
+  onclick when locked) — `atlasTravel(room)` itself has no internal guard, so this doesn't defend
+  against a console call jumping ahead; not considered necessary for a single-player client-side game.
 - **Planet arrival splash** — `showPlanetArrival(level)` (`14-lore.js`): a brief star-field overlay
   with the planet zooming in, naming "Arena N · <name> · <kind> · ★ <star system>". It reads the body
   from the **curriculum** (`getArena(level).body` + `bodyArtSVG` + `STAR_SYSTEMS` for the system name),
@@ -73,6 +100,25 @@ The 9 star systems are recorded in `STAR_SYSTEMS` (`worlds.config.js`) for the S
   old broken path (`planetSVG` looked up `BODIES` by the wrong key → blank cards) and the flat 2-D
   fallback circle. Call sites: the Star Atlas cards + info modal (`25-nav.js`) and the arena astro
   card (`updateAstroCard`, `14-lore.js`). `ctx` keeps gradient ids unique per instance.
+
+## Real photos & artist impressions (Star Atlas info modal, `25-nav.js`)
+
+- **Real photos** — `BODY_PHOTOS` (flat filename map keyed by `_bodyPhotoKey(name)`) + `bodyPhotoUrl(b)`,
+  serving 22 bundled Sol-system JPEGs from `game/assets/bodies/`. Gates on `b.real !== false` — only
+  real (non-imagined) bodies ever get a "📷 See real photo" button.
+- **Artist impressions** (added 2026-07-21) — `ART_PHOTOS` + `bodyArtPhotoUrl(b)`, serving 41 bundled
+  AI-generated infographic PNGs from `game/assets/bodies/ArtistImpressions/` (arenas 23, 25–48, 50–65
+  — every exoplanet/dwarf-planet arena except 49, Kepler-90 d, which has no image anywhere yet).
+  Does **not** gate on `b.real` — these ARE the imagined bodies. `atlasShowBodyInfo` prefers the real
+  photo when both would exist; otherwise shows a "🎨 See artist's impression" button
+  (`atlasShowArtImpression(n)`, same lightbox as the real-photo one, honestly captioned "artist's
+  impression · no real photo exists yet"). The old generic `.bim-artlabel` fallback text now only
+  renders when a body has neither a real photo nor an artist impression (currently just arena 49).
+  Source images were AI-generated infographic cards (arena #, body name, stat table, orbital diagram)
+  renamed to match each body (`_bodyPhotoKey`-style, e.g. `trappist-1_b.png`) after visually
+  cross-checking every image's embedded label against `BODIES_LIST.md`; one mislabeled image and 19
+  images of exoplanet systems not in this game's curriculum (Kepler-22/62/69/138/186/296/440/442/452/
+  987/1229/1649) were discarded.
 
 ## Persistence
 

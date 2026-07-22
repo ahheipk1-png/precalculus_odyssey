@@ -374,8 +374,8 @@
     if (no) no.addEventListener('click', cancelMcAnswer);
   }
 
-  // ----- Answer flow: tap a choice to SELECT, then confirm (Yes/No). 5 chances per question;
-  // after the 5th wrong the correct answer is revealed and we move on (no game-over here). -----
+  // ----- Answer flow: tap a choice to SELECT, then confirm (Yes/No). 2 chances per question;
+  // after the 2nd wrong, a blocking modal reveals the answer and restarts the whole arena. -----
   function _mcButtons(){ return el.mcChoices.querySelectorAll('.mc-btn'); }
   function selectMcChoice(idx){
     if (state.locked) return;
@@ -412,6 +412,7 @@
     state.qChances--;
     _failStats();
     renderLives();
+    flashWrongLight();
     wobbleBeam();
     var btns = _mcButtons();
     if (typeof wrongBtnIdx === 'number' && btns[wrongBtnIdx]){ btns[wrongBtnIdx].classList.remove('mc-selected'); btns[wrongBtnIdx].classList.add('mc-wrong'); btns[wrongBtnIdx].disabled = true; }
@@ -421,15 +422,14 @@
       var ci = state.problem.correctIndex;
       if (typeof ci === 'number' && btns[ci]) btns[ci].classList.add('mc-reveal');
       var correctTxt = (typeof ci === 'number' && state.problem.choices) ? state.problem.choices[ci] : (state.problem.answer != null ? state.problem.answer : '');
-      showMsg('Out of chances! The answer was <b>' + mathPretty(String(correctTxt)) + '</b>. On to the next one.', true);
-      if (typeof playSfx === 'function') playSfx('wrong');
-      setTimeout(loadProblem, reduceMotion ? 350 : 2400);
+      showMsg('Out of chances! The answer was <b>' + mathPretty(String(correctTxt)) + '</b>.', true);
+      showArenaKickModal(correctTxt);
     } else {
       showMsg('Not quite — <b>' + state.qChances + '</b> ' + (state.qChances === 1 ? 'chance' : 'chances') + ' left. Try again!', true);
     }
   }
 
-  // Compute: type one integer and Submit (Submit is the deliberate confirm). Same 5-chances rule.
+  // Compute: type one integer and Submit (Submit is the deliberate confirm). Same 2-chances rule.
   function answerDirectInput(){
     if (state.locked) return;
     var raw = (el.directInput && el.directInput.value || '').trim();
@@ -599,7 +599,7 @@
     updateLevelProgress();
     renderScene();
     hideHintPanel();
-    state.qChances = MAX_ROOM_FAILS;   // fresh chances for each question (3)
+    state.qChances = MAX_ROOM_FAILS;   // fresh chances for each question (2)
     state.qSelected = null;
     showMsg('', false);
     el.movesInfo.textContent = 'Moves: 0';
@@ -680,10 +680,10 @@
     _toastHideTimer = setTimeout(function(){ el.toast.classList.remove('show'); _toastHideTimer = null; }, 1800);
   }
 
-  // ---------- Question chances: 3 wrong on ONE question = reveal the answer & move on ----------
-  // (3, not 5 — with 4-5 multiple-choice options, 5 chances made questions impossible to miss.
-  //  The old "wrong answers restart the whole planet" game-over is gone — no scary resets.)
-  var MAX_ROOM_FAILS = 3;   // chances per QUESTION
+  // ---------- Question chances: 2 wrong on ONE question = kick the player back to arena start ----------
+  // (2, not 3/5 — every wrong attempt now flashes the lives row red; running out of chances shows a
+  //  blocking modal and restarts the whole arena via restartRoom(true), it does not silently advance.)
+  var MAX_ROOM_FAILS = 2;   // chances per QUESTION
 
   function renderLives(){
     var row = document.getElementById('livesRow');
@@ -695,8 +695,16 @@
     row.title = left + ' tr' + (left === 1 ? 'y' : 'ies') + ' left on this question';
   }
 
-  // Stats bookkeeping for a wrong answer (roomFails now only tracks the "perfect run" bonus
-  // and the admin dashboard — it never triggers a restart).
+  // Red flash on the lives row for EVERY wrong attempt (both the mcOnly and numeric/formula/
+  // bracket/graph paths) — a visible cue beyond mcOnly's own per-button coral tint.
+  function flashWrongLight(){
+    var row = document.getElementById('livesRow'); if (!row) return;
+    row.classList.remove('wrong-flash'); void row.offsetWidth; row.classList.add('wrong-flash');
+  }
+
+  // Stats bookkeeping for a wrong answer (roomFails also feeds the "perfect run" bonus and the
+  // admin dashboard — the actual out-of-chances arena restart is triggered separately, via
+  // showArenaKickModal/ackArenaKick below).
   function _failStats(){
     state.roomFails = (state.roomFails || 0) + 1;
     if (!state.arenaStats) state.arenaStats = {};
@@ -705,13 +713,14 @@
   }
 
   // Called on every genuinely WRONG answer in the balance/graph modes (bad operation, wrong
-  // bracket expansion, wrong point) — input-format slips don't count. Burns one of the 5
-  // chances on the CURRENT question; out of chances = show the answer and advance.
+  // bracket expansion, wrong point) — input-format slips don't count. Burns one of the 2
+  // chances on the CURRENT question; out of chances = show the answer and kick back to arena start.
   function registerFail(){
     _failStats();
     if (typeof state.qChances !== 'number') state.qChances = MAX_ROOM_FAILS;
     state.qChances--;
     renderLives();
+    flashWrongLight();
     if (state.qChances <= 0) {
       setTimeout(revealCurrentAnswer, 450);
     } else if (state.qChances === 1) {
@@ -746,10 +755,9 @@
       var reg = modeRegistry[state.mode];
       msg = (reg && reg.describeAnswer) ? String(reg.describeAnswer()) : '';
     }
-    showMsg('Out of chances! The answer was <b>' + mathPretty(msg) + '</b>. On to the next one!', true);
-    if (typeof playSfx === 'function') playSfx('wrong');
+    showMsg('Out of chances! The answer was <b>' + mathPretty(msg) + '</b>.', true);
     updateStats();
-    setTimeout(loadProblem, reduceMotion ? 350 : 2400);
+    showArenaKickModal(msg);
   }
 
   function showGameOver(){
@@ -762,6 +770,21 @@
   function restartAfterGameOver(){
     var ov = document.getElementById('gameOverOverlay');
     if (ov) ov.hidden = true;
+    restartRoom(true);
+  }
+
+  // Out-of-chances kick-out: block on a modal telling the player they got it wrong and must
+  // restart the whole arena, only restarting once they press OK (ackArenaKick below).
+  function showArenaKickModal(correctTxt){
+    var ov = document.getElementById('arenaKickOverlay');
+    if (!ov) { restartRoom(true); return; }
+    var body = ov.querySelector('.arena-kick-body');
+    if (body) body.innerHTML = 'The answer was <b>' + mathPretty(String(correctTxt)) + '</b>. You need to restart this arena from the beginning.';
+    ov.hidden = false;
+    if (typeof playSfx === 'function') playSfx('wrong');
+  }
+  function ackArenaKick(){
+    var ov = document.getElementById('arenaKickOverlay'); if (ov) ov.hidden = true;
     restartRoom(true);
   }
 
