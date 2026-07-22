@@ -198,11 +198,11 @@
     // shouldn't be darker if cleared"). Progress-gating should only ever block arenas never reached.
     var alreadyCleared = !!(state.bossDefeated && state.bossDefeated[a.n]);
     var locked = (a.n > state.level) && !alreadyCleared && !state.testMode && !a.special;
-    // Only the SINGLE immediate-next arena gets the dark/greyscale "locked" treatment — every arena
-    // further out is still non-enterable (same disabled button + lock note below) but stays visually
-    // normal, so browsing a system doesn't turn into a wall of dimmed cards the moment you're only a
-    // couple of arenas in (user 2026-07-22: "everything is dark... only locked one should be dark").
-    var lockedDim = locked && (a.n === state.level + 1);
+    // Every not-yet-reached arena gets the dark/greyscale "locked" treatment (user 2026-07-22: "all
+    // arena7+ should be dim" — reversing the earlier same-day narrowing to just the immediate-next
+    // arena). alreadyCleared/testMode/special are still exempt — this only ever dims arenas that
+    // have genuinely never been reached.
+    var lockedDim = locked;
     var b = a.body || { name: 'Arena ' + displayNum, kind: '', fact: '', real: true };
     var accent = _bodyAccent(b);
     var art = (typeof bodyArtSVG === 'function')

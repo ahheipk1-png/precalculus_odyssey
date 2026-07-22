@@ -77,12 +77,13 @@ The 9 star systems are recorded in `STAR_SYSTEMS` (`worlds.config.js`) for the S
     setting `state.level = room` to REPLAY an earlier arena would make every already-cleared arena
     ahead of that point look freshly "🔒 Locked" (dimmed/greyscale) again the moment you traveled
     back. Progress-gating now only ever blocks arenas that have genuinely never been reached.
-  - **Only the single immediate-next arena gets the dark/greyscale treatment** (`lockedDim`,
-    2026-07-22 — user: "everything is dark... only locked one should be dark", after discovering
-    the `bossDefeated` exemption above hadn't actually reached production yet). Every arena further
-    out stays non-enterable (same disabled button + "Clear Arena N-1 first" note) but renders at
-    full opacity/no greyscale — browsing a 24-arena system three arenas in no longer means staring
-    at 21 dimmed cards; only the one you'd actually unlock next looks locked.
+  - **`lockedDim` briefly narrowed to just the immediate-next arena, then reverted same day.**
+    2026-07-22, first pass (user: "everything is dark... only locked one should be dark", after
+    discovering the `bossDefeated` exemption above hadn't actually reached production yet): only
+    `a.n === state.level + 1` got the dark/greyscale treatment, so browsing a 24-arena system didn't
+    mean staring at a wall of dimmed cards. Reverted later the same day (user: "all arena7+ should be
+    dim") — `lockedDim` is now simply `= locked` again: EVERY not-yet-reached arena dims, not just
+    the next one. `alreadyCleared`/`testMode`/`special` stay exempt either way.
   - Already-cleared and the current arena stay freely re-enterable (unchanged). The two special
     end-game arenas (888/999) are exempt from this check —
   they have their own separate `_arenaVisible()` reveal condition and shouldn't be double-gated once
