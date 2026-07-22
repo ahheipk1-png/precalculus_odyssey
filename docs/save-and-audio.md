@@ -173,6 +173,21 @@ client-side as `ADMIN_SAVE_FIELDS`) plus **💾 Save overrides** and **↺ Reset
   localStorage; reset correctly calls `resetPlayerState()`; exactly 2 network calls per flow, no
   duplicate/racing push) — the real D1-backed round trip couldn't be exercised from this environment
   (no wrangler/Cloudflare credentials here); verify against the real deployment after pushing.
+- **Confirmed live 2026-07-22, and a real regression caught + fixed in the process.** Registered a
+  genuine throwaway test account on production and played it for real (an `admin`-account test
+  wouldn't have proven anything — `authPushProgress` deliberately excludes `admin` from cloud sync
+  by design). Every `POST /api/auth/progress` came back `500: D1_ERROR: no such column:
+  admin_override` — the `admin_override` guard/write added above queried and wrote that column on
+  EVERY push with no fallback, so until migration `0007` actually runs, cloud sync is hard-broken
+  for ALL players, not just the admin-override feature. Fixed by wrapping the read-side guard and
+  both write paths (this file's own push, `admin/save.js`'s override/reset) in the same defensive
+  try/catch this codebase already uses for `progress_json`/`progress_at` on a pre-migration-0006 DB
+  — ordinary syncing now degrades gracefully instead of failing outright. Re-verified end-to-end
+  after the hotfix deployed: real sync timestamp, real Arena-1 progress (`levelSolves`, streak,
+  cash, hero XP), and the admin edit-tools field grid all showed up correctly for the test account;
+  deleted the test account afterward via `/api/admin/account` (`action:'delete'`). **Lesson**: a
+  migration this codebase depends on can still be un-applied on production even after being told to
+  re-run bootstrap — always confirm with a REAL non-admin account, not just code review.
 
 ## ⚠️ The 4-place persistence rule (do this for EVERY new saved field)
 
