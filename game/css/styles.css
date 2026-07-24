@@ -2089,7 +2089,10 @@
       display:none;
     }
     .header-actions.header-menu-open{
-      display:flex; flex-direction:column;
+      display:flex; flex-direction:column; flex-wrap:nowrap;   /* override the desktop row's
+        flex-wrap:wrap (below) — inherited unless reset here, it silently wraps whatever doesn't
+        fit the 480px cap into a cramped SECOND COLUMN instead of scrolling, hiding Admin/Log out
+        behind the earlier buttons (player: "can't find log out/admin button in phone mode"). */
       position:absolute; top:38px; right:-2px; z-index:13;
       width:max-content; max-width:min(86vw, 300px);
       max-height:min(70vh, 480px); overflow-y:auto;

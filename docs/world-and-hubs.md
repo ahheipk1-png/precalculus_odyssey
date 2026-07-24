@@ -775,6 +775,23 @@ situation for the whole game."
   the fix. Removed the now-fully-redundant duplicate from systems.css (left a comment pointing back
   to styles.css) rather than fight it with `!important`. (Item Store / Special Item Store were
   NOT affected — they use a different, already-responsive vertical-card grid, `.istr-shelf`.)
+- **2026-07-22 — real root cause of "can't find Log out/Admin in phone mode" found and fixed** (an
+  earlier session had already tried once: giving `#authLogoutBtn` a `.reset-btn-signout` class with
+  a divider + coral tint, on the theory it just blended into the list — see `cloud-auth.js`'s
+  `injectHeaderAuth()` comment. That didn't fix it because it wasn't the actual cause.) The real bug:
+  `.header-actions.header-menu-open` (the ≤1024px dropdown, `display:flex; flex-direction:column`)
+  never set its own `flex-wrap`, so it inherited `flex-wrap:wrap` from the plain `.header-actions`
+  rule above (written for the WIDE-SCREEN horizontal row, where wrapping to a second line is
+  correct). Once the column of nav buttons filled the dropdown's `max-height:480px`, `flex-wrap:wrap`
+  silently resolved the overflow by starting a SECOND COLUMN to the right — landing Admin (added
+  only for admin accounts) and Log out (always last) squeezed into a narrow second column
+  overlapping the tail of the first, instead of the dropdown just scrolling. Confirmed live:
+  `getComputedStyle(.header-actions).flexWrap` was `"wrap"` while the dropdown was open;
+  `#authAdminBtn`/`#authLogoutBtn` had `offsetLeft` 8 and 276 respectively (two different columns)
+  despite nearly-identical `offsetTop` — a dead giveaway once measured, invisible from a screenshot.
+  Fixed with one line, `flex-wrap:nowrap` added to `.header-actions.header-menu-open` itself, so the
+  mobile dropdown can never wrap into columns regardless of what the desktop rule sets — verified
+  live afterward: both buttons render in the single column, non-overlapping, fully readable.
 - **Full-game responsive audit** (a reusable in-page bounding-box overlap/offscreen checker,
   tested at 375×812 phone, 768×1024 iPad portrait, 1024×768 iPad landscape, 1320×860 desktop):
   Earth Hub, Weapon Store (before AND after the fix above), Item Store, Special Item Store, Hotel,
