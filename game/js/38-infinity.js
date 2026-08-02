@@ -107,10 +107,18 @@
     var eq = document.getElementById('equationView'); if (eq) eq.classList.add('active');
   }
 
+  // Chances per question — same 2-per-question rule a normal arena enforces (MAX_ROOM_FAILS,
+  // 05-render.js). Before this, one wrong tap just moved on to the next question and the round
+  // still paid its fixed pass reward on reaching `target` asked, regardless of how many were
+  // wrong — mashing through 10 wrong answers still "finished" the round (user 2026-08-01: "even
+  // if you failure to answer any questions in arena infinity...you can still get the ticket's").
+  function _infMaxChances(){ return (typeof MAX_ROOM_FAILS === 'number') ? MAX_ROOM_FAILS : 2; }
+
   function infNextQuestion(){
     if (INF._t){ clearTimeout(INF._t); INF._t = null; }
     if (INF.asked >= INF.target){ infFinish(); return; }
     INF.locked = false;
+    INF.qChances = _infMaxChances();
     INF.q = _infPick();
     INF.arena = INF.q ? INF.q._arena : 1;
     infRender(null);
@@ -131,12 +139,16 @@
         '<input type="text" id="infInput" class="inf-input" inputmode="numeric" autocomplete="off" placeholder="type your answer"' + (INF.locked ? ' disabled' : '') + ' />' +
         '<button type="submit" class="btn btn-primary"' + (INF.locked ? ' disabled' : '') + '>Submit ✓</button></form>';
     }
+    var maxChances = _infMaxChances();
+    var left = Math.max(0, (typeof INF.qChances === 'number') ? INF.qChances : maxChances);
+    var hearts = ''; for (var i = 0; i < maxChances; i++) hearts += (i < left) ? '❤️' : '🖤';
     v.innerHTML =
       '<div class="inf-card">' +
         '<button class="inf-close" onclick="closeArenaInfinity()" title="Leave Arena Infinity">✕</button>' +
         '<div class="inf-kicker">♾️ Arena Infinity</div>' +
         '<div class="inf-hud"><span>Q <b>' + (Math.min(INF.asked + 1, INF.target)) + '</b> / ' + INF.target + '</span>' +
-          '<span>✅ <b>' + INF.correct + '</b></span><span>🔥 <b>' + INF.streak + '</b></span></div>' +
+          '<span>✅ <b>' + INF.correct + '</b></span><span>🔥 <b>' + INF.streak + '</b></span>' +
+          '<span title="Tries left on this question">' + hearts + '</span></div>' +
         '<div class="inf-topic">From Arena ' + INF.arena + (topic ? ' · ' + topic : '') + '</div>' +
         '<div class="inf-q">' + _infPretty(q.prompt || '') + '</div>' +
         body +
@@ -147,7 +159,6 @@
 
   function infAnswerMc(i){
     if (INF.locked || !INF.q) return;
-    INF.locked = true;
     var ok = (i === INF.q.correctIndex);
     infGrade(ok, 'Answer: ' + _infPretty(INF.q.choices[INF.q.correctIndex]));
   }
@@ -156,25 +167,61 @@
     var inp = document.getElementById('infInput'); if (!inp) return false;
     var val = inp.value.trim();
     if (val === '') return false;
-    INF.locked = true;
     var ans = INF.q.answer;
     var ok = (String(val) === String(ans)) || (val !== '' && parseFloat(val) === parseFloat(ans));
     infGrade(ok, 'Answer: ' + _infPretty(String(ans)));
     return false;
   }
+  // Correct: locks, counts as asked, advances to the next question after a beat. Wrong: burns
+  // one of this question's chances — with chances left, re-render the SAME question for another
+  // try (doesn't count as asked yet); out of chances fails the WHOLE ROUND (no passes/cash/chest),
+  // the same "restart from the beginning, earn nothing" consequence a normal arena's out-of-chances
+  // kick delivers (05-render.js's showArenaKickModal/restartRoom).
   function infGrade(ok, revealMsg){
-    INF.asked++;
     if (ok){
+      INF.locked = true;
+      INF.asked++;
       INF.correct++; INF.streak++; if (INF.streak > INF.best) INF.best = INF.streak;
       if (typeof addHeroXp === 'function') addHeroXp(4);
       if (typeof playSfx === 'function') playSfx('correct');
-    } else {
-      INF.streak = 0;
-      if (typeof playSfx === 'function') playSfx('wrong');
+      if (typeof updateStats === 'function') updateStats();
+      infRender({ cls: 'inf-ok', msg: '✅ Correct! ' + revealMsg });
+      INF._t = setTimeout(infNextQuestion, 1400);
+      return;
     }
+    INF.streak = 0;
+    if (typeof playSfx === 'function') playSfx('wrong');
+    INF.qChances = (typeof INF.qChances === 'number' ? INF.qChances : _infMaxChances()) - 1;
     if (typeof updateStats === 'function') updateStats();
-    infRender({ cls: ok ? 'inf-ok' : 'inf-bad', msg: (ok ? '✅ Correct! ' : '❌ Not quite. ') + revealMsg });
-    INF._t = setTimeout(infNextQuestion, 1400);
+    if (INF.qChances > 0){
+      INF.locked = false;
+      infRender({ cls: 'inf-bad', msg: '❌ Not quite — try again!' + (INF.qChances === 1 ? ' Last try.' : '') });
+      return;
+    }
+    INF.locked = true;
+    infRender({ cls: 'inf-bad', msg: '❌ Out of chances. ' + revealMsg });
+    INF._t = setTimeout(infRoundFail, 1400);
+  }
+
+  // Round-failure screen: no rewards at all — mirrors a normal arena's out-of-chances restart
+  // (you keep whatever XP you already banked on questions you got right, but the round's
+  // completion payout — the fixed Passes for the chosen length, plus Cash/chest — is void).
+  function infRoundFail(){
+    if (INF._t){ clearTimeout(INF._t); INF._t = null; }
+    INF.active = false;
+    var v = document.getElementById('infinityView'); if (!v) return;
+    v.innerHTML =
+      '<div class="inf-card inf-result">' +
+        '<button class="inf-close" onclick="closeArenaInfinity()" title="Leave Arena Infinity">✕</button>' +
+        '<div class="inf-kicker">♾️ Arena Infinity</div>' +
+        '<div class="inf-headline">❌ Round failed</div>' +
+        '<div class="inf-score">Out of chances on question ' + (INF.asked + 1) + ' / ' + INF.target + '</div>' +
+        '<div class="inf-rewards">Two wrong answers on one question ends the round — no Passes, Cash, or chest this time. Get every question right (within 2 tries each) to collect the reward.</div>' +
+        '<div class="inf-actions">' +
+          '<button class="btn btn-primary" onclick="openArenaInfinity()">♾️ Try again</button>' +
+          '<button class="btn btn-ghost" onclick="closeArenaInfinity()">← Back to Earth</button>' +
+        '</div>' +
+      '</div>';
   }
 
   function infFinish(){

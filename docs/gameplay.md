@@ -273,3 +273,24 @@ floor**: `floor(maxN·0.45)` (trivial arenas drop out as you clear more) + a wit
 stays wide enough (the picker skips some arenas). The fallback (when 60 draws fail) now scans **down
 from the middle of the band** instead of hard-returning Arena 1. Net: a level-30 player draws arenas
 ~13-30, never Arena 1. `maxN` is still capped at the player's cleared level (`_infMaxArena`).
+
+**2026-08-01 exploit fix — 2-chances-per-question, out-of-chances fails the WHOLE round (no reward).**
+Previously each question was ONE attempt: right or wrong, `infGrade()` immediately advanced via
+`infNextQuestion()`, and `infFinish()` paid the round's fixed Pass reward (see `INF_ROUNDS`) purely
+for reaching `INF.target` questions **asked** — accuracy only scaled XP/Cash/chest, never the Passes.
+That meant mashing any wrong answer through an entire round still "finished" it and paid the full
+fixed Pass reward with zero correct answers (user: "even if you failure to answer any questions in
+arena infinity...you can still get the ticket's...please make it the small rule as normal arena" —
+referencing the normal arena's `MAX_ROOM_FAILS = 2` chances-per-question rule, `05-render.js`).
+Fixed by giving Arena Infinity the same 2-chances-per-question rule (`INF.qChances`, reusing
+`MAX_ROOM_FAILS` directly rather than a second hardcoded constant): a wrong answer with a chance
+left just re-renders the SAME question for another try (doesn't count toward `INF.asked` yet,
+matching hearts UI added to `.inf-hud`); a second wrong answer on that question now calls
+`infRoundFail()` instead of continuing — the round ends immediately with **zero** rewards (no
+Passes/Cash/chest), mirroring a normal arena's out-of-chances kick (`showArenaKickModal`/
+`restartRoom`, which resets that arena's progress and pays nothing until genuinely re-cleared).
+Per-question XP already banked on questions answered correctly before the failure is NOT clawed
+back (same as a normal arena not undoing prior real solves) — only the round-completion payout is
+gated. Verified live: 2 wrong answers on Q1 of a 3-question round left `state.wonderPasses`/`coins`
+unchanged and showed the round-failed screen; a clean 3/3 correct run still paid normally
+(+1 Pass, +30 XP, +45 Cash, chest, for the 3-question round).
