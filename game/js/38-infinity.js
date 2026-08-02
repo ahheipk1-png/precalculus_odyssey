@@ -146,9 +146,9 @@
       '<div class="inf-card">' +
         '<button class="inf-close" onclick="closeArenaInfinity()" title="Leave Arena Infinity">✕</button>' +
         '<div class="inf-kicker">♾️ Arena Infinity</div>' +
+        '<div class="inf-hearts" title="Tries left on this question">' + hearts + '</div>' +
         '<div class="inf-hud"><span>Q <b>' + (Math.min(INF.asked + 1, INF.target)) + '</b> / ' + INF.target + '</span>' +
-          '<span>✅ <b>' + INF.correct + '</b></span><span>🔥 <b>' + INF.streak + '</b></span>' +
-          '<span title="Tries left on this question">' + hearts + '</span></div>' +
+          '<span>✅ <b>' + INF.correct + '</b></span><span>🔥 <b>' + INF.streak + '</b></span></div>' +
         '<div class="inf-topic">From Arena ' + INF.arena + (topic ? ' · ' + topic : '') + '</div>' +
         '<div class="inf-q">' + _infPretty(q.prompt || '') + '</div>' +
         body +

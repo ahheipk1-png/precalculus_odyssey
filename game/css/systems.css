@@ -570,7 +570,11 @@
     color:var(--chalk-dim,#9fb3c8); font-size:20px; line-height:1; padding:4px 8px; border-radius:8px; }
   .inf-close:hover{ color:var(--chalk,#eef4fb); background:rgba(255,255,255,.08); }
   .inf-kicker{ font-size:14px; font-weight:800; letter-spacing:.05em; color:var(--sky); text-transform:uppercase; }
-  .inf-hud{ display:flex; gap:14px; justify-content:center; margin:10px 0 4px; font-size:16px; color:var(--chalk-dim); }
+  /* Big, hard-to-miss tries-left indicator (user 2026-08-01: "should show two big hearts to show
+     it") — small 16px text buried in .inf-hud next to Q/streak wasn't prominent enough to register
+     as "you only get 2 tries here", so it's now its own oversized line above the HUD row. */
+  .inf-hearts{ text-align:center; font-size:34px; line-height:1; letter-spacing:8px; margin:8px 0 2px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35)); }
+  .inf-hud{ display:flex; gap:14px; justify-content:center; margin:4px 0 4px; font-size:16px; color:var(--chalk-dim); }
   .inf-hud b{ color:var(--chalk); }
   .inf-topic{ font-size:14px; color:var(--chalk-dim); margin-bottom:12px; }
   .inf-q{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:24px; color:var(--chalk); line-height:1.4;
