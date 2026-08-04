@@ -180,6 +180,32 @@ export async function onRequestPost(context) {
       }
     }
 
+    // Arena unlock/star repair (added 2026-08-04 for the stale-save data-loss incident — see
+    // docs/save-and-audio.md). ADD-ONLY by design: it can grant a cleared arena or a perfect star,
+    // never take one away, so this tool can't itself become a way to violate the never-downgrade
+    // invariant the sync path now enforces. Accepts {arenas:{cleared:[...], perfect:[...]}}.
+    // A perfect star implies the arena was cleared, so `perfect` grants both.
+    const arenasIn = (body.arenas && typeof body.arenas === 'object') ? body.arenas : null;
+    if (arenasIn) {
+      const maxArena = 999;   // 888/999 are the special end-game arenas; ordinary ones are 1-65
+      const grant = (listRaw, keys) => {
+        if (!Array.isArray(listRaw)) return null;
+        for (const raw of listRaw) {
+          const n = clampInt(raw, 1, maxArena);
+          if (n == null) return 'Arena numbers must be integers.';
+          for (const key of keys) {
+            if (!save[key] || typeof save[key] !== 'object') save[key] = {};
+            save[key][n] = true;
+          }
+        }
+        return null;
+      };
+      const e1 = grant(arenasIn.cleared, ['bossDefeated']);
+      if (e1) return bad('BAD_FIELD', e1);
+      const e2 = grant(arenasIn.perfect, ['bossDefeated', 'perfectArenas']);
+      if (e2) return bad('BAD_FIELD', e2);
+    }
+
     save.schemaVersion = save.schemaVersion || 2;   // guard migrateSave()'s legacy-save path, see 03-save.js
   } else if (action === 'reset') {
     // Zero the curated fields (so THIS dashboard reflects it immediately) AND set the `_adminReset`

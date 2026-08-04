@@ -660,6 +660,15 @@
       '<div class="admin-field-grid">' + gearInputs + '</div>' +
       '<p class="admin-tools-note">🧩 Chips</p>' +
       '<div class="admin-field-grid">' + chipInputs + '</div>' +
+      '<p class="admin-tools-note">🪐 Restore cleared arenas / green stars — accepts ranges and lists, ' +
+        'e.g. <b>1-10</b> or <b>4,5,6</b>. <b>ADD-ONLY</b>: this can grant a clear or a star, never remove one. ' +
+        'Leave blank to change nothing. (A green star implies the arena was cleared, so the star box grants both.)</p>' +
+      '<div class="admin-field-grid">' +
+        '<label class="admin-field"><span class="admin-field-label">✓ Mark cleared</span>' +
+          '<input class="admin-field-input" type="text" id="adminArenasCleared" placeholder="e.g. 1-10"></label>' +
+        '<label class="admin-field"><span class="admin-field-label">★ Mark perfect (green star)</span>' +
+          '<input class="admin-field-input" type="text" id="adminArenasPerfect" placeholder="e.g. 1-10"></label>' +
+      '</div>' +
       '<p class="auth-msg" id="adminToolsMsg"></p>' +
       '<div class="admin-actions">' +
         '<button class="btn btn-primary admin-btn" onclick="authAdminSaveOverride(\'' + esc(username) + '\')">💾 Save overrides</button>' +
@@ -670,6 +679,29 @@
   window.loadAdminSaveTools = loadAdminSaveTools;
 
   function adminToolsMsg(text, kind){ var m = document.getElementById('adminToolsMsg'); if (m){ m.textContent = text || ''; m.className = 'auth-msg' + (kind ? (' auth-' + kind) : ''); } }
+
+  // "1-10", "4,5,6", "1-3, 7, 9-10" → [1..10] etc. Throws (with a message the admin can act on)
+  // rather than silently dropping a typo, since this writes to a real player's save.
+  function _parseArenaList(txt){
+    var s = String(txt == null ? '' : txt).trim();
+    if (!s) return [];
+    var out = {}, parts = s.split(',');
+    for (var i = 0; i < parts.length; i++){
+      var part = parts[i].trim();
+      if (!part) continue;
+      var range = /^(\d+)\s*[-–]\s*(\d+)$/.exec(part);
+      if (range){
+        var a = parseInt(range[1], 10), b = parseInt(range[2], 10);
+        if (a > b){ var t = a; a = b; b = t; }
+        if (b - a > 200) throw new Error('Range "' + part + '" is too large.');
+        for (var n = a; n <= b; n++) out[n] = true;
+        continue;
+      }
+      if (!/^\d+$/.test(part)) throw new Error('Could not read "' + part + '" — use numbers, e.g. 1-10 or 4,5,6.');
+      out[parseInt(part, 10)] = true;
+    }
+    return Object.keys(out).map(Number).sort(function(x, y){ return x - y; });
+  }
 
   window.authAdminSaveOverride = async function(username){
     var fields = {};
@@ -690,8 +722,16 @@
       var inp = document.getElementById('adminchip_' + id);
       if (inp && inp.value !== '') chips[id] = inp.value;
     });
+    var arenas = {};
+    var clearedTxt = (document.getElementById('adminArenasCleared') || {}).value;
+    var perfectTxt = (document.getElementById('adminArenasPerfect') || {}).value;
+    try {
+      var cleared = _parseArenaList(clearedTxt), perfect = _parseArenaList(perfectTxt);
+      if (cleared.length) arenas.cleared = cleared;
+      if (perfect.length) arenas.perfect = perfect;
+    } catch (e) { adminToolsMsg(e.message, 'err'); return; }
     adminToolsMsg('Saving…');
-    var r = await api('/api/admin/save', { body: { username: username, action: 'override', fields: fields, gear: gear, chips: chips }, auth: true });
+    var r = await api('/api/admin/save', { body: { username: username, action: 'override', fields: fields, gear: gear, chips: chips, arenas: arenas }, auth: true });
     if (r.ok && r.data.ok){ adminToolsMsg('Saved — reaches ' + username + ' within ~25s if online, or on next login.', 'ok'); loadAdminSaveTools(username); }
     else adminToolsMsg((r.data && r.data.error) || 'Save failed.', 'err');
   };
