@@ -12,27 +12,52 @@ export async function onRequestPost(context) {
     const acc = await authAccountFull(context);
     if (!acc) return bad('UNAUTHENTICATED', 'Log in first.', 401);
     const body = await readJsonBody(context.request);
+    // Read the CURRENTLY-STORED save up front — needed both for the admin-override guard below and
+    // for the never-downgrade merge (cleared arenas / perfect stars are monotonic; see below).
+    // Defensive column fallbacks mirror the GET handler's, so pre-migration DBs never hard-500.
+    let stored = null, storedOverride = 0;
+    try {
+      const row = await context.env.DB.prepare(
+        `SELECT admin_override, progress_json FROM cloud_accounts WHERE account_id = ?1`
+      ).bind(acc.accountId).first();
+      if (row) {
+        storedOverride = row.admin_override || 0;
+        try { stored = row.progress_json ? JSON.parse(row.progress_json) : null; } catch (e) { stored = null; }
+      }
+    } catch (e) {
+      // admin_override column not present yet (pre-migration-0007 DB) — still fetch the save itself.
+      try {
+        const row2 = await context.env.DB.prepare(
+          `SELECT progress_json FROM cloud_accounts WHERE account_id = ?1`
+        ).bind(acc.accountId).first();
+        if (row2) { try { stored = row2.progress_json ? JSON.parse(row2.progress_json) : null; } catch (e2) { stored = null; } }
+      } catch (e2) { /* pre-migration-0006 DB — no progress column at all */ }
+    }
     // Pending admin edit/reset guard (migration 0007, functions/api/admin/save.js): a LIVE player's
     // own heartbeat push would otherwise silently overwrite an admin's edit within ~25s, before the
     // client ever had a chance to pull and apply it. Reject the push (returning the admin's version
     // instead) unless the client is explicitly confirming it just applied that override (ack:true —
-    // see authPushProgress, cloud-auth.js). Wrapped in its own try/catch — like the GET handler
-    // below already does for progress_json/progress_at — so a DB that predates migration 0007 still
-    // accepts ordinary progress pushes instead of hard-500ing on every single sync (confirmed live
-    // 2026-07-22: this exact gap broke cloud sync entirely for a brand-new test account until fixed).
-    if (!body || !body.ack) {
-      try {
-        const pending = await context.env.DB.prepare(
-          `SELECT admin_override, progress_json FROM cloud_accounts WHERE account_id = ?1`
-        ).bind(acc.accountId).first();
-        if (pending && pending.admin_override) {
-          let overrideProgress = null;
-          try { overrideProgress = pending.progress_json ? JSON.parse(pending.progress_json) : null; } catch (e) { overrideProgress = null; }
-          return json(200, { ok: false, error: 'OVERRIDE_PENDING', progress: overrideProgress });
-        }
-      } catch (e) { /* admin_override column not present yet (pre-migration-0007 DB) — push normally */ }
+    // see authPushProgress, cloud-auth.js).
+    if ((!body || !body.ack) && storedOverride) {
+      return json(200, { ok: false, error: 'OVERRIDE_PENDING', progress: stored });
     }
     const progress = body && body.progress ? body.progress : body;
+    // NEVER-DOWNGRADE merge (2026-08-04 data-loss postmortem: an old device's stale local profile
+    // overwrote a real player's cloud save, re-locking arenas 4-10 and erasing their stars — the
+    // owner's rule: "any level passed should never be locked again, every level got green star
+    // should never be downgraded"). bossDefeated/perfectArenas only ever legitimately grow, so any
+    // cleared/starred arena already stored is folded into every incoming push. The client now
+    // guards this too (bridgeToGame/_mergeProgressMaps, cloud-auth.js), but devices can run stale
+    // cached JS for weeks — this server-side union is the invariant's real enforcement.
+    // Exception: an admin "Reset to beginning" (_adminReset marker) is a deliberate wipe — honor it.
+    if (stored && progress && typeof progress === 'object' && !stored._adminReset) {
+      for (const key of ['bossDefeated', 'perfectArenas']) {
+        const src = stored[key];
+        if (!src || typeof src !== 'object') continue;
+        if (!progress[key] || typeof progress[key] !== 'object') progress[key] = {};
+        for (const k in src) { if (src[k] && !progress[key][k]) progress[key][k] = true; }
+      }
+    }
     let text = '';
     try { text = JSON.stringify(progress); } catch (e) { return bad('BAD_JSON', 'Bad progress payload.'); }
     if (text.length > 512 * 1024) return bad('TOO_LARGE', 'Progress too large.');   // matches MAX_SAVE_BYTES in _shared.js (the other save pipeline's tested cap) — now a full save, not just a summary

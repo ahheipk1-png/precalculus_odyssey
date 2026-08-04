@@ -225,6 +225,46 @@ client-side as `ADMIN_SAVE_FIELDS`) plus **💾 Save overrides** and **↺ Reset
     server logic mirrors the already-battle-tested `CURATED`/`setPath`/`clampInt` pattern from the
     scalar fields above.
 
+## 🚨 2026-08-04 data-loss postmortem — stale local profile clobbered a real player's cloud save
+
+A real player (jayden) cleared arenas 1–10 (stars included), travelled back to arena 3 on the Star
+Atlas, and later found arenas 4–9 re-locked. The cloud save had genuinely REGRESSED to a weeks-old
+snapshot (bossDefeated {1,2,3}, level 4, arenaStats keys 1–3 only) — server-side data loss, not a
+display bug.
+
+**Root cause 1 — `bridgeToGame` judged "further along" by `state.level`.** The old comparison was
+`cloud.level > local.level`. But `state.level` is just "the arena currently being played" and goes
+DOWN legitimately whenever `atlasTravel()` jumps backward to replay an earlier arena. After the kid
+travelled back to arena 3, the cloud copy honestly said `level: 3` — so ANY device still holding an
+old local profile from the arena-4 days won the comparison, loaded the relic, and the 25s heartbeat
+pushed it over the real save. **Fix:** the further-along copy is now chosen by `_clearedCount()`
+(size of `bossDefeated` — the only monotonic signal a snapshot carries), tie-broken by `savedAt`
+recency, and the LOSING copy's `bossDefeated`/`perfectArenas` are unioned into the winner via
+`_mergeProgressMaps()` before `applySnapshotToState()` — so cleared arenas and stars survive even a
+wrong pick.
+
+**Root cause 2 — a failed login-time cloud read silently meant "no cloud save".** A transient
+D1/network error on the GET (seen live 2026-08-01: `D1_ERROR: D1 DB storage operation exceeded
+timeout`) made bridgeToGame fall back to local-or-fresh state, which the heartbeat then pushed over
+the intact cloud copy. **Fix:** the GET retries once; if both attempts fail, `_cloudMergePending`
+is set and `authPushProgress` refuses to push AT ALL until one successful read+merge has happened
+(each 25s heartbeat retries the read first).
+
+**Root cause 3 (defense in depth) — the server accepted any downgrade.** Client fixes don't protect
+against devices running weeks-stale cached JS (a chronic issue for this game). `POST
+/api/auth/progress` now unions the STORED save's `bossDefeated`/`perfectArenas` into every incoming
+push before writing (the owner's rule: "any level passed should never be locked again, every level
+got green star should never be downgraded"). The one exception: a pending admin
+"Reset to beginning" (`_adminReset` marker on the stored save) is a deliberate wipe and skips the
+merge, so admin resets still work. The stored-row read this needs was folded into the existing
+admin_override guard read (same defensive pre-migration try/catch ladder).
+
+Recovery for the affected player was manual: logged in as them (password visible in the admin
+dashboard by design), pushed a corrected snapshot (bossDefeated/perfectArenas 1–10 restored per the
+parent's direct testimony of the green stars, level back to 11), verified via the admin player
+endpoint. Cash/XP/gear earned during the lost run were NOT reconstructable (no snapshot history —
+the overwrite was destructive); only the unlock/star maps were restored.
+
 ## ⚠️ The 4-place persistence rule (do this for EVERY new saved field)
 
 A `state` field is only truly saved if added in **all four** places — miss one and it silently

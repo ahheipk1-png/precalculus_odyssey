@@ -210,6 +210,37 @@
   // shape getSaveSnapshot()/applySnapshotToState() already use for local profiles, since the
   // player confirmed "status" means everything: levels, HP, arenas unlocked, weapons, items).
   // A full local save on THIS device still wins if it's further along than the cloud copy.
+  // Count of arenas actually beaten — the only MONOTONIC progress signal a snapshot carries.
+  // state.level is just "the arena currently being played" and legitimately goes DOWN whenever the
+  // player travels back on the Star Atlas to replay an earlier arena, so it must never be used to
+  // judge which of two saves is further along (see bridgeToGame below for the data-loss this caused).
+  function _clearedCount(s){
+    var m = s && s.bossDefeated; if (!m || typeof m !== 'object') return 0;
+    var c = 0; for (var k in m){ if (m[k]) c++; }
+    return c;
+  }
+  // Union `from`'s cleared/perfect maps into `into` (which may be a snapshot OR the live state).
+  // These two maps only ever legitimately GROW (user 2026-08-04: "any level passed should never be
+  // locked again, every level got green star should never be downgraded") — so whichever copy wins
+  // a load decision, the loser's cleared arenas and stars are always folded in, never dropped.
+  function _mergeProgressMaps(into, from){
+    if (!into || !from) return into;
+    ['bossDefeated', 'perfectArenas'].forEach(function(key){
+      var src = from[key]; if (!src || typeof src !== 'object') return;
+      var dst = into[key];
+      if (!dst || typeof dst !== 'object') { dst = {}; into[key] = dst; }
+      for (var k in src){ if (src[k] && !dst[k]) dst[k] = true; }
+    });
+    return into;
+  }
+
+  // Set when the login-time cloud read FAILED (network / transient D1 error — seen live
+  // 2026-08-01: "D1_ERROR: D1 DB storage operation exceeded timeout"). While pending, no push may
+  // overwrite the cloud until one successful read+merge has happened (authPushProgress below) —
+  // otherwise a single failed read silently reads as "no cloud save" and the next heartbeat
+  // clobbers the player's real progress with whatever stale/fresh state this device booted from.
+  var _cloudMergePending = false;
+
   async function bridgeToGame(username){
     window.activeProfileName = username;
     var loaded = false;
@@ -218,23 +249,42 @@
       var list = (typeof loadAllProfiles === 'function') ? loadAllProfiles() : [];
       localMine = list.filter(function (p){ return (p.name || '').toLowerCase() === username.toLowerCase(); })[0] || null;
     } catch (e) {}
-    var cloudProgress = null;
-    try {
-      var pr = await api('/api/auth/progress', { method: 'GET', auth: true });
-      // The stored session token (boot() resuming a prior login) is already dead — most likely
-      // this account was logged into on another device while this tab was closed. Bounce straight
-      // to the kick-out screen rather than silently starting the game on stale local data.
-      if (pr.status === 401){ handleSessionRevoked(); return; }
-      if (pr.ok && pr.data && pr.data.ok && pr.data.progress) cloudProgress = pr.data.progress;
-    } catch (e) {}
-    var cloudIsFurther = cloudProgress && (!localMine || (cloudProgress.level || 1) > (localMine.level || 1));
-    if (cloudIsFurther && typeof applySnapshotToState === 'function'){
-      applySnapshotToState(cloudProgress);
-      window.activeProfileId = 'acc_' + String(username).toLowerCase();
+    var cloudProgress = null, cloudReadOk = false;
+    // Two attempts: a single transient failure must not cost the player their cloud save.
+    for (var attempt = 0; attempt < 2 && !cloudReadOk; attempt++){
+      try {
+        var pr = await api('/api/auth/progress', { method: 'GET', auth: true });
+        // The stored session token (boot() resuming a prior login) is already dead — most likely
+        // this account was logged into on another device while this tab was closed. Bounce straight
+        // to the kick-out screen rather than silently starting the game on stale local data.
+        if (pr.status === 401){ handleSessionRevoked(); return; }
+        if (pr.ok && pr.data && pr.data.ok){
+          cloudReadOk = true;
+          if (pr.data.progress) cloudProgress = pr.data.progress;
+        }
+      } catch (e) {}
+    }
+    _cloudMergePending = !cloudReadOk;
+    // Pick the further-along copy by arenas CLEARED (monotonic), tie-broken by save recency —
+    // NEVER by state.level (2026-08-04 data-loss postmortem: clear 1-10, travel back to arena 3
+    // → cloud legitimately says level 3; any device still holding an old level-4 local profile
+    // then won the old `cloud.level > local.level` comparison and pushed a weeks-old relic over
+    // the real save, permanently wiping arenas 4-10 — exactly what happened to a real player).
+    var chosen = null, other = null, fromCloud = false;
+    if (cloudProgress && localMine){
+      var cc = _clearedCount(cloudProgress), lc = _clearedCount(localMine);
+      if (cc > lc){ chosen = cloudProgress; other = localMine; fromCloud = true; }
+      else if (lc > cc){ chosen = localMine; other = cloudProgress; }
+      else if ((cloudProgress.savedAt || 0) >= (localMine.savedAt || 0)){ chosen = cloudProgress; other = localMine; fromCloud = true; }
+      else { chosen = localMine; other = cloudProgress; }
+    } else if (cloudProgress){ chosen = cloudProgress; fromCloud = true; }
+    else if (localMine){ chosen = localMine; }
+    if (chosen && typeof applySnapshotToState === 'function'){
+      _mergeProgressMaps(chosen, other);   // the losing copy's cleared arenas/stars still count
+      applySnapshotToState(chosen);
+      window.activeProfileId = fromCloud ? ('acc_' + String(username).toLowerCase()) : chosen.id;
       loaded = true;
-      if (typeof showToast === 'function') showToast('☁️ Welcome back! Restored your full progress from the cloud.');
-    } else if (localMine && typeof applySnapshotToState === 'function'){
-      window.activeProfileId = localMine.id; applySnapshotToState(localMine); loaded = true;
+      if (fromCloud && typeof showToast === 'function') showToast('☁️ Welcome back! Restored your full progress from the cloud.');
     }
     if (!window.activeProfileId) window.activeProfileId = 'acc_' + String(username).toLowerCase();
     if (!loaded && typeof resetPlayerState === 'function') resetPlayerState();
@@ -304,6 +354,19 @@
     if (_applyingOverride) return;
     var sess = loadSession();
     if (!sess || !sess.token || (sess.username || '').toLowerCase() === 'admin') return;   // don't sync the admin/test account
+    // Login-time cloud read failed (transient D1/network error) — this device booted from local or
+    // fresh state WITHOUT ever seeing the cloud copy. Pushing now could permanently overwrite real
+    // progress, so first re-read the cloud and fold its cleared-arenas/stars into the live state;
+    // until a read succeeds, skip pushing entirely (each 25s heartbeat retries).
+    if (_cloudMergePending){
+      var g;
+      try { g = await api('/api/auth/progress', { method: 'GET', auth: true }); }
+      catch (e) { g = { ok: false, status: 0 }; }
+      if (g.status === 401){ handleSessionRevoked(); return; }
+      if (!(g.ok && g.data && g.data.ok)) return;   // cloud still unreadable — do NOT overwrite it
+      if (g.data.progress && typeof state === 'object') _mergeProgressMaps(state, g.data.progress);
+      _cloudMergePending = false;
+    }
     var ack = !!(opts && opts.ack);
     var r;
     try { r = await api('/api/auth/progress', { body: { progress: authProgressSummary(), ack: ack }, auth: true }); }
