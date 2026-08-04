@@ -115,10 +115,14 @@
   var FISH_RULE_BG = ['#ffd86b', '#ff6f91', '#66e0ff', '#9a6cff', '#72f4c7', '#ffb454'];
   var FISH = { active: false, timer: 0, spawner: 0, score: 0, combo: 0, best: 0, rule: null, catches: 0, wrong: 0, seq: 0, level: 1, target: 0, ruleColorIdx: -1 };
 
+  // The tier controls the THINKING difficulty only — how big the numbers get and which rule kinds
+  // are in play. It deliberately does NOT carry dur/spawn any more; pacing is one smooth ramp keyed
+  // on the level (see fishLevelConf), because having both move at once double-penalised every
+  // tier-change level.
   function fishConf(diff){
-    if (diff === 'hard')   return { min: 1, max: 30, dur: 3.4, spawn: 560 };
-    if (diff === 'normal') return { min: 1, max: 20, dur: 4.6, spawn: 720 };
-    return { min: 1, max: 12, dur: 6.2, spawn: 900 };
+    if (diff === 'hard')   return { min: 1, max: 30 };
+    if (diff === 'normal') return { min: 1, max: 20 };
+    return { min: 1, max: 12 };
   }
   // No more difficulty picker — the run itself ramps the difficulty tier as levels climb.
   function fishDiffForLevel(level){
@@ -126,14 +130,27 @@
     if (level >= 3) return 'normal';
     return 'easy';
   }
-  // Level-based: each level you must catch `target` matching fish. Higher levels spawn faster fish
-  // more often; the underlying difficulty tier also rises with the level (fishDiffForLevel).
+  // Pacing floors — a fish must stay on screen long enough for a KID to read its number, apply the
+  // rule ("multiples of 4"), and tap it. 3.6s/620ms are the hard floors if FISH_MAX_LEVEL ever grows.
+  var FISH_MIN_DUR = 3.6, FISH_MIN_SPAWN = 620;
+  // Level-based: each level you must catch `target` matching fish, and fish get steadily faster.
+  //
+  // 2026-08-04 — pacing was unplayably fast at the top (player: "the fishing game is too fast for
+  // later levels"). dur used to be `tierBase - (lv-1)*0.5`, so the tier drop (6.2→4.6→3.4) and the
+  // per-level ramp BOTH fired on tier-change levels: L2→L3 lost 2.1s at once (5.7→3.6, 37% faster
+  // in a single step), L3→L4 lost another 1.4s and slammed into a 2.2s floor — which L4 AND L5 then
+  // both sat on, so the curve had no headroom left while numbers jumped to 1-30, spawn hit 350ms
+  // and the target climbed to 22/26. Now pacing is ONE smooth ramp on the level alone, independent
+  // of tier: 6.2/5.65/5.1/4.55/4.0s and 900/835/770/705/640ms — every step an even ~0.55s/65ms, and
+  // the top level gets 4.0s per fish instead of 2.2s (~1.8x more reaction time). `target` is left
+  // alone deliberately: it was raised on purpose in an earlier pass, and slower fish already make
+  // those counts easier to hit (more fish alive at once, each catchable for longer).
   function fishLevelConf(level){
     var diff = fishDiffForLevel(level);
     var base = fishConf(diff), lv = Math.max(1, level);
     return { min: base.min, max: base.max,
-      dur: Math.max(2.2, base.dur - (lv - 1) * 0.5),
-      spawn: Math.max(320, base.spawn - (lv - 1) * 70),
+      dur: Math.max(FISH_MIN_DUR, 6.2 - (lv - 1) * 0.55),
+      spawn: Math.max(FISH_MIN_SPAWN, 900 - (lv - 1) * 65),
       target: 6 + lv * 4 };   // 10, 14, 18, 22, 26 catches to clear levels 1-5
   }
 

@@ -59,6 +59,23 @@ lobby. Bullseye Numbers and Merry Math-Go-Round were removed from the lobby grid
   fish (`fishLevelUp`) advances to a faster, harder level; clearing all 5 pays a completion bonus.
   Ends on `fishEnd(allCleared)`. (This also fixed a latent bug: the old code called a since-deleted
   `bullReward`, which would have thrown; replaced with a local `fishReward`.)
+  - **2026-08-04 — pacing de-spiked (player: "the fishing game is too fast for later levels").**
+    `dur`/`spawn` used to come from the difficulty TIER (`fishConf`: easy 6.2s/900ms, normal
+    4.6s/720ms, hard 3.4s/560ms) *and* then get a further `-(lv-1)*0.5s / -70ms` per-level ramp on
+    top — so every tier-change level was penalised **twice**. Measured curve: L1 6.2s → L2 5.7s →
+    **L3 3.6s (a 2.1s / 37% cliff in one step)** → L4 2.2s (another 1.4s drop, hitting the floor) →
+    L5 2.2s. L4 *and* L5 both sat pinned on that 2.2s floor with no headroom, while numbers jumped
+    to 1-30, spawn fell to 350/320ms and the target climbed to 22/26 — 2.2s to read a number, apply
+    a rule like "multiples of 4", and tap it. Fixed by making pacing **one smooth ramp on the level
+    alone**, independent of tier: `dur = max(3.6, 6.2 - (lv-1)*0.55)`,
+    `spawn = max(620, 900 - (lv-1)*65)` → **6.2/5.65/5.1/4.55/4.0s** and **900/835/770/705/640ms**,
+    an even 0.55s/65ms per step with **1.82× more reaction time at L5** (4.0s vs 2.2s).
+    `fishConf` now carries ONLY `min`/`max` — the tier governs the *thinking* difficulty (number
+    range + which rule kinds `fishGenRule` may pick), never the pacing. `target` (10/14/18/22/26)
+    left untouched on purpose: it was raised deliberately on 2026-07-19, and slower fish already
+    make those counts easier to hit (more fish alive at once, each catchable for longer).
+    Verified against the live functions: steps exactly 0.55s, monotonic, and real spawned `.fish`
+    elements measured `6.2s` at L1 and `4s` at L5 via `getComputedStyle(...).animationDuration`.
 Pay **Cash only**, scaled by score+difficulty with a beat-your-best bonus (rare CPU chip only on top
 Hard runs) — replayable for score, never a rare-gear farm. Keyboard + touch; tooltips.
 
