@@ -913,6 +913,24 @@ own chalk/space palette rather than the demo's green-grass tileset.
     each tile/building class reports the right filename via `getComputedStyle`; all four facings
     swap sprite and mirror correctly; a 6-step walk moves on every step (proving the freeze is
     gone); bump-to-enter, D-pad hold-repeat and pond-blocking all still pass.
+- **2026-08-05 (same day) — world widened to 21 x 11 and tiles now auto-fit the viewport.** Player,
+  with a screenshot circling the big dead margins either side: "make the map larger btw / so much
+  spaces were wasted". Root cause: a 15 x 11 world is roughly square, so on a landscape monitor it
+  could only ever occupy the middle third no matter how the camera clamped.
+  - Grid widened to **21 x 11** (~2:1, matching a landscape viewport) and the nine buildings
+    re-spread across it (Wonderland/Hotel out to col 18, Arena Infinity centred at col 10, pond
+    moved to cols 9-11). Spawn moved to (10,9).
+  - New **`wmapFitTiles()`** sizes `--wmap-tile` from the viewport's real width (`floor(vw / COLS)`,
+    clamped 46-104px) on every paint and on resize/rotate. Width drives it because overflow
+    *downward* is free — the camera already follows vertically — whereas horizontal overflow is
+    exactly the wasted-margin problem. Viewport height raised to `clamp(340px, 64vh, 660px)` so the
+    now-larger tiles still show a useful number of rows instead of a letterbox slot.
+  - Measured across simulated widths: 1815px → 86px tiles covering **100%** of the width (was a
+    narrow centred strip), 1280px → 60px/98%, and 900px and below clamp to the 46px floor and scroll
+    horizontally under the camera, which is the wanted behaviour on a phone.
+  - Re-verified on the new layout: `wmapAudit()` `{ok: true, tilesReachable: 151}`, a 5-step walk
+    moves every step, bumping the relocated Weapon Store (6,5) opens `shopView` and leaves the
+    player at (6,6), and the relocated pond still blocks.
 
 **2026-07-19 batch #31 — Earth Hub map made phone/iPad-responsive (buildings no longer overlap); the
 desktop spatial map respaced so it doesn't overlap either.** *(The ≤1024px card-grid fallback and

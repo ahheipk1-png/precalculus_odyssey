@@ -47,7 +47,10 @@
   .wmap-viewport{
     position: relative;
     width: 100%;
-    height: clamp(300px, 52vh, 520px);
+    /* Taller than the first pass: with the world widened to 21 tiles and wmapFitTiles() scaling
+       tiles to the viewport width, tiles get big, so the window needs the height to show a useful
+       number of rows rather than a letterbox slot. */
+    height: clamp(340px, 64vh, 660px);
     border-radius: 14px;
     border: 1px solid rgba(244,241,232,0.14);
     overflow: hidden;

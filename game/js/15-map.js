@@ -32,19 +32,25 @@
   var WMAP_TILE = { FLOOR: 0, WALL: 1, WATER: 2, TREE: 3 };
 
   // Terrain only — buildings are overlaid from WMAP_SPOTS' tx/ty (below) and are always solid, so
-  // this array never has to know about them. 15 x 11. Verified fully connected by wmapAudit().
+  // this array never has to know about them. Verified fully connected by wmapAudit().
+  //
+  // 21 x 11 (widened from 15 x 11 on 2026-08-05, player: "make the map larger btw / so much spaces
+  // were wasted", with a screenshot showing big empty margins either side). A 15-wide world is
+  // roughly square, so on a widescreen monitor it could only ever fill the middle third. 21 x 11 is
+  // ~2:1, which matches a landscape viewport far better — and combined with wmapFitTiles() sizing
+  // the tiles to the actual width, the village now spans the screen instead of floating in it.
   var WMAP_GRID = [
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,0,0,0,3,0,0,0,3,0,0,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,0,0,0,0,0,2,0,0,0,0,0,0,1],
-    [1,0,0,0,0,0,0,2,2,0,0,0,0,0,1],
-    [1,0,0,3,0,0,0,0,2,0,0,3,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,3,0,0,0,3,0,0,0,3,0,0,0,3,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,0,0,0,0,1],
+    [1,0,0,3,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ];
 
   // The nine buildings. tx/ty = the tile the building OCCUPIES (solid). Laid out to echo the old
@@ -52,16 +58,16 @@
   // shops in the middle band, farm/item store along the bottom) so the place still feels familiar.
   var WMAP_SPOTS = [
     { id: 'alchemy',  emoji: '🧪', name: 'Laboratory',    tx: 2,  ty: 2, accent: 'var(--sky)', desc: 'Synthesize Super Medicine and Acid Vials from ingredients + chips.' },
-    { id: 'practice', emoji: '♾️', name: 'Arena Infinity', tx: 7,  ty: 2, accent: 'var(--sky)', desc: 'Endless mixed practice from every arena you’ve cleared — earn XP, Wonderland Passes 🎟️ & a gold chest.' },
-    { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    tx: 12, ty: 2, accent: 'var(--coral)', desc: 'Choose 🎰 Casino (bet Cash on games of chance) or 🕹️ Arcade (skill games & puzzles) — both cost Wonderland Passes.' },
-    { id: 'weapon',   emoji: '⚔️', name: 'Weapon Store',  tx: 4,  ty: 5, accent: 'var(--coral)', desc: 'Buy and upgrade weapons & shields with Cash and chips.' },
-    { id: 'trading',  emoji: '🔄', name: 'Trading Room',  tx: 10, ty: 5, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },
-    { id: 'hotel',    emoji: '🏨', name: 'Hotel',         tx: 12, ty: 5, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },
-    { id: 'item',     emoji: '🎒', name: 'Item Store',    tx: 9,  ty: 8, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
+    { id: 'practice', emoji: '♾️', name: 'Arena Infinity', tx: 10, ty: 2, accent: 'var(--sky)', desc: 'Endless mixed practice from every arena you’ve cleared — earn XP, Wonderland Passes 🎟️ & a gold chest.' },
+    { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    tx: 18, ty: 2, accent: 'var(--coral)', desc: 'Choose 🎰 Casino (bet Cash on games of chance) or 🕹️ Arcade (skill games & puzzles) — both cost Wonderland Passes.' },
+    { id: 'weapon',   emoji: '⚔️', name: 'Weapon Store',  tx: 6,  ty: 5, accent: 'var(--coral)', desc: 'Buy and upgrade weapons & shields with Cash and chips.' },
+    { id: 'trading',  emoji: '🔄', name: 'Trading Room',  tx: 14, ty: 5, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },
+    { id: 'hotel',    emoji: '🏨', name: 'Hotel',         tx: 18, ty: 5, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },
+    { id: 'item',     emoji: '🎒', name: 'Item Store',    tx: 14, ty: 8, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
     // `dev: true` → shown on the map but not enterable yet: tapping / bumping / walking-up + Enter
     // all just toast "under development" (see wmapDevBlocked, wired into every entry path). Rendered
     // greyed with a 🚧 badge (wmap-dev in map.css). Flip this flag off to ship the Farm.
-    { id: 'farm',     emoji: '🌾', name: 'Farm',          tx: 4,  ty: 8, accent: 'var(--yellow)', desc: 'Under development — coming soon! Grow crops and raise animals for materials over time.', dev: true },
+    { id: 'farm',     emoji: '🌾', name: 'Farm',          tx: 6,  ty: 8, accent: 'var(--yellow)', desc: 'Under development — coming soon! Grow crops and raise animals for materials over time.', dev: true },
     // Hidden until specialStoreUnlocked() (42-special-store.js) — clearing Arena 44's boss. Not
     // just rendered-disabled: it doesn't appear on the map at all before that, so there's nothing
     // to be curious about early. While hidden its tile is ordinary walkable floor — see
@@ -81,7 +87,7 @@
   }
 
   var WMAP_ROWS = WMAP_GRID.length, WMAP_COLS = WMAP_GRID[0].length;
-  var WMAP_SPAWN = { x: 7, y: 9 };            // village square, bottom-centre
+  var WMAP_SPAWN = { x: 10, y: 9 };           // village square, bottom-centre
   var wmapPos = { x: WMAP_SPAWN.x, y: WMAP_SPAWN.y };   // player's TILE; remembered between visits
   var wmapFacing = 'down';
   var wmapStepping = false;        // one step at a time, so held keys don't teleport you
@@ -394,8 +400,25 @@
     av.classList.toggle('wmap-flip', wmapFacing === 'left');
   }
 
+  // Grow the tiles so the village SPANS the viewport instead of sitting in a narrow strip with dead
+  // space either side (player 2026-08-05: "so much spaces were wasted"). Width drives the size: the
+  // world is ~2:1 and a landscape viewport is wider still, so filling horizontally is what removes
+  // the wasted margins — any overflow downward is fine, the camera already follows vertically.
+  // Clamped so tiles stay chunky-but-sane: never microscopic on a phone, never absurd on ultrawide.
+  var WMAP_TILE_MIN = 46, WMAP_TILE_MAX = 104;
+  function wmapFitTiles(){
+    var vp = document.getElementById('wmapViewport'), world = document.getElementById('wmapWorld');
+    if (!vp || !world) return;
+    var vw = vp.clientWidth;
+    if (!vw) return;                          // not laid out yet — CSS default stands in
+    var t = Math.floor(vw / WMAP_COLS);
+    t = Math.max(WMAP_TILE_MIN, Math.min(WMAP_TILE_MAX, t));
+    world.style.setProperty('--wmap-tile', t + 'px');
+  }
+
   // Put the avatar on its tile, slide the camera, refresh the adjacency hint.
   function wmapPaint(){
+    wmapFitTiles();
     wmapFaceAvatar();
     var av = document.getElementById('wmapAvatar');
     if (av){
@@ -465,7 +488,17 @@
     };
     document.addEventListener('keydown', wmapKd);
     wmapBindDpad();
+    // Re-fit on rotate/resize so the village keeps filling the width. Bound once for the page life
+    // (wmapPaint no-ops harmlessly when the hub isn't on screen), so repeat visits can't stack it.
+    if (!wmapResizeBound){
+      wmapResizeBound = true;
+      window.addEventListener('resize', function(){
+        var v = document.getElementById('mapView');
+        if (v && v.classList.contains('active')) wmapPaint();
+      });
+    }
   }
+  var wmapResizeBound = false;
   function wmapUnbindKeys(){
     if (wmapKd){ document.removeEventListener('keydown', wmapKd); wmapKd = null; }
     wmapStopDpad();
