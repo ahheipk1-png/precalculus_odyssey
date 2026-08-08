@@ -397,7 +397,9 @@
     if (!av) return;
     var side = (wmapFacing === 'left' || wmapFacing === 'right');
     av.setAttribute('data-face', side ? 'side' : wmapFacing);
-    av.classList.toggle('wmap-flip', wmapFacing === 'left');
+    // player-side.png is drawn facing LEFT (verified by measuring the visor's offset from the body
+    // centre), so RIGHT is the direction that needs mirroring — this was inverted when first shipped.
+    av.classList.toggle('wmap-flip', wmapFacing === 'right');
   }
 
   // Grow the tiles so the village SPANS the viewport instead of sitting in a narrow strip with dead

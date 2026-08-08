@@ -92,11 +92,16 @@
   /* Tree sits ON the grass, slightly oversized and nudged up so its canopy overlaps the tile above
      — that overlap is what stops a row of trees looking like flat stamped squares. */
   .wmap-t-tree{
+    /* Same trick as the buildings: grow the ELEMENT and pull it up/left so the canopy overhangs
+       while the trunk stays on its own tile. Scaling the background past 100% would just crop it. */
+    width: calc(var(--wmap-tile) * 1.3);
+    height: calc(var(--wmap-tile) * 1.3);
+    margin-left: calc(var(--wmap-tile) * -0.15);
+    margin-top: calc(var(--wmap-tile) * -0.3);
     background-image: url('../assets/hub/tree.png');
-    background-size: 128% 128%;
+    background-size: contain;
     background-position: center bottom;
     background-repeat: no-repeat;
-    overflow: visible;
     filter: drop-shadow(0 3px 5px rgba(0,0,0,.45));
   }
 
@@ -107,14 +112,20 @@
      No card chrome any more — the sprite is the building. */
   .wmap-building{
     position: absolute;
-    width: var(--wmap-tile);
-    height: var(--wmap-tile);
+    /* The ELEMENT is grown to 1.5 tiles and pulled up/left so its BOTTOM still sits on the tile it
+       blocks, then the art is `contain`ed inside it. The overhang has to come from the element's own
+       size: a background scaled past 100% is clipped to the element box no matter what `overflow`
+       says (backgrounds don't overflow), which is what chopped the roofs off the first version. */
+    width: calc(var(--wmap-tile) * 1.5);
+    height: calc(var(--wmap-tile) * 1.5);
+    margin-left: calc(var(--wmap-tile) * -0.25);   /* keeps it centred on its tile */
+    margin-top: calc(var(--wmap-tile) * -0.5);     /* bottom edge stays on the tile */
     display: block;
     padding: 0;
     background: none;
     background-repeat: no-repeat;
     background-position: center bottom;
-    background-size: 150% 150%;
+    background-size: contain;
     border: 0;
     color: var(--chalk);
     font-family: 'Quicksand', sans-serif;
@@ -199,8 +210,9 @@
   }
   .wmap-avatar[data-face="up"]   .wmap-avatar-flip{ background-image: url('../assets/hub/player-up.png'); }
   .wmap-avatar[data-face="down"] .wmap-avatar-flip{ background-image: url('../assets/hub/player-down.png'); }
-  /* One side pose, mirrored for the other direction — the art faces RIGHT as drawn, so only the
-     left-facing case flips. Shipping a single side sprite makes left/right impossible to reverse. */
+  /* One side pose, mirrored for the other direction. The art faces LEFT as drawn — measured, not
+     eyeballed: the cyan visor's centre of mass sits ~34px LEFT of the body's centre. So the RIGHT
+     case is the one that flips. (Shipped backwards first time round on a guess that it faced right.) */
   .wmap-avatar[data-face="side"] .wmap-avatar-flip{ background-image: url('../assets/hub/player-side.png'); }
   .wmap-avatar-emoji{ display: none; }      /* emoji fallback retired — real artwork now */
   /* Flip goes on the PARENT, bob on the child: both are `transform`, and an animation on the same
