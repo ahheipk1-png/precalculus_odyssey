@@ -363,10 +363,7 @@
     if (wmapStepping) return;
     var out = wmapStep(dx, dy);
     var av = document.getElementById('wmapAvatar');
-    if (av){
-      if (wmapFacing === 'left') av.classList.add('wmap-flip');
-      else if (wmapFacing === 'right') av.classList.remove('wmap-flip');
-    }
+    wmapFaceAvatar();
     if (out.result === 'enter'){
       if (typeof playSfx === 'function') playSfx('ui-click');
       wmapArrive(out.id);                      // wmapArrive itself re-checks dev-blocked
@@ -387,8 +384,19 @@
     }, wmapPrefersReducedMotion() ? 0 : WMAP_STEP_MS);
   }
 
+  // Point the avatar sprite the way it's walking. Up/down have their own art; left and right share
+  // one "side" pose that CSS mirrors, so the two can never end up drawn the wrong way round.
+  function wmapFaceAvatar(){
+    var av = document.getElementById('wmapAvatar');
+    if (!av) return;
+    var side = (wmapFacing === 'left' || wmapFacing === 'right');
+    av.setAttribute('data-face', side ? 'side' : wmapFacing);
+    av.classList.toggle('wmap-flip', wmapFacing === 'left');
+  }
+
   // Put the avatar on its tile, slide the camera, refresh the adjacency hint.
   function wmapPaint(){
+    wmapFaceAvatar();
     var av = document.getElementById('wmapAvatar');
     if (av){
       av.style.left = (wmapPos.x * 100 / WMAP_COLS) + '%';

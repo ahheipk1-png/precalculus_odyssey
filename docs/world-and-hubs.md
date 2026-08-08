@@ -875,6 +875,44 @@ own chalk/space palette rather than the demo's green-grass tileset.
   locked-vs-unlocked Special Store tile were each asserted through `wmapStep` directly.
   *Not* visually verified — the Browser pane reported `window.innerWidth === 0` (no layout) for this
   entire session, so tile sizing/camera framing still want a human eye.
+- **2026-08-05 (same day) — real artwork replaces the emoji/CSS placeholders.** The player generated
+  14 images (`picture/`) and asked for them to be wired in. Pipeline lives in
+  **`tools/prep_hub_art.py`** (Anaconda python + PIL/numpy) — rerun it after regenerating any art;
+  it writes `game/assets/hub/`.
+  - **Every sprite arrived with an OPAQUE background** (a soft grey/brown vignette) despite the
+    prompt asking for transparency, so they'd have shown as boxes on the grass. The script strips it
+    by flood-filling inward from the border with a **per-step** colour tolerance — per-step (rather
+    than distance-from-one-colour) follows the smooth vignette, while a hard cartoon outline is a
+    big single-step jump that halts the fill.
+  - **Tolerance is chosen per image, and that matters.** No single value works: 24 cleanly strips the
+    buildings but shreds the tree, whose dark-green shadows sit very close to the grey backdrop.
+    The script walks a ladder high→low and takes the first tolerance that leaves the image's CENTRE
+    intact (a transparent centre means the fill leaked through an outline). The leak test is
+    **self-calibrating** against the most conservative tolerance's own result — a fixed 2% threshold
+    rejected every tolerance for the player sprites, whose centre box is legitimately ~3% background
+    (the gap between the legs). Two earlier attempts are recorded in the script's docstring: a global
+    colour cap left grey halos, and a flat high tolerance ate the sprite interiors.
+  - **The two shop images were supplied swapped** — the file named "⚔️ Weapon Store" is a potion/
+    bottle shop and "🎒 Item Store" is a blacksmith forge. The script maps each to the building it
+    actually depicts rather than renaming the player's source files; the CSS `data-id` rules then
+    line up with the right picture.
+  - **Only ONE side pose is exported** (`player-side.png`), mirrored by CSS for the other direction,
+    which makes left/right impossible to ship reversed. `wmapFaceAvatar()` sets `data-face` to
+    up/down/side and toggles `.wmap-flip` only for left. The flip lives on the avatar's PARENT while
+    the walk-bob animates the CHILD — both write `transform`, and an animation on the same element
+    wins outright and would silently drop the mirroring mid-walk.
+  - **Grass is drawn once across the whole world** (`.wmap-world` background, 4 tiles per repeat)
+    rather than per cell, so it never lines up with the grid and reads as ground instead of a
+    checkerboard. Floor tiles are transparent; buildings/trees are drawn oversized and
+    bottom-anchored so roofs and canopies rise into the row above instead of looking like stamps.
+  - **A bug this caught:** removing the old inline flip block also deleted the `var av` declaration
+    that later lines in `wmapTryStep` still used. The ReferenceError fired *after* `wmapStepping =
+    true`, so the step lock never cleared and movement froze permanently after one step — invisible
+    to a code read, obvious the moment four arrow presses all reported the same tile. Re-declared.
+  - Verified after wiring: all 16 assets return HTTP 200 and every `url()` in map.css resolves;
+    each tile/building class reports the right filename via `getComputedStyle`; all four facings
+    swap sprite and mirror correctly; a 6-step walk moves on every step (proving the freeze is
+    gone); bump-to-enter, D-pad hold-repeat and pond-blocking all still pass.
 
 **2026-07-19 batch #31 — Earth Hub map made phone/iPad-responsive (buildings no longer overlap); the
 desktop spatial map respaced so it doesn't overlap either.** *(The ≤1024px card-grid fallback and

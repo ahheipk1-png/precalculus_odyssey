@@ -56,71 +56,91 @@
       linear-gradient(180deg, #12251b 0%, var(--ink) 68%, var(--ink-light) 100%);
     touch-action: none;              /* dragging on the map pans the player, never the page */
   }
+  /* The grass runs across the WHOLE world as one repeating field rather than being redrawn per
+     cell — at 4 tiles per repeat the pattern never lines up with the grid, so it reads as ground
+     instead of as a checkerboard of identical squares. Floor tiles are therefore transparent. */
   .wmap-world{
     --wmap-tile: 62px;
     position: absolute;
     left: 0; top: 0;
     width: calc(var(--wmap-cols) * var(--wmap-tile));
     height: calc(var(--wmap-rows) * var(--wmap-tile));
+    background: url('../assets/hub/ground.png') top left / calc(var(--wmap-tile) * 4) repeat;
     transition: transform 130ms linear;    /* camera glide; matches WMAP_STEP_MS */
   }
   .wmap-tile{
     position: absolute;
     width: var(--wmap-tile);
     height: var(--wmap-tile);
+    background-size: 100% 100%;
   }
-  .wmap-t-floor{
-    background:
-      linear-gradient(135deg, rgba(255,255,255,.03), transparent),
-      #26492f;
+  .wmap-t-floor{ background: none; }        /* the world's grass shows through */
+  .wmap-t-floor.wmap-t-alt{
+    background: rgba(0,0,0,0.05);           /* whisper-faint checker so steps still read */
   }
-  .wmap-t-floor.wmap-t-alt{ background-color: #23442c; }   /* subtle checker so steps read */
   .wmap-t-wall{
-    background: linear-gradient(#3c4a5e, #26303e);
-    box-shadow: inset 0 -4px rgba(0,0,0,.28), inset 0 2px rgba(255,255,255,.06);
+    background-image: url('../assets/hub/wall.png');
+    box-shadow: inset 0 -4px rgba(0,0,0,.30), inset 0 2px rgba(255,255,255,.07);
   }
   .wmap-t-water{
-    background:
-      repeating-linear-gradient(0deg, rgba(255,255,255,.10) 0 4px, transparent 4px 13px),
-      #1f6ea8;
+    background-image: url('../assets/hub/water.png');
+    box-shadow: inset 0 0 14px rgba(0,0,0,.35);
   }
-  .wmap-t-tree{ background: #26492f; display: grid; place-items: center; }
-  .wmap-t-tree::before{
-    content: "🌲";
-    font-size: calc(var(--wmap-tile) * 0.66);
-    filter: drop-shadow(0 4px 4px rgba(0,0,0,.35));
+  /* Tree sits ON the grass, slightly oversized and nudged up so its canopy overlaps the tile above
+     — that overlap is what stops a row of trees looking like flat stamped squares. */
+  .wmap-t-tree{
+    background-image: url('../assets/hub/tree.png');
+    background-size: 128% 128%;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    overflow: visible;
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,.45));
   }
 
   /* ---------- buildings ---------- */
-  /* One building = one solid tile. Positioned at the tile's top-left (no -50% centring any more)
-     and sized to the tile, so it lines up exactly with the grid cell it blocks. */
+  /* One building = one solid tile, anchored at that tile's top-left. The artwork is drawn LARGER
+     than its tile and bottom-anchored so the roof rises into the row above (isometric buildings
+     read as flat stickers otherwise) while its footprint still matches the one cell it blocks.
+     No card chrome any more — the sprite is the building. */
   .wmap-building{
     position: absolute;
     width: var(--wmap-tile);
     height: var(--wmap-tile);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
+    display: block;
     padding: 0;
-    background: linear-gradient(180deg, rgba(244,241,232,0.16), rgba(244,241,232,0.06));
-    border: 2px solid var(--wmap-accent, var(--wood));
-    border-radius: 10px;
+    background: none;
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    background-size: 150% 150%;
+    border: 0;
     color: var(--chalk);
     font-family: 'Quicksand', sans-serif;
     cursor: pointer;
     z-index: 4;
-    box-shadow: 0 4px 10px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.10);
-    transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    overflow: visible;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,.5));
+    transition: transform 0.15s ease, filter 0.15s ease;
   }
   .wmap-building:hover,
   .wmap-building:focus-visible{
-    background: linear-gradient(180deg, rgba(244,241,232,0.26), rgba(244,241,232,0.12));
-    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+    transform: translateY(-2px);
+    filter: drop-shadow(0 7px 10px rgba(0,0,0,.55)) brightness(1.12);
   }
   .wmap-building:focus-visible{ outline: 3px solid var(--sky); outline-offset: 2px; }
-  .wmap-sign{ font-size: calc(var(--wmap-tile) * 0.52); line-height: 1; }
+  .wmap-sign{ display: none; }              /* emoji fallback retired — real artwork now */
+
+  /* Per-building artwork. NOTE: the two shop images were supplied swapped (the file named "Weapon
+     Store" is a potion shop, "Item Store" is a forge); the prep script maps each to the building it
+     actually depicts, so these ids line up with the right picture. */
+  .wmap-building[data-id="weapon"] { background-image: url('../assets/hub/b-weapon.png'); }
+  .wmap-building[data-id="item"]   { background-image: url('../assets/hub/b-item.png'); }
+  .wmap-building[data-id="alchemy"]{ background-image: url('../assets/hub/b-alchemy.png'); }
+  .wmap-building[data-id="hotel"]  { background-image: url('../assets/hub/b-hotel.png'); }
+  .wmap-building[data-id="wonder"] { background-image: url('../assets/hub/b-wonder.png'); }
+  .wmap-building[data-id="trading"]{ background-image: url('../assets/hub/b-trading.png'); }
+  .wmap-building[data-id="practice"]{background-image: url('../assets/hub/b-practice.png'); }
+  .wmap-building[data-id="farm"]   { background-image: url('../assets/hub/b-farm.png'); }
+  .wmap-building[data-id="special"]{ background-image: url('../assets/hub/b-special.png'); }
   /* The name rides just UNDER its tile so it never covers the artwork or the neighbouring path. */
   .wmap-bname{
     position: absolute;
@@ -161,18 +181,31 @@
     height: var(--wmap-tile);
     display: grid;
     place-items: center;
-    font-size: calc(var(--wmap-tile) * 0.56);
     z-index: 6;
     pointer-events: none;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45));
     transition: left 130ms linear, top 130ms linear;   /* one tile per step; matches WMAP_STEP_MS */
   }
-  .wmap-avatar-flip{ display: inline-block; }
-  .wmap-avatar-emoji{ display: inline-block; }
-  .wmap-avatar.wmap-flip .wmap-avatar-flip{ transform: scaleX(-1); }
-  .wmap-avatar.wmap-keywalk .wmap-avatar-emoji{ animation: wmapBob 0.26s ease-in-out infinite; }
+  /* The sprite lives on the inner span so the flip transform can't fight the tile positioning on
+     the parent. Drawn a little larger than its tile and bottom-anchored, matching the buildings. */
+  .wmap-avatar-flip{
+    display: block;
+    width: 128%;
+    height: 128%;
+    background: url('../assets/hub/player-down.png') center bottom / contain no-repeat;
+    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.55));
+  }
+  .wmap-avatar[data-face="up"]   .wmap-avatar-flip{ background-image: url('../assets/hub/player-up.png'); }
+  .wmap-avatar[data-face="down"] .wmap-avatar-flip{ background-image: url('../assets/hub/player-down.png'); }
+  /* One side pose, mirrored for the other direction — the art faces RIGHT as drawn, so only the
+     left-facing case flips. Shipping a single side sprite makes left/right impossible to reverse. */
+  .wmap-avatar[data-face="side"] .wmap-avatar-flip{ background-image: url('../assets/hub/player-side.png'); }
+  .wmap-avatar-emoji{ display: none; }      /* emoji fallback retired — real artwork now */
+  /* Flip goes on the PARENT, bob on the child: both are `transform`, and an animation on the same
+     element would win outright and silently drop the mirroring while walking left. */
+  .wmap-avatar.wmap-flip{ transform: scaleX(-1); }
+  .wmap-avatar.wmap-keywalk .wmap-avatar-flip{ animation: wmapBob 0.26s ease-in-out infinite; }
   /* Walked into something solid — a small nudge so "blocked" is felt, not just ignored. */
-  .wmap-avatar.wmap-bump .wmap-avatar-emoji{ animation: wmapBump 0.16s ease; }
+  .wmap-avatar.wmap-bump .wmap-avatar-flip{ animation: wmapBump 0.16s ease; }
   @keyframes wmapBump{
     0%, 100%{ transform: translate(0,0); }
     50%     { transform: translate(0,-3px) scale(0.92); }
