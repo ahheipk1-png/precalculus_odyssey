@@ -16,26 +16,57 @@
   //    the math + transaction; the DOM handlers around them only do presentation (toast, sfx,
   //    the floating-💤 animation, closing the panel).
 
-  var WMAP_WALK_MS = 700;          // must match the 0.7s left/top transition in map.css
+  // ------------------------------------------------------------------
+  // TILE MAP (2026-08-05, player: "make the earth hub become walkable map so that the player needs
+  // to walk to different stores/lab/etc"). The hub used to be a free-roam avatar sliding over a
+  // painted backdrop on a 100x100 % grid with NOTHING to bump into, and phones didn't get a map at
+  // all — under 1024px it fell back to a flat grid of tappable cards. It's now a real tile world:
+  // discrete tile-by-tile steps, terrain that genuinely blocks you (walls / pond / trees), and a
+  // camera that follows the player, so reaching a shop means walking a route around obstacles.
+  //
+  // Buildings are SOLID — you can't stand on a roof. Walking INTO one opens it ("bump the door"),
+  // which keeps the demo's step-and-go immediacy while making buildings real obstacles you route
+  // around. Enter/Space while standing next to one still works (keyboard/AT users), and tapping a
+  // building tile opens it directly (phones, and anyone who just wants the old one-tap speed).
+  // ------------------------------------------------------------------
+  var WMAP_TILE = { FLOOR: 0, WALL: 1, WATER: 2, TREE: 3 };
 
-  // The seven buildings. x/y = CENTER of the building card in % of the scene box. The avatar
-  // walks to the "door" (same x, y + 10) so it stands on the path, not on the roof.
+  // Terrain only — buildings are overlaid from WMAP_SPOTS' tx/ty (below) and are always solid, so
+  // this array never has to know about them. 15 x 11. Verified fully connected by wmapAudit().
+  var WMAP_GRID = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,3,0,0,0,3,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,2,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,2,2,0,0,0,0,0,1],
+    [1,0,0,3,0,0,0,0,2,0,0,3,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+  ];
+
+  // The nine buildings. tx/ty = the tile the building OCCUPIES (solid). Laid out to echo the old
+  // painted map's rough arrangement (lab top-left, Arena Infinity top-centre, Wonderland top-right,
+  // shops in the middle band, farm/item store along the bottom) so the place still feels familiar.
   var WMAP_SPOTS = [
-    { id: 'practice', emoji: '♾️', name: 'Arena Infinity', x: 50, y: 18, accent: 'var(--sky)', desc: 'Endless mixed practice from every arena you’ve cleared — earn XP, Wonderland Passes 🎟️ & a gold chest.' },
-    { id: 'weapon',   emoji: '⚔️', name: 'Weapon Store',  x: 37, y: 48, accent: 'var(--coral)', desc: 'Buy and upgrade weapons & shields with Cash and chips.' },
-    { id: 'item',     emoji: '🎒', name: 'Item Store',    x: 62, y: 74, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
-    { id: 'hotel',    emoji: '🏨', name: 'Hotel',         x: 85, y: 48, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },
-    { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    x: 84, y: 20, accent: 'var(--coral)', desc: 'Choose 🎰 Casino (bet Cash on games of chance) or 🕹️ Arcade (skill games & puzzles) — both cost Wonderland Passes.' },
-    // `dev: true` → shown on the map but not enterable yet: clicking / walking-up + Enter both
-    // just toast "under development" (see wmapDevBlocked, wired into wmapGoTo + wmapArrive). Rendered
+    { id: 'alchemy',  emoji: '🧪', name: 'Laboratory',    tx: 2,  ty: 2, accent: 'var(--sky)', desc: 'Synthesize Super Medicine and Acid Vials from ingredients + chips.' },
+    { id: 'practice', emoji: '♾️', name: 'Arena Infinity', tx: 7,  ty: 2, accent: 'var(--sky)', desc: 'Endless mixed practice from every arena you’ve cleared — earn XP, Wonderland Passes 🎟️ & a gold chest.' },
+    { id: 'wonder',   emoji: '🎡', name: 'Wonderland',    tx: 12, ty: 2, accent: 'var(--coral)', desc: 'Choose 🎰 Casino (bet Cash on games of chance) or 🕹️ Arcade (skill games & puzzles) — both cost Wonderland Passes.' },
+    { id: 'weapon',   emoji: '⚔️', name: 'Weapon Store',  tx: 4,  ty: 5, accent: 'var(--coral)', desc: 'Buy and upgrade weapons & shields with Cash and chips.' },
+    { id: 'trading',  emoji: '🔄', name: 'Trading Room',  tx: 10, ty: 5, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },
+    { id: 'hotel',    emoji: '🏨', name: 'Hotel',         tx: 12, ty: 5, accent: 'var(--sky)', desc: 'Sleep to fully restore your HP & MP.' },
+    { id: 'item',     emoji: '🎒', name: 'Item Store',    tx: 9,  ty: 8, accent: 'var(--yellow)', desc: 'Buy potions, ingredients and farm supplies.' },
+    // `dev: true` → shown on the map but not enterable yet: tapping / bumping / walking-up + Enter
+    // all just toast "under development" (see wmapDevBlocked, wired into every entry path). Rendered
     // greyed with a 🚧 badge (wmap-dev in map.css). Flip this flag off to ship the Farm.
-    { id: 'farm',     emoji: '🌾', name: 'Farm',          x: 33, y: 74, accent: 'var(--yellow)', desc: 'Under development — coming soon! Grow crops and raise animals for materials over time.', dev: true },
-    { id: 'alchemy',  emoji: '🧪', name: 'Laboratory',    x: 16, y: 22, accent: 'var(--sky)', desc: 'Synthesize Super Medicine and Acid Vials from ingredients + chips.' },
-    { id: 'trading',  emoji: '🔄', name: 'Trading Room',  x: 66, y: 46, accent: 'var(--yellow)', desc: 'Trade Cash ⇄ Gold ⇄ Silver at fluctuating market prices.' },
+    { id: 'farm',     emoji: '🌾', name: 'Farm',          tx: 4,  ty: 8, accent: 'var(--yellow)', desc: 'Under development — coming soon! Grow crops and raise animals for materials over time.', dev: true },
     // Hidden until specialStoreUnlocked() (42-special-store.js) — clearing Arena 44's boss. Not
     // just rendered-disabled: it doesn't appear on the map at all before that, so there's nothing
-    // to be curious about early. See wmapVisibleSpots().
-    { id: 'special',  emoji: '🏭', name: 'Special Item Store', x: 16, y: 46, accent: 'var(--violet, #9a6cff)',
+    // to be curious about early. While hidden its tile is ordinary walkable floor — see
+    // wmapSpotAt(), which only ever reports VISIBLE spots, so solidity follows visibility.
+    { id: 'special',  emoji: '🏭', name: 'Special Item Store', tx: 2, ty: 5, accent: 'var(--violet, #9a6cff)',
       desc: 'Permanent HP/MP/AP/DP/Speed upgrades, stacking forever at a rising price. Unlocked by clearing Arena 44.', hidden: true }
   ];
 
@@ -49,8 +80,32 @@
     });
   }
 
-  var wmapPos = { x: 12, y: 84 };  // where the avatar is standing (scene %); remembered between visits
+  var WMAP_ROWS = WMAP_GRID.length, WMAP_COLS = WMAP_GRID[0].length;
+  var WMAP_SPAWN = { x: 7, y: 9 };            // village square, bottom-centre
+  var wmapPos = { x: WMAP_SPAWN.x, y: WMAP_SPAWN.y };   // player's TILE; remembered between visits
+  var wmapFacing = 'down';
+  var wmapStepping = false;        // one step at a time, so held keys don't teleport you
   var wmapWalkTimer = null;        // pending "arrival" timer while a walk is in flight
+
+  // The VISIBLE spot occupying a tile, or null. Hidden (not-yet-unlocked) buildings deliberately
+  // report null so their tile is plain walkable floor until they're earned.
+  function wmapSpotAt(x, y){
+    var spots = wmapVisibleSpots();
+    for (var i = 0; i < spots.length; i++){
+      if (spots[i].tx === x && spots[i].ty === y) return spots[i];
+    }
+    return null;
+  }
+  // Terrain-only walkability. Buildings are handled separately by the caller (bumping one opens it
+  // rather than moving into it), so this stays a pure question about the ground.
+  function wmapTerrainOpen(x, y){
+    if (x < 0 || y < 0 || x >= WMAP_COLS || y >= WMAP_ROWS) return false;
+    return WMAP_GRID[y][x] === WMAP_TILE.FLOOR;
+  }
+  // Can the player actually stand here? Floor AND no building on it.
+  function wmapCanWalk(x, y){
+    return wmapTerrainOpen(x, y) && !wmapSpotAt(x, y);
+  }
 
   // ------------------------------------------------------------------
   // Tiny defensive helpers
@@ -69,12 +124,8 @@
       return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     } catch (e) { return false; }
   }
-  // ≤1024px: phones + iPads render the hub as a tap-friendly card grid instead of the spatial
-  // walk-map (see map.css). Must match that CSS breakpoint. Taps open a building instantly here —
-  // there's no visible avatar to walk, so the walk animation/delay would just feel laggy.
-  function wmapCompact(){
-    try { return !!(window.matchMedia && window.matchMedia('(max-width: 1024px)').matches); } catch (e) { return false; }
-  }
+  // (wmapCompact() used to live here: ≤1024px fell back to a flat grid of tappable cards with no
+  // map at all. Removed 2026-08-05 — phones now get the same tile world plus an on-screen D-pad.)
   function wmapFindSpot(id){
     for (var i = 0; i < WMAP_SPOTS.length; i++){
       if (WMAP_SPOTS[i].id === id) return WMAP_SPOTS[i];
@@ -104,7 +155,8 @@
     view.innerHTML = wmapRenderHtml();
     document.querySelectorAll('.view-container').forEach(function(v){ v.classList.remove('active'); });
     view.classList.add('active');
-    wmapBindKeys();                          // free keyboard walking (item 10)
+    wmapBindKeys();                          // tile stepping: keys + D-pad
+    wmapPaint();                             // place the avatar on its tile + centre the camera
     if (typeof playMusic === 'function') playMusic('practice');
     // One-time "Special Item Store is open!" celebration — fires exactly once, the first Earth
     // Hub visit after Arena 44's boss falls (42-special-store.js). No-op every other visit.
@@ -191,41 +243,36 @@
     if (badge) badge.textContent = '🎟️ ' + (state.wonderPasses || 0);
   }
 
-  // Chalk night sky: dotted walking path, soft hills and twinkling stars. Drawn in a 1000×620
-  // box stretched to the scene (preserveAspectRatio="none") so SVG coords line up with the
-  // buildings' % coords (x% × 10, y% × 6.2). Emoji decorations are HTML spans (not SVG text)
-  // so they never distort when the scene box changes shape on small screens.
-  function wmapSceneSvg(){
-    var stars = [
-      [60, 60], [180, 118], [300, 48], [430, 92], [520, 150], [640, 58], [758, 120],
-      [930, 158], [80, 220], [500, 238], [948, 320], [42, 380], [718, 300], [875, 62],
-      [242, 262], [382, 178], [660, 170], [140, 320]
-    ];
-    var dots = stars.map(function(p, i){
-      return '<circle class="wmap-star" cx="' + p[0] + '" cy="' + p[1] + '" r="' + (2 + (i % 3)) +
-        '" style="animation-delay:' + ((i % 5) * 0.55) + 's"/>';
-    }).join('');
-    return '<svg class="wmap-sky" viewBox="0 0 1000 620" preserveAspectRatio="none" aria-hidden="true">' +
-      dots +
-      // rolling hills at the horizon
-      '<path d="M0 500 Q 250 430 520 500 T 1000 488 L 1000 620 L 0 620 Z" fill="rgba(244,241,232,0.04)"/>' +
-      '<path d="M0 560 Q 300 508 600 560 T 1000 548 L 1000 620 L 0 620 Z" fill="rgba(244,241,232,0.05)"/>' +
-      // the winding chalk path: joins every building "door" (see WMAP_SPOTS y+10 rule)
-      '<path class="wmap-path" d="M 120 521 C 200 500 260 460 330 421 C 410 470 480 500 560 496 ' +
-        'C 650 490 750 470 820 446 C 890 410 880 300 840 211 C 760 240 650 240 570 248 ' +
-        'C 470 260 350 230 270 198"/>' +
-      '</svg>';
+  // One terrain tile per cell. Purely presentational — walkability is decided by wmapCanWalk(),
+  // never by what a tile looks like.
+  function wmapTilesHtml(){
+    var out = [], y, x;
+    for (y = 0; y < WMAP_ROWS; y++){
+      for (x = 0; x < WMAP_COLS; x++){
+        var t = WMAP_GRID[y][x], cls = 'wmap-tile';
+        if (t === WMAP_TILE.WALL) cls += ' wmap-t-wall';
+        else if (t === WMAP_TILE.WATER) cls += ' wmap-t-water';
+        else if (t === WMAP_TILE.TREE) cls += ' wmap-t-tree';
+        else cls += ' wmap-t-floor' + ((x + y) % 2 ? ' wmap-t-alt' : '');
+        out.push('<div class="' + cls + '" style="left:' + (x * 100 / WMAP_COLS) + '%;top:' +
+          (y * 100 / WMAP_ROWS) + '%" aria-hidden="true"></div>');
+      }
+    }
+    return out.join('');
   }
 
+  // Buildings sit ON the grid at their tx/ty. Still real <button>s so tapping one opens it directly
+  // and screen readers can reach every destination without walking the grid.
   function wmapBuildingsHtml(){
     return wmapVisibleSpots().map(function(s){
       var badge = s.dev
-        ? '<span class="wmap-badge wmap-badge-dev" title="This building is under development">🚧 In dev</span>'
+        ? '<span class="wmap-badge wmap-badge-dev" title="This building is under development">🚧</span>'
         : (s.id === 'wonder'
           ? '<span class="wmap-badge" id="wmapWonderBadge" title="Wonderland Passes you have">🎟️ ' + (state.wonderPasses || 0) + '</span>'
           : '');
-      return '<button type="button" class="wmap-building' + (s.dev ? ' wmap-dev' : '') + '" data-id="' + s.id + '" style="left:' + s.x + '%;top:' + s.y +
-        '%;--wmap-accent:' + s.accent + '" onclick="wmapGoTo(\'' + s.id + '\')" ' +
+      return '<button type="button" class="wmap-building' + (s.dev ? ' wmap-dev' : '') + '" data-id="' + s.id + '" ' +
+        'style="left:' + (s.tx * 100 / WMAP_COLS) + '%;top:' + (s.ty * 100 / WMAP_ROWS) + '%;--wmap-accent:' + s.accent + '" ' +
+        'onclick="wmapGoTo(\'' + s.id + '\')" ' +
         (s.dev ? 'aria-disabled="true" ' : '') +
         'title="' + wmapEsc(s.name + (s.desc ? ' — ' + s.desc : '')) + '" ' +
         'aria-label="' + wmapEsc(s.name + (s.desc ? '. ' + s.desc : '')) + '">' +
@@ -244,18 +291,26 @@
           '<button type="button" class="btn btn-ghost wmap-back" onclick="closeMapHub()">📚 Back to Practice</button>' +
         '</div>' +
         '<div class="wmap-status" id="wmapStatus">' + wmapStatusHtml() + '</div>' +
-        '<div class="wmap-scene">' +
-          wmapSceneSvg() +
-          '<span class="wmap-deco" style="left:89%;top:9%" aria-hidden="true">🌙</span>' +
-          '<span class="wmap-deco wmap-deco-sm" style="left:8%;top:12%" aria-hidden="true">🪐</span>' +
-          '<span class="wmap-deco wmap-deco-sm" style="left:47%;top:7%" aria-hidden="true">✨</span>' +
-          wmapBuildingsHtml() +
-          '<div class="wmap-avatar" id="wmapAvatar" style="left:' + wmapPos.x + '%;top:' + wmapPos.y + '%" aria-hidden="true">' +
-            '<span class="wmap-avatar-flip"><span class="wmap-avatar-emoji">🧑‍🚀</span></span>' +
+        // viewport = fixed window; world = the full grid, translated under it by the camera.
+        '<div class="wmap-viewport" id="wmapViewport">' +
+          '<div class="wmap-world" id="wmapWorld" style="--wmap-cols:' + WMAP_COLS + ';--wmap-rows:' + WMAP_ROWS + '">' +
+            wmapTilesHtml() +
+            wmapBuildingsHtml() +
+            '<div class="wmap-avatar" id="wmapAvatar" aria-hidden="true">' +
+              '<span class="wmap-avatar-flip"><span class="wmap-avatar-emoji">🧑‍🚀</span></span>' +
+            '</div>' +
           '</div>' +
           '<div class="wmap-enter-hint" id="wmapEnterHint" hidden></div>' +
         '</div>' +
-        '<p class="wmap-hint">🎮 Walk with <b>arrow keys</b> or <b>WASD</b> — step up to a building and press <b>Enter</b> to go in. (Or just tap it.) <span class="wmap-coord" id="wmapCoord">📍 (' + Math.round(wmapPos.x) + ', ' + Math.round(wmapPos.y) + ') / 100</span></p>' +
+        '<div class="wmap-dpad" id="wmapDpad" aria-label="Move">' +
+          '<button type="button" class="wmap-dbtn wmap-d-up"    data-dx="0"  data-dy="-1" aria-label="Walk up">▲</button>' +
+          '<button type="button" class="wmap-dbtn wmap-d-left"  data-dx="-1" data-dy="0"  aria-label="Walk left">◀</button>' +
+          '<button type="button" class="wmap-dbtn wmap-d-down"  data-dx="0"  data-dy="1"  aria-label="Walk down">▼</button>' +
+          '<button type="button" class="wmap-dbtn wmap-d-right" data-dx="1"  data-dy="0"  aria-label="Walk right">▶</button>' +
+        '</div>' +
+        '<p class="wmap-hint">🎮 Walk with <b>arrow keys</b>, <b>WASD</b> or the <b>D-pad</b> — bump into a building to go in. ' +
+          '(Standing next to one, <b>Enter</b> works too; tapping a building opens it straight away.) ' +
+          '<span class="wmap-coord" id="wmapCoord">📍 (' + wmapPos.x + ', ' + wmapPos.y + ')</span></p>' +
         '<div class="wmap-hotel-overlay" id="wmapHotelOverlay" hidden>' +
           '<div class="wmap-hotel" id="wmapHotelCard" role="dialog" aria-modal="true" aria-label="Starlight Hotel">' +
             '<div class="wmap-zzz" aria-hidden="true">💤</div>' +
@@ -268,34 +323,14 @@
   // ------------------------------------------------------------------
   // Walking + destination dispatch
   // ------------------------------------------------------------------
+  // Tapping/clicking a building opens it directly — the deliberate shortcut for phones, mouse users
+  // and screen readers. Walking there with the keys/D-pad is the scenic route, not a toll gate.
   function wmapGoTo(id){
     var spot = wmapFindSpot(id);
     if (!spot) return;
-    if (wmapDevBlocked(spot)) return;        // under-development building: toast, don't walk/open
-    if (wmapCompact()) { wmapArrive(id); return; }   // phone/iPad grid: open instantly, no walk
-    var av = document.getElementById('wmapAvatar');
-    if (!av) { wmapArrive(id); return; }     // no scene rendered (console call) — just open
-    wmapCancelWalk();                        // clicking mid-walk retargets to the new building
-    var dest = { x: spot.x, y: spot.y + 10 };
-    var goingLeft = dest.x < wmapPos.x;
-    var alreadyThere = Math.abs(dest.x - wmapPos.x) < 0.5 && Math.abs(dest.y - wmapPos.y) < 0.5;
-    wmapPos = dest;
-    av.classList.toggle('wmap-flip', goingLeft);
-    av.style.left = dest.x + '%';
-    av.style.top = dest.y + '%';
-    if (wmapPrefersReducedMotion() || alreadyThere) {
-      av.classList.remove('wmap-walking');   // teleport: no bob, open immediately
-      wmapArrive(id);
-      return;
-    }
-    if (typeof playSfx === 'function') playSfx('ui-click');
-    av.classList.add('wmap-walking');
-    wmapWalkTimer = setTimeout(function(){
-      wmapWalkTimer = null;
-      var a = document.getElementById('wmapAvatar');
-      if (a) a.classList.remove('wmap-walking');
-      wmapArrive(id);
-    }, WMAP_WALK_MS + 60);                   // small buffer so the transition visibly finishes
+    if (wmapDevBlocked(spot)) return;        // under-development building: toast, don't open
+    wmapCancelWalk();
+    wmapArrive(id);
   }
 
   // ------------------------------------------------------------------
@@ -303,93 +338,95 @@
   // %-coords ARE its 0-100 grid position. Arrow keys / WASD move it smoothly; step
   // up to a building (within ~8 units of its door) and press Enter to go in.
   // ------------------------------------------------------------------
-  var WMAP_KEYS = { up: false, down: false, left: false, right: false };
-  var wmapRaf = 0, wmapLastTs = 0, wmapNearId = null, wmapKd = null, wmapKu = null;
-  var WMAP_SPEED = 42;                       // grid units (≈%) per second
+  var WMAP_STEP_MS = 130;                    // must match the avatar's left/top transition in map.css
+  var wmapNearId = null, wmapKd = null, wmapDpadTimer = null;
 
-  function wmapClampGrid(v){ return v < 2 ? 2 : (v > 98 ? 98 : v); }
+  // PURE + console-testable: try to move one tile. Returns what happened, which is what makes this
+  // testable without a DOM ('enter' = bumped a building, 'blocked' = terrain said no, 'move' = walked).
+  // Bumping a building is how you go in, so a building tile is never something you stand on.
+  function wmapStep(dx, dy){
+    if (dx < 0) wmapFacing = 'left'; else if (dx > 0) wmapFacing = 'right';
+    else if (dy < 0) wmapFacing = 'up'; else if (dy > 0) wmapFacing = 'down';
+    var nx = wmapPos.x + dx, ny = wmapPos.y + dy;
+    var spot = wmapSpotAt(nx, ny);
+    if (spot) return { result: 'enter', id: spot.id };
+    if (!wmapTerrainOpen(nx, ny)) return { result: 'blocked' };
+    wmapPos.x = nx; wmapPos.y = ny;
+    return { result: 'move' };
+  }
 
-  function wmapBindKeys(){
-    wmapUnbindKeys();
-    WMAP_KEYS.up = WMAP_KEYS.down = WMAP_KEYS.left = WMAP_KEYS.right = false;
-    wmapNearId = null;
-    wmapKd = function(e){
-      var view = document.getElementById('mapView');
-      if (!view || !view.classList.contains('active')) return;
-      switch (e.key){
-        case 'ArrowUp': case 'w': case 'W': WMAP_KEYS.up = true; break;
-        case 'ArrowDown': case 's': case 'S': WMAP_KEYS.down = true; break;
-        case 'ArrowLeft': case 'a': case 'A': WMAP_KEYS.left = true; break;
-        case 'ArrowRight': case 'd': case 'D': WMAP_KEYS.right = true; break;
-        case 'Enter': case ' ': if (wmapNearId){ e.preventDefault(); var id = wmapNearId; wmapArrive(id); } return;
-        default: return;
-      }
-      e.preventDefault();
-      wmapStartLoop();
-    };
-    wmapKu = function(e){
-      switch (e.key){
-        case 'ArrowUp': case 'w': case 'W': WMAP_KEYS.up = false; break;
-        case 'ArrowDown': case 's': case 'S': WMAP_KEYS.down = false; break;
-        case 'ArrowLeft': case 'a': case 'A': WMAP_KEYS.left = false; break;
-        case 'ArrowRight': case 'd': case 'D': WMAP_KEYS.right = false; break;
-      }
-    };
-    document.addEventListener('keydown', wmapKd);
-    document.addEventListener('keyup', wmapKu);
-  }
-  function wmapUnbindKeys(){
-    if (wmapKd){ document.removeEventListener('keydown', wmapKd); wmapKd = null; }
-    if (wmapKu){ document.removeEventListener('keyup', wmapKu); wmapKu = null; }
-    if (wmapRaf){ cancelAnimationFrame(wmapRaf); wmapRaf = 0; }
-    WMAP_KEYS.up = WMAP_KEYS.down = WMAP_KEYS.left = WMAP_KEYS.right = false;
-  }
-  function wmapStartLoop(){ if (wmapRaf) return; wmapLastTs = 0; wmapRaf = requestAnimationFrame(wmapMoveLoop); }
-  function wmapMoveLoop(ts){
+  // Move + all the presentation around it. Guarded by wmapStepping so a held key walks at a steady
+  // pace instead of firing as fast as the OS repeats.
+  function wmapTryStep(dx, dy){
     var view = document.getElementById('mapView');
-    if (!view || !view.classList.contains('active')){ wmapRaf = 0; return; }
-    var dt = wmapLastTs ? Math.min((ts - wmapLastTs) / 1000, 0.05) : 0.016;
-    wmapLastTs = ts;
-    // PURE step (also console-testable via wmapKeyStep).
-    wmapKeyStep(dt, WMAP_KEYS);
+    if (!view || !view.classList.contains('active')) return;
+    if (wmapStepping) return;
+    var out = wmapStep(dx, dy);
     var av = document.getElementById('wmapAvatar');
     if (av){
-      av.classList.add('wmap-keywalk');
-      if (WMAP_KEYS.left && !WMAP_KEYS.right) av.classList.add('wmap-flip');
-      else if (WMAP_KEYS.right && !WMAP_KEYS.left) av.classList.remove('wmap-flip');
-      av.style.left = wmapPos.x + '%';
-      av.style.top = wmapPos.y + '%';
+      if (wmapFacing === 'left') av.classList.add('wmap-flip');
+      else if (wmapFacing === 'right') av.classList.remove('wmap-flip');
     }
+    if (out.result === 'enter'){
+      if (typeof playSfx === 'function') playSfx('ui-click');
+      wmapArrive(out.id);                      // wmapArrive itself re-checks dev-blocked
+      return;
+    }
+    if (out.result === 'blocked'){
+      if (av) av.classList.add('wmap-bump');
+      setTimeout(function(){ var a = document.getElementById('wmapAvatar'); if (a) a.classList.remove('wmap-bump'); }, 160);
+      return;
+    }
+    wmapStepping = true;
+    if (av) av.classList.add('wmap-keywalk');
+    wmapPaint();
+    setTimeout(function(){
+      wmapStepping = false;
+      var a = document.getElementById('wmapAvatar');
+      if (a) a.classList.remove('wmap-keywalk');
+    }, wmapPrefersReducedMotion() ? 0 : WMAP_STEP_MS);
+  }
+
+  // Put the avatar on its tile, slide the camera, refresh the adjacency hint.
+  function wmapPaint(){
+    var av = document.getElementById('wmapAvatar');
+    if (av){
+      av.style.left = (wmapPos.x * 100 / WMAP_COLS) + '%';
+      av.style.top = (wmapPos.y * 100 / WMAP_ROWS) + '%';
+    }
+    wmapUpdateCamera();
     wmapUpdateProximity();
-    if (WMAP_KEYS.up || WMAP_KEYS.down || WMAP_KEYS.left || WMAP_KEYS.right){
-      wmapRaf = requestAnimationFrame(wmapMoveLoop);
-    } else { wmapRaf = 0; if (av) av.classList.remove('wmap-keywalk'); }
   }
-  // PURE: advance the avatar one frame given dt (seconds) + a key-state object.
-  function wmapKeyStep(dt, keys){
-    var dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-    var dy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
-    if (!dx && !dy) return;
-    var len = Math.sqrt(dx * dx + dy * dy);
-    wmapPos.x = wmapClampGrid(wmapPos.x + (dx / len) * WMAP_SPEED * dt);
-    wmapPos.y = wmapClampGrid(wmapPos.y + (dy / len) * WMAP_SPEED * dt);
+
+  // Centre the player in the viewport, but never scroll past the edges of the world — so a world
+  // smaller than the viewport just sits centred instead of drifting.
+  function wmapUpdateCamera(){
+    var vp = document.getElementById('wmapViewport'), world = document.getElementById('wmapWorld');
+    if (!vp || !world) return;
+    var vw = vp.clientWidth, vh = vp.clientHeight;
+    var ww = world.offsetWidth, wh = world.offsetHeight;
+    if (!ww || !wh) return;
+    var tw = ww / WMAP_COLS, th = wh / WMAP_ROWS;
+    var tx, ty;
+    if (ww <= vw) tx = (vw - ww) / 2;
+    else tx = Math.min(0, Math.max(vw - ww, vw / 2 - (wmapPos.x * tw + tw / 2)));
+    if (wh <= vh) ty = (vh - wh) / 2;
+    else ty = Math.min(0, Math.max(vh - wh, vh / 2 - (wmapPos.y * th + th / 2)));
+    world.style.transform = 'translate(' + Math.round(tx) + 'px,' + Math.round(ty) + 'px)';
   }
-  // Highlight the nearest building door and toggle the "press Enter" hint.
+
+  // Highlight the building you're standing beside (4-neighbour) and show the Enter hint.
   function wmapUpdateProximity(){
-    var near = null, best = 8;               // within 8 grid units of a door
-    var spots = wmapVisibleSpots();          // a hidden (not-yet-unlocked) building can't be walked up to either
-    for (var i = 0; i < spots.length; i++){
-      var s = spots[i], ddx = s.x - wmapPos.x, ddy = (s.y + 10) - wmapPos.y;
-      var d = Math.sqrt(ddx * ddx + ddy * ddy);
-      if (d < best){ best = d; near = s; }
-    }
+    var near = wmapSpotAt(wmapPos.x, wmapPos.y - 1) || wmapSpotAt(wmapPos.x, wmapPos.y + 1) ||
+               wmapSpotAt(wmapPos.x - 1, wmapPos.y) || wmapSpotAt(wmapPos.x + 1, wmapPos.y);
     var co = document.getElementById('wmapCoord');
-    if (co) co.textContent = '📍 (' + Math.round(wmapPos.x) + ', ' + Math.round(wmapPos.y) + ') / 100';
+    if (co) co.textContent = '📍 (' + wmapPos.x + ', ' + wmapPos.y + ')';
     var newId = near ? near.id : null;
-    if (newId === wmapNearId) return;
-    wmapNearId = newId;
-    var buildings = document.querySelectorAll('.wmap-building');
-    for (var b = 0; b < buildings.length; b++) buildings[b].classList.toggle('wmap-near', buildings[b].getAttribute('data-id') === newId);
+    if (newId !== wmapNearId){
+      wmapNearId = newId;
+      var buildings = document.querySelectorAll('.wmap-building');
+      for (var b = 0; b < buildings.length; b++) buildings[b].classList.toggle('wmap-near', buildings[b].getAttribute('data-id') === newId);
+    }
     var hint = document.getElementById('wmapEnterHint');
     if (hint){
       if (near){
@@ -400,6 +437,75 @@
       }
       else hint.hidden = true;
     }
+  }
+
+  function wmapBindKeys(){
+    wmapUnbindKeys();
+    wmapNearId = null;
+    wmapKd = function(e){
+      var view = document.getElementById('mapView');
+      if (!view || !view.classList.contains('active')) return;
+      switch (e.key){
+        case 'ArrowUp': case 'w': case 'W': e.preventDefault(); wmapTryStep(0, -1); return;
+        case 'ArrowDown': case 's': case 'S': e.preventDefault(); wmapTryStep(0, 1); return;
+        case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); wmapTryStep(-1, 0); return;
+        case 'ArrowRight': case 'd': case 'D': e.preventDefault(); wmapTryStep(1, 0); return;
+        case 'Enter': case ' ':
+          if (wmapNearId){ e.preventDefault(); wmapArrive(wmapNearId); }
+          return;
+      }
+    };
+    document.addEventListener('keydown', wmapKd);
+    wmapBindDpad();
+  }
+  function wmapUnbindKeys(){
+    if (wmapKd){ document.removeEventListener('keydown', wmapKd); wmapKd = null; }
+    wmapStopDpad();
+    wmapStepping = false;
+  }
+
+  // On-screen D-pad (phones/tablets — and handy with a mouse). Hold-to-repeat mirrors key repeat.
+  // pointerdown (not click) so it responds on touch-down; the CSS gives it touch-action:none so a
+  // press that drifts a few pixels moves the player instead of scrolling the page.
+  function wmapStopDpad(){ if (wmapDpadTimer){ clearInterval(wmapDpadTimer); wmapDpadTimer = null; } }
+  function wmapBindDpad(){
+    var pad = document.getElementById('wmapDpad');
+    if (!pad || pad.dataset.wired) return;
+    pad.dataset.wired = '1';
+    pad.querySelectorAll('.wmap-dbtn').forEach(function(btn){
+      var dx = Number(btn.dataset.dx), dy = Number(btn.dataset.dy);
+      btn.addEventListener('pointerdown', function(e){
+        e.preventDefault();
+        wmapTryStep(dx, dy);
+        wmapStopDpad();
+        wmapDpadTimer = setInterval(function(){ wmapTryStep(dx, dy); }, WMAP_STEP_MS + 40);
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(ev){
+        btn.addEventListener(ev, wmapStopDpad);
+      });
+    });
+  }
+
+  // Console-testable integrity check: every VISIBLE building must be reachable on foot from spawn.
+  // Buildings are solid, so "reachable" means standing on an adjacent walkable tile — a building
+  // walled off behind trees/water would be a silent dead end, and this is what catches that.
+  function wmapAudit(){
+    var seen = {}, queue = [[WMAP_SPAWN.x, WMAP_SPAWN.y]], reached = 0;
+    seen[WMAP_SPAWN.x + ',' + WMAP_SPAWN.y] = true;
+    while (queue.length){
+      var cur = queue.shift(), cx = cur[0], cy = cur[1];
+      reached++;
+      [[0,-1],[0,1],[-1,0],[1,0]].forEach(function(d){
+        var nx = cx + d[0], ny = cy + d[1], k = nx + ',' + ny;
+        if (seen[k] || !wmapCanWalk(nx, ny)) return;
+        seen[k] = true; queue.push([nx, ny]);
+      });
+    }
+    var unreachable = wmapVisibleSpots().filter(function(s){
+      return ![[0,-1],[0,1],[-1,0],[1,0]].some(function(d){ return seen[(s.tx + d[0]) + ',' + (s.ty + d[1])]; });
+    }).map(function(s){ return s.id; });
+    return { spawnWalkable: wmapCanWalk(WMAP_SPAWN.x, WMAP_SPAWN.y),
+             tilesReachable: reached, unreachableBuildings: unreachable, ok: !unreachable.length };
   }
 
   function wmapArrive(id){

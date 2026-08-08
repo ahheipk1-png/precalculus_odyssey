@@ -828,8 +828,57 @@ situation for the whole game."
   just cosmetically present.
 - Cache token bumped `20260719a → 20260719f` across this batch's several verify-then-fix rounds.
 
+**2026-08-05 — Earth Hub rebuilt as a real walkable TILE MAP (supersedes batch #31's card-grid
+fallback below).** Player, sharing a 2D-walkable-grid demo page: "could you make the earth hub become
+walkable map so that the player needs to walk to different stores/lab/etc using this method" — plus,
+on visuals: "you don't have to use exactly the same pictures tho... just the logic." So the *logic*
+is borrowed (tile grid, blocking terrain, camera follow, on-screen D-pad); the look stays this game's
+own chalk/space palette rather than the demo's green-grass tileset.
+- **What it replaced.** The hub was already "walkable" in a loose sense — a free-roam avatar sliding
+  over a painted 1000×620 SVG backdrop on a 100×100 % grid — but there was **nothing to collide with**:
+  no walls, no obstacles, you just glided diagonally straight at whatever you wanted. And under
+  1024px there was no map at all: `wmapCompact()` swapped in a flat grid of tappable cards (batch #31
+  below), so phones — where the kids mostly play — never saw the hub as a place.
+- **`js/15-map.js`** — new `WMAP_GRID`, a 15×11 terrain array (`WMAP_TILE` FLOOR/WALL/WATER/TREE) with
+  a border wall, a central pond and scattered trees. Buildings are no longer free-floating at %-coords:
+  each `WMAP_SPOTS` entry now carries `tx`/`ty`, the tile it **occupies and blocks**. Movement is
+  discrete: `wmapStep(dx,dy)` is a pure, console-testable function returning `'move' | 'blocked' |
+  {'enter', id}`; `wmapTryStep` wraps it with the presentation (facing/flip, bump nudge, step lock so
+  a held key walks at a steady pace instead of at the OS repeat rate). `wmapUpdateCamera()` centres
+  the player and clamps at the world edges, so a world smaller than the viewport sits centred rather
+  than drifting.
+- **Buildings are SOLID, and walking into one is how you enter it** ("bump the door"). That keeps the
+  demo's step-and-go immediacy while making buildings genuine obstacles you route around — with
+  walkable building tiles you'd have had to walk *through* the Special Item Store to get up the left
+  side of the village. Standing adjacent + `Enter`/`Space` still works (unchanged from before, and the
+  path AT users rely on), and tapping a building still opens it directly — deliberately kept as the
+  one-tap shortcut for phones and mice.
+- **Hidden/dev buildings still behave correctly.** `wmapSpotAt()` only reports *visible* spots, so the
+  not-yet-unlocked Special Item Store's tile is ordinary walkable floor until Arena 44 falls, then
+  becomes solid + enterable — solidity follows visibility for free. The dev-blocked Farm toasts
+  instead of opening on every path (tap, bump, and Enter).
+- **Phones get the real map now.** `wmapCompact()` and the whole ≤1024px card-grid override are gone;
+  small screens just get a smaller tile (54px → 48px) and a bigger thumb-sized D-pad. The D-pad uses
+  `pointerdown` + hold-to-repeat and carries `touch-action:none` on both the pad and its buttons —
+  the same load-bearing property the Wonderland arcade pads needed, without which a press that drifts
+  a couple of pixels pans the page instead of moving the player.
+- **`wmapAudit()`** — a console-testable BFS from the spawn tile asserting every visible building has
+  at least one adjacent walkable tile. A building sealed behind trees/water would otherwise be a
+  silent dead end. Verified `{ok: true, tilesReachable: 101, unreachableBuildings: []}`, and again
+  with the Special Item Store forced visible (100 tiles, still all reachable).
+- **Verified by driving the live game**, not by reading state: real `KeyboardEvent`s for arrows + WASD
+  walked the avatar tile by tile; a double-press inside one step window correctly moved only once;
+  bumping the Item Store opened `itemStoreView` **and left the player at (9,9)** rather than standing
+  on the roof; `Enter` beside the Weapon Store opened `shopView`; real `PointerEvent`s on all four
+  D-pad buttons stepped correctly, a 600ms hold walked 4 tiles and stopped cleanly on release; and
+  bumping the dev Farm stayed on `mapView`. Terrain blocking (wall/tree/water) and the
+  locked-vs-unlocked Special Store tile were each asserted through `wmapStep` directly.
+  *Not* visually verified — the Browser pane reported `window.innerWidth === 0` (no layout) for this
+  entire session, so tile sizing/camera framing still want a human eye.
+
 **2026-07-19 batch #31 — Earth Hub map made phone/iPad-responsive (buildings no longer overlap); the
-desktop spatial map respaced so it doesn't overlap either.** User (with a phone screenshot): "make
+desktop spatial map respaced so it doesn't overlap either.** *(The ≤1024px card-grid fallback and
+`wmapCompact()` described here were removed on 2026-08-05 — see the tile-map entry above.)* User (with a phone screenshot): "make
 the game display well when using from a phone or ipad… in the phone, all these shops in the screen
 are overlapping."
 - **Root cause**: the hub buildings are absolute-positioned at fixed %-coords tuned for a WIDE scene.

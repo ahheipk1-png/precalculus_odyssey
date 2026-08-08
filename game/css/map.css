@@ -38,99 +38,111 @@
   }
   .wmap-chip b{ color: var(--chalk); font-weight: 700; }
 
-  /* ---------- the scene ---------- */
-  .wmap-scene{
+  /* ---------- the tile world (2026-08-05) ----------
+     Replaces the old painted .wmap-scene backdrop (a 1000x620 SVG of hills + a dotted chalk path,
+     with buildings free-floating at % coords and nothing to collide with). Now: a fixed .wmap-viewport
+     window, and .wmap-world — the whole grid — translated underneath it by the camera in 15-map.js.
+     --wmap-tile is the one knob that scales the whole thing; tiles/buildings/avatar are all sized and
+     positioned in % of the world so they stay locked to the grid at every tile size. */
+  .wmap-viewport{
     position: relative;
     width: 100%;
-    aspect-ratio: 100 / 62;          /* matches the SVG's 1000Ã—620 box */
-    min-height: 340px;
+    height: clamp(300px, 52vh, 520px);
     border-radius: 14px;
     border: 1px solid rgba(244,241,232,0.14);
     overflow: hidden;
     background:
       radial-gradient(circle at 72% 10%, rgba(110,193,228,0.10) 0, transparent 45%),
-      radial-gradient(circle at 18% 85%, rgba(242,193,78,0.06) 0, transparent 50%),
       linear-gradient(180deg, #12251b 0%, var(--ink) 68%, var(--ink-light) 100%);
+    touch-action: none;              /* dragging on the map pans the player, never the page */
   }
-  .wmap-sky{
+  .wmap-world{
+    --wmap-tile: 62px;
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    left: 0; top: 0;
+    width: calc(var(--wmap-cols) * var(--wmap-tile));
+    height: calc(var(--wmap-rows) * var(--wmap-tile));
+    transition: transform 130ms linear;    /* camera glide; matches WMAP_STEP_MS */
   }
-  .wmap-star{
-    fill: rgba(244,241,232,0.8);
-    animation: wmapTwinkle 3s ease-in-out infinite;
-  }
-  @keyframes wmapTwinkle{
-    0%, 100%{ opacity: 0.25; }
-    50%     { opacity: 0.95; }
-  }
-  .wmap-path{
-    fill: none;
-    stroke: rgba(244,241,232,0.4);
-    stroke-width: 7;
-    stroke-linecap: round;
-    stroke-dasharray: 0.5 24;        /* dotted chalk trail */
-  }
-  .wmap-deco{
+  .wmap-tile{
     position: absolute;
-    transform: translate(-50%, -50%);
-    font-size: clamp(28px, 5vw, 44px);
-    pointer-events: none;
-    filter: drop-shadow(0 0 10px rgba(244,241,232,0.25));
+    width: var(--wmap-tile);
+    height: var(--wmap-tile);
   }
-  .wmap-deco-sm{ font-size: clamp(16px, 3vw, 26px); }
+  .wmap-t-floor{
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.03), transparent),
+      #26492f;
+  }
+  .wmap-t-floor.wmap-t-alt{ background-color: #23442c; }   /* subtle checker so steps read */
+  .wmap-t-wall{
+    background: linear-gradient(#3c4a5e, #26303e);
+    box-shadow: inset 0 -4px rgba(0,0,0,.28), inset 0 2px rgba(255,255,255,.06);
+  }
+  .wmap-t-water{
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.10) 0 4px, transparent 4px 13px),
+      #1f6ea8;
+  }
+  .wmap-t-tree{ background: #26492f; display: grid; place-items: center; }
+  .wmap-t-tree::before{
+    content: "🌲";
+    font-size: calc(var(--wmap-tile) * 0.66);
+    filter: drop-shadow(0 4px 4px rgba(0,0,0,.35));
+  }
 
   /* ---------- buildings ---------- */
+  /* One building = one solid tile. Positioned at the tile's top-left (no -50% centring any more)
+     and sized to the tile, so it lines up exactly with the grid cell it blocks. */
   .wmap-building{
     position: absolute;
-    transform: translate(-50%, -50%);
+    width: var(--wmap-tile);
+    height: var(--wmap-tile);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    min-width: 122px;
-    padding: 18px 14px 10px;
-    background: rgba(244,241,232,0.07);
-    border: 1px solid rgba(244,241,232,0.22);
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    background: linear-gradient(180deg, rgba(244,241,232,0.16), rgba(244,241,232,0.06));
+    border: 2px solid var(--wmap-accent, var(--wood));
     border-radius: 10px;
     color: var(--chalk);
     font-family: 'Quicksand', sans-serif;
     cursor: pointer;
     z-index: 4;
+    box-shadow: 0 4px 10px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.10);
     transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-  }
-  .wmap-building::before{               /* little roof, tinted per building */
-    content: '';
-    position: absolute;
-    top: -18px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-left: 54px solid transparent;
-    border-right: 54px solid transparent;
-    border-bottom: 20px solid var(--wmap-accent, var(--wood));
-    opacity: 0.85;
-    pointer-events: none;
   }
   .wmap-building:hover,
   .wmap-building:focus-visible{
-    transform: translate(-50%, -52%) scale(1.06);
-    background: rgba(244,241,232,0.13);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    background: linear-gradient(180deg, rgba(244,241,232,0.26), rgba(244,241,232,0.12));
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
   }
-  .wmap-building:focus-visible{ outline: 3px solid var(--sky); outline-offset: 3px; }
-  .wmap-sign{ font-size: 46px; line-height: 1.1; }
-  .wmap-bname{ font-size: 17px; font-weight: 700; color: var(--chalk); white-space: nowrap; }
+  .wmap-building:focus-visible{ outline: 3px solid var(--sky); outline-offset: 2px; }
+  .wmap-sign{ font-size: calc(var(--wmap-tile) * 0.52); line-height: 1; }
+  /* The name rides just UNDER its tile so it never covers the artwork or the neighbouring path. */
+  .wmap-bname{
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--chalk);
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 6px rgba(0,0,0,.7);
+    pointer-events: none;
+  }
   .wmap-badge{
     position: absolute;
-    top: -22px;
-    right: -14px;
+    top: -10px;
+    right: -10px;
     background: var(--yellow);
     color: var(--ink);
     border-radius: 999px;
-    padding: 2px 8px;
-    font-size:14px;
+    padding: 1px 7px;
+    font-size: 12px;
     font-weight: 700;
     z-index: 5;
     box-shadow: 0 2px 6px rgba(0,0,0,0.35);
@@ -139,30 +151,64 @@
   /* Under-development building: greyed + non-interactive-looking (still clickable so it can toast). */
   .wmap-building.wmap-dev{ cursor: not-allowed; filter: grayscale(0.85); opacity: 0.62; }
   .wmap-building.wmap-dev:hover,
-  .wmap-building.wmap-dev:focus-visible{ transform: translate(-50%, -50%); background: rgba(244,241,232,0.07); box-shadow: none; }
+  .wmap-building.wmap-dev:focus-visible{ background: rgba(244,241,232,0.07); box-shadow: none; }
   .wmap-badge-dev{ background: #b06a2c; color: #fff5e6; }
 
   /* ---------- the walking avatar ---------- */
   .wmap-avatar{
     position: absolute;
-    transform: translate(-50%, -88%);   /* feet on the path point */
-    font-size: 32px;
+    width: var(--wmap-tile);
+    height: var(--wmap-tile);
+    display: grid;
+    place-items: center;
+    font-size: calc(var(--wmap-tile) * 0.56);
     z-index: 6;
     pointer-events: none;
     filter: drop-shadow(0 4px 6px rgba(0,0,0,0.45));
-    transition: left var(--dur, 0.7s) ease-in-out, top var(--dur, 0.7s) ease-in-out;
+    transition: left 130ms linear, top 130ms linear;   /* one tile per step; matches WMAP_STEP_MS */
   }
   .wmap-avatar-flip{ display: inline-block; }
   .wmap-avatar-emoji{ display: inline-block; }
   .wmap-avatar.wmap-flip .wmap-avatar-flip{ transform: scaleX(-1); }
-  .wmap-avatar.wmap-walking .wmap-avatar-emoji{ animation: wmapBob 0.35s ease-in-out infinite; }
-  /* Free keyboard walking (item 10): immediate position (no 0.7s click-walk tween) + a walk bob. */
-  .wmap-avatar.wmap-keywalk{ transition: none; }
-  .wmap-avatar.wmap-keywalk .wmap-avatar-emoji{ animation: wmapBob 0.3s ease-in-out infinite; }
+  .wmap-avatar.wmap-keywalk .wmap-avatar-emoji{ animation: wmapBob 0.26s ease-in-out infinite; }
+  /* Walked into something solid — a small nudge so "blocked" is felt, not just ignored. */
+  .wmap-avatar.wmap-bump .wmap-avatar-emoji{ animation: wmapBump 0.16s ease; }
+  @keyframes wmapBump{
+    0%, 100%{ transform: translate(0,0); }
+    50%     { transform: translate(0,-3px) scale(0.92); }
+  }
   /* Building the player is standing next to — glows + shows it's enterable. */
-  .wmap-building.wmap-near{ outline: 3px solid var(--yellow); outline-offset: 3px; box-shadow: 0 0 22px rgba(242,193,78,0.6); transform: translate(-50%, -50%) scale(1.08); }
+  .wmap-building.wmap-near{ outline: 3px solid var(--yellow); outline-offset: 2px; box-shadow: 0 0 22px rgba(242,193,78,0.6); }
   /* Walked up to an under-development building: dashed grey outline, no "enterable" glow. */
-  .wmap-building.wmap-dev.wmap-near{ outline: 3px dashed rgba(244,241,232,0.55); box-shadow: none; transform: translate(-50%, -50%) scale(1.03); }
+  .wmap-building.wmap-dev.wmap-near{ outline: 3px dashed rgba(244,241,232,0.55); box-shadow: none; }
+
+  /* ---------- on-screen D-pad (phones/tablets; also fine with a mouse) ----------
+     touch-action:none is load-bearing: without it a press that drifts a couple of pixels is read as
+     a page pan instead of a move — the same bug already fixed for the Wonderland arcade pads. */
+  .wmap-dpad{
+    display: grid;
+    grid-template-columns: repeat(3, 54px);
+    grid-template-rows: repeat(2, 48px);
+    gap: 6px;
+    justify-content: center;
+    margin: 10px auto 0;
+    touch-action: none;
+  }
+  .wmap-dbtn{
+    background: rgba(32,43,59,0.95);
+    border: 1px solid #42536b;
+    color: var(--chalk);
+    border-radius: 10px;
+    font-size: 20px;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
+  .wmap-dbtn:active{ transform: scale(.95); background: #304159; }
+  .wmap-d-up   { grid-column: 2; grid-row: 1; }
+  .wmap-d-left { grid-column: 1; grid-row: 2; }
+  .wmap-d-down { grid-column: 2; grid-row: 2; }
+  .wmap-d-right{ grid-column: 3; grid-row: 2; }
   .wmap-enter-hint{
     position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
     z-index: 8; background: rgba(16,22,40,0.94); color: var(--chalk);
@@ -258,65 +304,35 @@
     100%{ opacity: 0;   transform: translateY(-20px) scale(1.15); }
   }
 
-  /* ---------- phones + tablets: spatial walk-map → tap-friendly card grid ----------
-     The buildings are absolute-positioned at %-coords tuned for a WIDE scene; squeezed onto a phone
-     or iPad they overlap badly. At ≤1024px (covers every phone + iPad portrait & landscape) we drop
-     the spatial map entirely and lay the buildings out as a wrapping grid of tappable cards — zero
-     overlap at any width. The star/path SVG, moon/planet decor, the walking avatar, and the
-     keyboard-walk hint are all hidden (they only mean anything on the spatial map). Taps open a
-     building instantly (no invisible walk) via wmapCompact() in 15-map.js. */
+  /* ---------- phones + tablets ----------
+     These used to replace the map with a flat grid of tappable cards, because the old buildings were
+     absolute-positioned at %-coords tuned for a wide scene and overlapped badly when squeezed. The
+     tile world has no such problem — the camera scrolls, so a small screen just sees less of the
+     village at once. Phones therefore get the REAL map now (2026-08-05); all that changes is a
+     smaller tile and a roomier thumb-sized D-pad. */
   @media (max-width: 1024px){
-    .wmap-scene{
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      align-content: flex-start;
-      gap: 12px;
-      padding: 20px 12px;
-      aspect-ratio: auto;
-      min-height: 0;
-      height: auto;
-      overflow: visible;
-    }
-    .wmap-sky, .wmap-deco, .wmap-avatar, .wmap-enter-hint{ display: none !important; }
-    .wmap-hint{ display: none; }
-    .wmap-building{
-      position: relative !important;    /* out of absolute flow, back into the flex grid */
-      left: auto !important; top: auto !important;
-      transform: none !important;
-      flex: 0 1 150px;
-      min-width: 0;
-      margin-top: 12px;                 /* leaves headroom for the roof ::before */
-    }
-    .wmap-building:hover,
-    .wmap-building:focus-visible{ transform: translateY(-3px) !important; }
-    .wmap-building.wmap-near{ transform: none !important; box-shadow: none; outline: none; }
+    .wmap-world{ --wmap-tile: 54px; }
+    .wmap-viewport{ height: clamp(280px, 46vh, 420px); }
   }
 
   /* ---------- small screens ---------- */
   @media (max-width: 640px){
     .wmap-head{ flex-direction: column; align-items: flex-start; gap: 6px; }
-    /* Two cards per row on phones (150px basis just misses two columns at ~375px). */
-    .wmap-scene{ gap: 10px; padding: 16px 8px; }
-    .wmap-building{ flex: 0 1 44% !important; min-width: 0; padding: 10px 6px 5px; }
-    .wmap-building::before{
-      top: -10px;
-      border-left-width: 26px;
-      border-right-width: 26px;
-      border-bottom-width: 11px;
-    }
-    .wmap-sign{ font-size: 22px; }
-    .wmap-bname{ font-size:13px; }
-    .wmap-badge{ top: -18px; right: -8px; font-size:13px; padding: 1px 6px; }
-    .wmap-avatar{ font-size: 26px; }
-    .wmap-chip{ font-size:15px; padding: 4px 9px; }
+    .wmap-world{ --wmap-tile: 48px; }
+    .wmap-viewport{ height: clamp(260px, 42vh, 360px); }
+    .wmap-bname{ font-size: 10px; }
+    .wmap-badge{ font-size: 11px; padding: 1px 5px; }
+    .wmap-chip{ font-size: 15px; padding: 4px 9px; }
+    .wmap-dpad{ grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(2, 54px); }
+    .wmap-dbtn{ font-size: 23px; }
   }
 
-  /* ---------- reduced motion: no twinkle, no bob, no walk (JS also teleports) ---------- */
+  /* ---------- reduced motion: no bob, no camera glide, no step tween (JS also skips its delay) ---------- */
   @media (prefers-reduced-motion: reduce){
-    .wmap-avatar{ transition: none; }
-    .wmap-star,
-    .wmap-avatar.wmap-walking .wmap-avatar-emoji,
+    .wmap-avatar,
+    .wmap-world{ transition: none; }
+    .wmap-avatar.wmap-keywalk .wmap-avatar-emoji,
+    .wmap-avatar.wmap-bump .wmap-avatar-emoji,
     .wmap-hotel.wmap-sleeping .wmap-zzz{ animation: none; }
     .wmap-hotel.wmap-sleeping .wmap-zzz{ opacity: 1; }
     .wmap-building,
