@@ -46,11 +46,22 @@ SPRITES = [
     ("\U0001f3ed Special Item Store.png", "b-special.png"),
 ]
 
-PLAYER_SRC = "Player (4 facings, one sheet).png"
-# 2x2 sheet: top-left = opaque visor, no face (facing away) = up; top-right = face visible = down.
-# Only ONE side pose is exported ("side", the bottom-right cell); the game mirrors it with
-# scaleX(-1) for the other direction. That removes any chance of shipping left/right reversed.
-PLAYER_CELLS = [("up", 0, 0), ("down", 1, 0), ("side", 1, 1)]
+# Player poses, each (source sheet, cell-x, cell-y, output name). Every sheet is a 2x2 grid.
+#
+# "up" comes from a SECOND, later sheet (2026-08-05, player: "the up facing one should be this
+# guy"): the first sheet's top-left pose still showed a visor, so walking away from the camera
+# looked like walking toward it. The newer sheet has a true back view — helmet only, no visor.
+#
+# Only ONE side pose is exported; the game mirrors it with scaleX(-1) for the other direction, so
+# left/right can't be shipped as two separately-wrong images. NOTE the art faces LEFT (measured via
+# the visor's offset from the body centre), so map.css flips for RIGHT.
+PLAYER_SHEET_A = "Player (4 facings, one sheet).png"
+PLAYER_SHEET_B = "ChatGPT Image Aug 8, 2026, 06_59_18 PM.png"
+PLAYER_POSES = [
+    (PLAYER_SHEET_B, 1, 0, "player-up.png"),     # true back view — helmet, no visor
+    (PLAYER_SHEET_A, 1, 0, "player-down.png"),   # face visible through the visor
+    (PLAYER_SHEET_A, 1, 1, "player-side.png"),   # faces LEFT as drawn
+]
 
 SPRITE_PX = 256
 # Tolerances are deliberately loose: these backgrounds are smooth vignettes WITH a soft glow halo
@@ -182,20 +193,19 @@ def main():
         report.append(f"sprite   {dst:16s} {SPRITE_PX}x{SPRITE_PX}  opaque={op:5.1f}%  "
                       f"{os.path.getsize(os.path.join(OUT, dst))//1024}KB")
 
-    pp = os.path.join(SRC, PLAYER_SRC)
-    if os.path.exists(pp):
+    for sheet_name, cx, cy, dst in PLAYER_POSES:
+        pp = os.path.join(SRC, sheet_name)
+        if not os.path.exists(pp):
+            report.append(f"MISSING player sheet {sheet_name}")
+            continue
         sheet = Image.open(pp).convert("RGBA")
         cw, ch = sheet.width // 2, sheet.height // 2
-        for name, cx, cy in PLAYER_CELLS:
-            cell = sheet.crop((cx * cw, cy * ch, (cx + 1) * cw, (cy + 1) * ch))
-            out = trim_and_fit(remove_bg(cell), 192)
-            dst = f"player-{name}.png"
-            out.save(os.path.join(OUT, dst), optimize=True)
-            op = (np.asarray(out)[:, :, 3] > 0).mean() * 100
-            report.append(f"player   {dst:16s} 192x192  opaque={op:5.1f}%  "
-                          f"{os.path.getsize(os.path.join(OUT, dst))//1024}KB")
-    else:
-        report.append("MISSING player sheet")
+        cell = sheet.crop((cx * cw, cy * ch, (cx + 1) * cw, (cy + 1) * ch))
+        out = trim_and_fit(remove_bg(cell), 192)
+        out.save(os.path.join(OUT, dst), optimize=True)
+        op = (np.asarray(out)[:, :, 3] > 0).mean() * 100
+        report.append(f"player   {dst:16s} 192x192  opaque={op:5.1f}%  "
+                      f"{os.path.getsize(os.path.join(OUT, dst))//1024}KB")
 
     print("\n".join(report))
 

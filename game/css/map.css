@@ -68,7 +68,7 @@
     left: 0; top: 0;
     width: calc(var(--wmap-cols) * var(--wmap-tile));
     height: calc(var(--wmap-rows) * var(--wmap-tile));
-    background: url('../assets/hub/ground.png') top left / calc(var(--wmap-tile) * 4) repeat;
+    background: url('../assets/hub/ground.png?a=2') top left / calc(var(--wmap-tile) * 4) repeat;
     transition: transform 130ms linear;    /* camera glide; matches WMAP_STEP_MS */
   }
   .wmap-tile{
@@ -82,11 +82,11 @@
     background: rgba(0,0,0,0.05);           /* whisper-faint checker so steps still read */
   }
   .wmap-t-wall{
-    background-image: url('../assets/hub/wall.png');
+    background-image: url('../assets/hub/wall.png?a=2');
     box-shadow: inset 0 -4px rgba(0,0,0,.30), inset 0 2px rgba(255,255,255,.07);
   }
   .wmap-t-water{
-    background-image: url('../assets/hub/water.png');
+    background-image: url('../assets/hub/water.png?a=2');
     box-shadow: inset 0 0 14px rgba(0,0,0,.35);
   }
   /* Tree sits ON the grass, slightly oversized and nudged up so its canopy overlaps the tile above
@@ -98,7 +98,7 @@
     height: calc(var(--wmap-tile) * 1.3);
     margin-left: calc(var(--wmap-tile) * -0.15);
     margin-top: calc(var(--wmap-tile) * -0.3);
-    background-image: url('../assets/hub/tree.png');
+    background-image: url('../assets/hub/tree.png?a=2');
     background-size: contain;
     background-position: center bottom;
     background-repeat: no-repeat;
@@ -146,15 +146,15 @@
   /* Per-building artwork. NOTE: the two shop images were supplied swapped (the file named "Weapon
      Store" is a potion shop, "Item Store" is a forge); the prep script maps each to the building it
      actually depicts, so these ids line up with the right picture. */
-  .wmap-building[data-id="weapon"] { background-image: url('../assets/hub/b-weapon.png'); }
-  .wmap-building[data-id="item"]   { background-image: url('../assets/hub/b-item.png'); }
-  .wmap-building[data-id="alchemy"]{ background-image: url('../assets/hub/b-alchemy.png'); }
-  .wmap-building[data-id="hotel"]  { background-image: url('../assets/hub/b-hotel.png'); }
-  .wmap-building[data-id="wonder"] { background-image: url('../assets/hub/b-wonder.png'); }
-  .wmap-building[data-id="trading"]{ background-image: url('../assets/hub/b-trading.png'); }
-  .wmap-building[data-id="practice"]{background-image: url('../assets/hub/b-practice.png'); }
-  .wmap-building[data-id="farm"]   { background-image: url('../assets/hub/b-farm.png'); }
-  .wmap-building[data-id="special"]{ background-image: url('../assets/hub/b-special.png'); }
+  .wmap-building[data-id="weapon"] { background-image: url('../assets/hub/b-weapon.png?a=2'); }
+  .wmap-building[data-id="item"]   { background-image: url('../assets/hub/b-item.png?a=2'); }
+  .wmap-building[data-id="alchemy"]{ background-image: url('../assets/hub/b-alchemy.png?a=2'); }
+  .wmap-building[data-id="hotel"]  { background-image: url('../assets/hub/b-hotel.png?a=2'); }
+  .wmap-building[data-id="wonder"] { background-image: url('../assets/hub/b-wonder.png?a=2'); }
+  .wmap-building[data-id="trading"]{ background-image: url('../assets/hub/b-trading.png?a=2'); }
+  .wmap-building[data-id="practice"]{background-image: url('../assets/hub/b-practice.png?a=2'); }
+  .wmap-building[data-id="farm"]   { background-image: url('../assets/hub/b-farm.png?a=2'); }
+  .wmap-building[data-id="special"]{ background-image: url('../assets/hub/b-special.png?a=2'); }
   /* The name rides just UNDER its tile so it never covers the artwork or the neighbouring path. */
   .wmap-bname{
     position: absolute;
@@ -205,15 +205,15 @@
     display: block;
     width: 128%;
     height: 128%;
-    background: url('../assets/hub/player-down.png') center bottom / contain no-repeat;
+    background: url('../assets/hub/player-down.png?a=2') center bottom / contain no-repeat;
     filter: drop-shadow(0 4px 5px rgba(0,0,0,0.55));
   }
-  .wmap-avatar[data-face="up"]   .wmap-avatar-flip{ background-image: url('../assets/hub/player-up.png'); }
-  .wmap-avatar[data-face="down"] .wmap-avatar-flip{ background-image: url('../assets/hub/player-down.png'); }
+  .wmap-avatar[data-face="up"]   .wmap-avatar-flip{ background-image: url('../assets/hub/player-up.png?a=2'); }
+  .wmap-avatar[data-face="down"] .wmap-avatar-flip{ background-image: url('../assets/hub/player-down.png?a=2'); }
   /* One side pose, mirrored for the other direction. The art faces LEFT as drawn — measured, not
      eyeballed: the cyan visor's centre of mass sits ~34px LEFT of the body's centre. So the RIGHT
      case is the one that flips. (Shipped backwards first time round on a guess that it faced right.) */
-  .wmap-avatar[data-face="side"] .wmap-avatar-flip{ background-image: url('../assets/hub/player-side.png'); }
+  .wmap-avatar[data-face="side"] .wmap-avatar-flip{ background-image: url('../assets/hub/player-side.png?a=2'); }
   .wmap-avatar-emoji{ display: none; }      /* emoji fallback retired — real artwork now */
   /* Flip goes on the PARENT, bob on the child: both are `transform`, and an animation on the same
      element would win outright and silently drop the mirroring while walking left. */
