@@ -93,12 +93,19 @@
   var wmapStepping = false;        // one step at a time, so held keys don't teleport you
   var wmapWalkTimer = null;        // pending "arrival" timer while a walk is in flight
 
-  // The VISIBLE spot occupying a tile, or null. Hidden (not-yet-unlocked) buildings deliberately
-  // report null so their tile is plain walkable floor until they're earned.
+  // Every building is WMAP_BSIZE x WMAP_BSIZE tiles (2026-08-05, player: "i think the shop should be
+  // larger.....maybe 2 times 2 grids"). tx/ty is the footprint's TOP-LEFT tile; it blocks that whole
+  // square. The band layout already left 2-row gaps and wide column gaps, so no repositioning was
+  // needed — but wmapAudit() re-checks reachability rather than trusting that.
+  var WMAP_BSIZE = 2;
+
+  // The VISIBLE spot whose footprint covers this tile, or null. Hidden (not-yet-unlocked) buildings
+  // deliberately report null, so their whole square is plain walkable floor until they're earned.
   function wmapSpotAt(x, y){
     var spots = wmapVisibleSpots();
     for (var i = 0; i < spots.length; i++){
-      if (spots[i].tx === x && spots[i].ty === y) return spots[i];
+      var s = spots[i];
+      if (x >= s.tx && x < s.tx + WMAP_BSIZE && y >= s.ty && y < s.ty + WMAP_BSIZE) return s;
     }
     return null;
   }
@@ -544,11 +551,36 @@
         seen[k] = true; queue.push([nx, ny]);
       });
     }
+    // A building is reachable if ANY tile around its whole WMAP_BSIZE square was reached — with a
+    // 2x2 footprint the four corners of the old 1-tile check aren't enough.
+    function perimeter(s){
+      var out = [];
+      for (var d = 0; d < WMAP_BSIZE; d++){
+        out.push([s.tx + d, s.ty - 1], [s.tx + d, s.ty + WMAP_BSIZE],
+                 [s.tx - 1, s.ty + d], [s.tx + WMAP_BSIZE, s.ty + d]);
+      }
+      return out;
+    }
     var unreachable = wmapVisibleSpots().filter(function(s){
-      return ![[0,-1],[0,1],[-1,0],[1,0]].some(function(d){ return seen[(s.tx + d[0]) + ',' + (s.ty + d[1])]; });
+      return !perimeter(s).some(function(p){ return seen[p[0] + ',' + p[1]]; });
     }).map(function(s){ return s.id; });
+
+    // Footprints must not sit on blocking terrain or on each other — either would silently eat
+    // tiles the layout assumes are free, and neither shows up as "unreachable".
+    var overlaps = [], owner = {};
+    wmapVisibleSpots().forEach(function(s){
+      for (var dy = 0; dy < WMAP_BSIZE; dy++){
+        for (var dx = 0; dx < WMAP_BSIZE; dx++){
+          var x = s.tx + dx, y = s.ty + dy, k = x + ',' + y;
+          if (!wmapTerrainOpen(x, y)) overlaps.push(s.id + ' on blocked terrain ' + k);
+          if (owner[k]) overlaps.push(s.id + ' overlaps ' + owner[k] + ' at ' + k);
+          owner[k] = s.id;
+        }
+      }
+    });
     return { spawnWalkable: wmapCanWalk(WMAP_SPAWN.x, WMAP_SPAWN.y),
-             tilesReachable: reached, unreachableBuildings: unreachable, ok: !unreachable.length };
+             tilesReachable: reached, unreachableBuildings: unreachable, footprintClashes: overlaps,
+             ok: !unreachable.length && !overlaps.length };
   }
 
   function wmapArrive(id){

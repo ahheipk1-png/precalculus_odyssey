@@ -112,14 +112,16 @@
      No card chrome any more — the sprite is the building. */
   .wmap-building{
     position: absolute;
-    /* The ELEMENT is grown to 1.5 tiles and pulled up/left so its BOTTOM still sits on the tile it
-       blocks, then the art is `contain`ed inside it. The overhang has to come from the element's own
-       size: a background scaled past 100% is clipped to the element box no matter what `overflow`
-       says (backgrounds don't overflow), which is what chopped the roofs off the first version. */
-    width: calc(var(--wmap-tile) * 1.5);
-    height: calc(var(--wmap-tile) * 1.5);
-    margin-left: calc(var(--wmap-tile) * -0.25);   /* keeps it centred on its tile */
-    margin-top: calc(var(--wmap-tile) * -0.5);     /* bottom edge stays on the tile */
+    /* Footprint is 2x2 tiles (WMAP_BSIZE in 15-map.js); the art is drawn at 2.6 tiles and pulled
+       up/left so its BOTTOM still lands on the footprint's bottom edge, giving a roof overhang into
+       the row above. The overhang has to come from the element's own size: a background scaled past
+       100% is clipped to the element box whatever `overflow` says (backgrounds don't overflow) —
+       that's what chopped the roofs off the first version.
+       Keep these three in step: size S, margin-left -(S-2)/2, margin-top -(S-2). */
+    width: calc(var(--wmap-tile) * 2.6);
+    height: calc(var(--wmap-tile) * 2.6);
+    margin-left: calc(var(--wmap-tile) * -0.3);    /* centres the art on the 2-wide footprint */
+    margin-top: calc(var(--wmap-tile) * -0.6);     /* bottom edge stays on the footprint */
     display: block;
     padding: 0;
     background: none;
