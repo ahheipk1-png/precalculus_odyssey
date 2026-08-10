@@ -184,6 +184,61 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.35);
   }
 
+  /* ---------- Wonderland: the carnival skin ----------
+     Same engine, different world. Earth's buildings are photographic sprites; Wonderland's 24 booths
+     have no artwork yet, so each one is DRAWN here — a striped canopy over a dark counter, tinted by
+     the booth's own --wmap-accent so neighbours stay distinguishable at a glance. When per-game art
+     arrives, one `background-image` rule per booth id drops straight on top of this (the tent then
+     acts as the frame, exactly like a real fairground stall). */
+  .wmap-map-wonder .wmap-world{
+    /* Warm dusk over the fairground lawn — the same grass, lit like an evening carnival. */
+    background-image:
+      linear-gradient(180deg, rgba(84,38,96,0.34), rgba(20,14,40,0.44)),
+      url('../assets/hub/ground.png?a=2');
+    background-size: auto, calc(var(--wmap-tile) * 4);
+    background-repeat: repeat, repeat;
+  }
+  /* No roof overhang to fake, so the booth fills its 2x2 footprint exactly. */
+  .wmap-map-wonder .wmap-building{
+    width:  calc(var(--wmap-tile) * 2);
+    height: calc(var(--wmap-tile) * 2);
+    margin: 0;
+    background-image: none;
+  }
+  .wmap-map-wonder .wmap-building::before{        /* striped canopy, flaring past the posts */
+    content: '';
+    position: absolute;
+    left: -7%; right: -7%; top: 0;
+    height: 40%;
+    background: repeating-linear-gradient(90deg,
+      var(--wmap-accent) 0 11.5%, #fdf4e3 11.5% 23%);
+    border-radius: 55% 55% 6px 6px / 85% 85% 6px 6px;
+    box-shadow: inset 0 -5px 8px rgba(0,0,0,.28), 0 5px 10px rgba(0,0,0,.45);
+  }
+  .wmap-map-wonder .wmap-building::after{         /* the stall itself */
+    content: '';
+    position: absolute;
+    left: 7%; right: 7%; top: 35%; bottom: 4%;
+    background: linear-gradient(180deg, rgba(30,24,52,.95), rgba(12,10,24,.97));
+    border: 2px solid var(--wmap-accent);
+    border-radius: 7px;
+    box-shadow: inset 0 10px 18px rgba(0,0,0,.5);
+  }
+  .wmap-map-wonder .wmap-sign{                    /* the game's icon, hung on the stall front */
+    display: block;
+    position: absolute;
+    left: 0; right: 0; top: 46%;
+    text-align: center;
+    font-size: calc(var(--wmap-tile) * 0.78);
+    line-height: 1;
+    z-index: 2;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.85));
+  }
+  .wmap-map-wonder .wmap-badge{ font-size: 11px; top: -8px; right: -8px; }
+  /* Passes + Ranking sit on one row above the fairground. */
+  .wmap-map-wonder .wond-passes{ font-weight: 700; }
+  .wmap-map-wonder .wond-hint{ opacity: .8; font-size: 13px; }
+
   /* Under-development building: greyed + non-interactive-looking (still clickable so it can toast). */
   .wmap-building.wmap-dev{ cursor: not-allowed; filter: grayscale(0.85); opacity: 0.62; }
   .wmap-building.wmap-dev:hover,

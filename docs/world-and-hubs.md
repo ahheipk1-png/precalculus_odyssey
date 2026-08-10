@@ -24,14 +24,18 @@ presentation (rewards already credited by the caller); re-entrant; reduced-motio
 
 ## Wonderland — `js/17-wonderland.js` (`#wonderlandView`)
 
-Carnival hub. `openWonderland()` renders a top-level screen (`wondHubHtml()`, added 2026-07-18 batch
-#22) with the **🎟️ Wonderland Passes** banner + 🏆 Ranking button and two big centered category
-tiles: **🎰 Casino** (`openWonderCasino()` → `wondCasinoHtml()` — the 3 gambling games: Hoo Hey How,
-Star Slots, Pop-a-Tic-Tac-Toe) and **🕹️ Arcade** (`openWonderArcade()` → `wondArcadeHtml()` — every
-other minigame, including the playable **Tile Ball** Breakout canvas game costing 1 pass). Every
-minigame's "← Lobby"/back button (34 call sites across 20 files) calls the same `openWonderland()`,
-so they all land back on this hub screen rather than the specific Casino/Arcade page they came from
-— an accepted one-extra-tap tradeoff for touching zero of those 34 call sites. `wonderRewardForScore(f)`
+Carnival hub — a **walkable tile map since 2026-08-05** (see that batch entry below; it replaced the
+Hub → Casino/Arcade → card-grid screens added 2026-07-18 batch #22). `openWonderland()` mounts
+`WONDER_MAP` into `#wonderlandView` via the shared engine's `wmapMount()` (`js/15-map.js`) — a 37×22
+fairground with **24 booths** you walk to: a 3-booth **casino wing** (Hoo Hey How, Star Slots,
+Pop-a-Tic-Tac-Toe) and three 7-booth **arcade midways**. Booth data is `WOND_BOOTHS`; `wondSpots()`
+lazily turns it into engine spots (lazily because the level-count globals it quotes live in files
+loaded after this one). `wondEnterBooth(id)` reproduces exactly what that booth's old lobby card did:
+gambling booths charge up front (`wonderPlay(launch, cost)`), everything else opens the game's own
+welcome screen for free. `openWonderCasino()`/`openWonderArcade()` survive as walk-to-that-zone
+shortcuts. Every minigame's "← Lobby"/back button (34 call sites across 20 files) calls the same
+`openWonderland()`, so they all land back on the fairground, where you left off.
+`wonderRewardForScore(f)`
 (pure) pays materials + an item by cleared fraction; `applyWonderReward` credits them. The rAF loop
 is cancelled on exit.
 
@@ -827,6 +831,55 @@ situation for the whole game."
   `SN.nextDir` from `[1,0]` to `[0,1]`, confirming the D-pad actually drives the game loop, not
   just cosmetically present.
 - Cache token bumped `20260719a → 20260719f` across this batch's several verify-then-fix rounds.
+
+**2026-08-05 — Wonderland rebuilt as a walkable CARNIVAL MAP, on a now-generic tile engine.** Player:
+"we should change the wonderland into walkable map format" + "so you need to make the map much larger."
+Wonderland was three stacked menus (Hub → Casino/Arcade → a grid of 24 cards); it's now one fairground
+you walk around, running on the *same* engine as the Earth Hub.
+
+- **The engine was generalised first, not cloned.** `15-map.js` used to hard-code Earth's data in
+  module constants (`WMAP_COLS`, `WMAP_GRID`, `wmapPos`…). A second map would have meant a second copy
+  of ~250 lines of stepping/camera/D-pad/audit code. Instead there is now one active-config pointer
+  `WMAP` + `wmapUse(cfg)`, and every engine function reads from it. Earth Hub became config #1
+  (`EARTH_MAP`), Wonderland is config #2 (`WONDER_MAP`, defined in `17-wonderland.js` — the map *data*
+  lives with the feature, the engine stays generic). A config supplies `cols/rows/grid/spots/bsize/
+  spawn/pos/facing`, an `onEnter(id)`, and optional chrome hooks (`title`, `statusHtml`, `extraHtml`,
+  `badgeHtml`, `isVisible`, `nounPlural`, `backLabel`/`backCall`). Each config keeps its **own `pos`**,
+  so leaving a map and coming back puts you where you stood. `wmapMount(cfg, viewId)` is the one entry
+  point; `openMapHub()` and `openWonderland()` are now two calls to it. Earth Hub was re-verified
+  byte-for-byte in behaviour afterwards (`wmapAudit()` still `{ok:true, tilesReachable:387}`, same
+  bump-to-enter, same pond blocking, same tile sizing).
+- **The fairground.** 37×22 (≈1.6× Earth's area — "make the map much larger"), 814 tiles, laid out on a
+  5-tile booth pitch so every one of the 24 booths keeps a **3-tile corridor** on all sides: a casino
+  wing on row 2 (3 booths) beside a 4×3 wishing fountain, then three arcade midways on rows 7/12/17
+  (7 booths each). You spawn at the gate, bottom-centre. 19 trees decorate the corridors without ever
+  narrowing a route — asserted, not eyeballed: `wmapAudit()` returns `{ok:true, tilesReachable:573,
+  footprintClashes:[], unreachableBuildings:[]}`.
+- **Entry behaviour is preserved exactly, per booth.** `wondEnterBooth(id)` does what that game's old
+  lobby-card button did — the 3 gambling booths charge passes on arrival (`wonderPlay`, entering *is*
+  the play), the other 21 open their own welcome screen for free so browsing a leaderboard still costs
+  nothing. All 24 launchers are asserted to resolve to real globals at mount time.
+- **Two bugs this surfaced, both fixed in the engine (they'd have bitten any second map):**
+  - *Duplicate ids across mounted maps.* Leaving a view removes `.active`, it doesn't empty it — so
+    Earth's markup survived inside `#mapView` while Wonderland rendered into `#wonderlandView`, and
+    every id (`#wmapWorld`, `#wmapStatus`, `#wmapAvatar`…) existed twice. `getElementById` returns the
+    first match, so the engine silently drove the *hidden* map and the visible one froze solid.
+    `wmapMount` now removes any `.wmap-wrap` outside the container it's mounting into.
+  - *Arrow keys leaking out of the map and into games.* The keydown guard checked `#mapView.active`.
+    Wonderland's games take over `#wonderlandView` by overwriting its `innerHTML` while it stays
+    active — so the map's handler would have stayed live during play and eaten the arrow keys Snake,
+    Comet Muncher and Astro Drop need. Replaced with `wmapLive()`, which keys off the *rendered world*
+    (`#wmapWorld` present, inside an active container) instead of any view id. Verified: pressing
+    arrows with Snake open leaves the map player where it was.
+- **Booth art.** No per-game artwork exists yet, so each booth is *drawn* in `map.css` under
+  `.wmap-map-wonder` — a striped canopy over a dark stall, tinted by that booth's own `--wmap-accent`
+  so neighbours stay tellable apart, with the game's emoji hung on the front. When art lands it's one
+  `background-image` rule per booth id and the tent becomes its frame. `.wmap-map-<id>` on the wrap is
+  the general hook for skinning a world.
+- Verified live: 24 booths mount with no overlaps and no name-label collisions (118px booths, 177px
+  corridors at a 59px tile), casino bump charged exactly 2 passes, arcade bump charged 0, the D-pad
+  steps under real `PointerEvent`s at 375×812 without scrolling the page, and the Earth↔Wonderland
+  round trip keeps each map's own position.
 
 **2026-08-05 — Earth Hub rebuilt as a real walkable TILE MAP (supersedes batch #31's card-grid
 fallback below).** Player, sharing a 2D-walkable-grid demo page: "could you make the earth hub become

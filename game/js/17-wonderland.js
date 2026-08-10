@@ -173,36 +173,32 @@
     return view;
   }
 
-  // openWonderland() is the ONE function every game's "← Lobby"/back button calls (34 call sites
-  // across every minigame file) as well as the Earth Hub's Wonderland door — so making it render
-  // the new top hub (instead of the old flat game grid) automatically threads the extra layer
-  // through the whole app with zero other call sites touched. openWonderCasino()/openWonderArcade()
-  // are the two doors this hub screen opens onto.
+  // openWonderland() is the ONE function every game's "← Lobby"/back button calls (34 call sites)
+  // as well as the Earth Hub's Wonderland door — so pointing it at the walkable carnival threads the
+  // new hub through the whole app with zero other call sites touched.
+  //
+  // 2026-08-05 (player: "we should change the wonderland into walkable map format... you need to
+  // make the map much larger"): the lobby used to be Hub -> Casino/Arcade -> a flat grid of 24 cards.
+  // It's now a fairground you walk around, running on the SAME tile engine as the Earth Hub
+  // (15-map.js) — one config object instead of a second copy of the stepping/camera/D-pad code.
   function openWonderland(){
     stopTileBall();                       // never leave a stale loop behind
     if (typeof wgStopAll === 'function') wgStopAll();   // and no stray carnival-game timer
-    var view = wondShowView();
-    if (!view) return;
-    view.innerHTML = wondHubHtml();
+    if (typeof wmapMount !== 'function'){ return; }
+    WONDER_MAP.spots = wondSpots();       // built lazily: the level counts live in other files
+    if (!wmapMount(WONDER_MAP, 'wonderlandView')) return;
     if (typeof playMusic === 'function') playMusic('arena');
   }
 
-  function openWonderCasino(){
-    stopTileBall();
-    if (typeof wgStopAll === 'function') wgStopAll();
-    var view = wondShowView();
-    if (!view) return;
-    view.innerHTML = wondCasinoHtml();
-    if (typeof playMusic === 'function') playMusic('arena');
-  }
-
-  function openWonderArcade(){
-    stopTileBall();
-    if (typeof wgStopAll === 'function') wgStopAll();
-    var view = wondShowView();
-    if (!view) return;
-    view.innerHTML = wondArcadeHtml();
-    if (typeof playMusic === 'function') playMusic('arena');
+  // The old Casino / Arcade sub-pages are now two zones of one map, but keep the names working —
+  // they were public entry points, and walking the player to the right end of the fairground is a
+  // better answer than a dead function.
+  function openWonderCasino(){ wondEnterZone('casino'); }
+  function openWonderArcade(){ wondEnterZone('arcade'); }
+  function wondEnterZone(zone){
+    var first = wondSpots().filter(function(s){ return s.zone === zone; })[0];
+    if (first){ WONDER_MAP.pos.x = first.tx; WONDER_MAP.pos.y = first.ty + WONDER_MAP.bsize; }
+    openWonderland();
   }
 
   function closeWonderland(){
@@ -248,164 +244,145 @@
     if (typeof playSfx === 'function') playSfx('ui-click');
   }
 
-  // One lobby card for a pass-charged game (launcher = global function name).
-  // gambling=true keeps the old direct-charge behavior (Star Slots, Pop-a-Tic-Tac-Toe — entering
-  // IS the "play"). Every other game is free to browse: launcher is that game's own welcome
-  // screen (gameWelcome-based); the pass is only spent when the player clicks Play there.
-  function _wondCard(icon, name, desc, launcher, gambling, cost){
-    cost = cost || 1;
-    var tag = '(' + cost + ' 🎟️)';
-    var btn = gambling
-      ? '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'' + launcher + '\',' + cost + ')" data-tooltip="' + name + ' — costs ' + cost + ' Wonderland Pass' + (cost > 1 ? 'es' : '') + '.">Play! ' + tag + '</button>'
-      : '<button type="button" class="btn btn-primary wond-play" onclick="' + launcher + '()" data-tooltip="View the leaderboard — Play there costs ' + cost + ' Wonderland Pass' + (cost > 1 ? 'es' : '') + '.">View / Play ' + tag + '</button>';
-    return '<div class="wond-card">' +
-      '<div class="wond-card-icon">' + icon + '</div>' +
-      '<div class="wond-card-name">' + name + '</div>' +
-      '<div class="wond-card-desc">' + desc + '</div>' +
-      btn + '</div>';
+  // ------------------------------------------------------------------
+  // THE CARNIVAL MAP — 24 booths you walk to (replaces the Hub/Casino/Arcade card grids)
+  // ------------------------------------------------------------------
+  // Runs on the shared tile engine in 15-map.js: this file supplies pure DATA (grid, booths, what
+  // bumping one does) and the engine does the stepping, camera, D-pad, keyboard and audit.
+  //
+  // Layout — 37 x 22, roughly 1.6x the Earth Hub's area (player: "you need to make the map much
+  // larger"). Booths are 2x2 like Earth's shops, on a 5-tile pitch, which leaves a 3-tile corridor
+  // between every neighbour in both directions so nothing feels cramped:
+  //
+  //     row  2   CASINO WING — 3 booths (cols 3/8/13) + the fountain plaza to their right
+  //     row  7   ARCADE MIDWAY 1 — 7 booths
+  //     row 12   ARCADE MIDWAY 2 — 7 booths
+  //     row 17   ARCADE MIDWAY 3 — 7 booths
+  //     row 20   the entrance you spawn on
+  //
+  // Splitting casino from arcade by GEOGRAPHY rather than by a menu keeps the old "you chose to walk
+  // into the gambling half" separation without an extra screen in front of every game.
+  var WOND_COLS = 37, WOND_ROWS = 22;
+  var WOND_BX = [3, 8, 13, 18, 23, 28, 33];      // booth column origins (2-wide, 3-tile gaps)
+  var WOND_CASINO_Y = 2, WOND_MIDWAY_Y = [7, 12, 17];
+
+  // Every booth: what it looks like, and EXACTLY what its old lobby card's button did.
+  //   gambling:true -> entering IS the play, so it charges passes up front (wonderPlay), which is
+  //                    what the three casino cards always did.
+  //   otherwise     -> open the game's own welcome screen for free; the pass is spent there, on
+  //                    Play, so browsing a leaderboard still costs nothing.
+  // `count` names a global holding that game's level list — read lazily (see wondSpots) because
+  // those live in files that load after this one.
+  var WOND_BOOTHS = [
+    // --- Casino wing (bet Cash; entry charged on arrival) ---
+    { id: 'hoohey',   emoji: '🎲', name: 'Hoo Hey How',      zone: 'casino', launch: 'openHooHey',        gambling: true, cost: 2, accent: 'var(--coral)',  desc: 'Bet Cash on lucky symbols and roll three dice!' },
+    { id: 'slots',    emoji: '🎰', name: 'Star Slots',       zone: 'casino', launch: 'openSlots',         gambling: true, cost: 2, accent: 'var(--yellow)', desc: 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!' },
+    { id: 'poptic',   emoji: '🎯', name: 'Pop-a-Tic-Tac-Toe', zone: 'casino', launch: 'openPopTicTacToe', gambling: true, cost: 1, accent: 'var(--coral)',  desc: 'Roll 4 balls onto the board, FIX the ones you like, reroll the rest — chase the jackpot pattern!' },
+
+    // --- Arcade midway, row 1 ---
+    { id: 'fishin',   emoji: '🎣', name: 'Gone Fishin’',     zone: 'arcade', launch: 'openFishin',        accent: 'var(--sky)',    desc: 'Catch only the fish whose number matches the rule!', count: 'FISH_MAX_LEVEL', countIsNumber: true },
+    { id: 'tileball', emoji: '🧱', name: 'Tile Ball',        zone: 'arcade', launch: 'wondOpenTileLevels', accent: 'var(--coral)', desc: 'Bounce the ball and smash every tile!', count: 'WOND_LEVELS' },
+    { id: 'forge',    emoji: '🧩', name: 'Quantum Block Forge', zone: 'arcade', launch: 'openBlockForge', accent: 'var(--sky)',    desc: 'Drag blocks to fill rows & columns — clear lines for combos!', count: 'QBF_LEVELS' },
+    { id: 'match',    emoji: '🃏', name: 'Star Match',       zone: 'arcade', launch: 'openMemory',        accent: 'var(--yellow)', desc: 'Memorise the board, then match every cosmic pair!', count: 'MEM_LEVELS' },
+    { id: 'sudoku',   emoji: '🔢', name: 'Mini Sudoku',      zone: 'arcade', launch: 'openSudoku',        accent: 'var(--sky)',    desc: 'Drag numbered tiles so every row, column & box is complete — 4×4 warm-up up to a full 9×9!', count: 'SUD_LEVELS' },
+    { id: 'cargo',    emoji: '📦', name: 'Cargo Bay',        zone: 'arcade', launch: 'openCargo',         accent: 'var(--yellow)', desc: 'Push every crate onto its ring through dense pillar mazes!', count: 'CARGO_DIFFS' },
+    { id: 'glacier',  emoji: '❄️', name: 'Glacier Push',     zone: 'arcade', launch: 'openGlacier',       accent: 'var(--sky)',    desc: 'Ice blocks SLIDE until they hit something. Plan your pushes!', count: 'GLACIER_DIFFS' },
+
+    // --- Arcade midway, row 2 ---
+    { id: 'forbidden', emoji: '🏯', name: 'Forbidden City',  zone: 'arcade', launch: 'openShikinjou',     accent: 'var(--coral)',  desc: 'Slide matching spirit tiles together to cancel them — beware the same-color decoys!', count: 'SHIK_DIFFS' },
+    { id: 'stacker',  emoji: '🗼', name: 'Sky Stacker',      zone: 'arcade', launch: 'openStacker',       accent: 'var(--yellow)', desc: 'Stack the swinging blocks — each tower taller than the last.', count: 'STK_LEVELS' },
+    { id: 'astro',    emoji: '🟦', name: 'Astro Drop',       zone: 'arcade', launch: 'openAstroDrop',     accent: 'var(--sky)',    desc: 'Falling blocks! Fill whole lines to clear them — speed rises every 10 lines.' },
+    { id: 'virus',    emoji: '💊', name: 'Virus Lab',        zone: 'arcade', launch: 'openVirusLab',      accent: 'var(--coral)',  desc: 'Drop 2-color capsules; match 4 in a line to zap every virus!', count: 'VL_LEVELS' },
+    { id: 'circuit',  emoji: '🔗', name: 'Circuit Loop',     zone: 'arcade', launch: 'openCircuit',       accent: 'var(--yellow)', desc: 'Rotate the wires so the power core lights every bulb!' },
+    { id: 'comet',    emoji: '👾', name: 'Comet Muncher',    zone: 'arcade', launch: 'openComet',         accent: 'var(--sky)',    desc: 'Munch every star in the maze — dodge the UFOs!' },
+    { id: 'blastbot', emoji: '💣', name: 'Blast Bot',        zone: 'arcade', launch: 'openBlastBot',      accent: 'var(--coral)',  desc: 'Bomb the crates and zap the drones — mind the blast!', count: 'BB_LEVELS' },
+
+    // --- Arcade midway, row 3 ---
+    { id: 'bubble',   emoji: '🫧', name: 'Bubble Blast',     zone: 'arcade', launch: 'openBubble',        accent: 'var(--sky)',    desc: 'Trap gremlins in bubbles, then pop them platform-style!', count: 'BU_LEVELS' },
+    { id: 'bowling',  emoji: '🎳', name: 'Star Lanes Bowling', zone: 'arcade', launch: 'openBowling',     accent: 'var(--yellow)', desc: 'A full 10-frame game — stop the marker to set aim, power & spin. Strikes pay +100 Gold!' },
+    { id: 'rhythm',   emoji: '🎵', name: 'Cosmic Rhythm',    zone: 'arcade', launch: 'openRhythm',        accent: 'var(--coral)',  desc: 'Hit the falling notes on the beat — faster and denser as you climb!', count: 'RHY_LEVELS' },
+    { id: 'snake',    emoji: '🐍', name: 'Snake',            zone: 'arcade', launch: 'openSnake',         accent: 'var(--sky)',    desc: 'Eat food to grow, avoid the walls and your own tail!', count: 'SN_LEVELS' },
+    { id: 'crystal',  emoji: '💎', name: 'Crystal Cascade',  zone: 'arcade', launch: 'openCrystal',       accent: 'var(--yellow)', desc: 'Drop columns of 3 gems, cycle their colors, and chain cascading matches for huge combos!' },
+    { id: 'cloudberry', emoji: '☁️', name: 'Cloudberry Squadron', zone: 'arcade', launch: 'openCloudberry', accent: 'var(--coral)', desc: 'Ten stages of homing-missile mayhem, ending on an escalating boss.' },
+    { id: 'skysquad', emoji: '✈️', name: 'Sky Squadron 194X', zone: 'arcade', launch: 'openSkySquadron',  accent: 'var(--sky)',    desc: 'A 10-level island campaign — a different boss commander every mission.' }
+  ];
+
+  // Booth -> tile position, plus the "N levels" tail its lobby card used to show.
+  //
+  // Built on first use rather than at load time: the level-count globals (QBF_LEVELS, SN_LEVELS…)
+  // live in files loaded AFTER this one, so reading them in a top-level literal would silently
+  // produce "undefined levels". By the time anyone opens Wonderland they all exist.
+  var _wondSpots = null;
+  function wondSpots(){
+    if (_wondSpots) return _wondSpots;
+    var casino = WOND_BOOTHS.filter(function(b){ return b.zone === 'casino'; });
+    var arcade = WOND_BOOTHS.filter(function(b){ return b.zone !== 'casino'; });
+    _wondSpots = casino.map(function(b, i){
+      return _wondSpot(b, WOND_BX[i], WOND_CASINO_Y);
+    }).concat(arcade.map(function(b, i){
+      return _wondSpot(b, WOND_BX[i % WOND_BX.length], WOND_MIDWAY_Y[Math.floor(i / WOND_BX.length)]);
+    }));
+    return _wondSpots;
+  }
+  function _wondSpot(b, tx, ty){
+    var n = null;
+    if (b.count){
+      var g = window[b.count];
+      if (b.countIsNumber) n = (typeof g === 'number') ? g : null;
+      else if (g && g.length) n = g.length;
+    }
+    var cost = b.cost || 1;
+    var desc = b.desc + (n ? ' ' + n + ' levels.' : '') +
+      ' Costs ' + cost + ' Wonderland Pass' + (cost > 1 ? 'es' : '') +
+      (b.gambling ? ' to enter.' : ' to play.');
+    return { id: b.id, emoji: b.emoji, name: b.name, accent: b.accent, tx: tx, ty: ty,
+             zone: b.zone, launch: b.launch, gambling: !!b.gambling, cost: cost, desc: desc };
   }
 
-  // ---------- Top-level hub: choose Casino or Arcade ----------
-  // Every game's "← Lobby" button (34 call sites — see openWonderland()'s comment) resolves here,
-  // so this is the one screen the whole game returns to; the passrow + Ranking button live here
-  // rather than duplicated on both sub-pages.
-  function wondHubHtml(){
-    var passes = wonderPassCount();
-    return '' +
-      '<div class="wond-board">' +
-        '<div class="wond-head-row">' +
-          '<div class="wond-head">' +
-            '<h2 class="wond-title"><span class="wond-wheel">🎡</span> Wonderland</h2>' +
-            '<p class="wond-sub">Step right up! Where to first?</p>' +
-          '</div>' +
-          '<button type="button" class="btn btn-ghost wond-head-back" onclick="wonderBackToMap()">← Back to Earth</button>' +
-        '</div>' +
-        '<div class="wond-passrow">' +
-          '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
-          '<span class="wond-hint">Earn passes by answering questions in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
-          '<button type="button" class="btn btn-secondary wond-rank-btn" onclick="openRanking()" data-tooltip="See the global leaderboard — top levels and top minigame scores across every player.">🏆 Ranking</button>' +
-        '</div>' +
-        '<div class="wond-hub-grid">' +
-          '<button type="button" class="wond-hub-tile wond-hub-casino" onclick="openWonderCasino()" data-tooltip="Bet Cash on games of chance — Star Slots, Hoo Hey How, Pop-a-Tic-Tac-Toe. Entry still costs Wonderland Passes.">' +
-            '<span class="wond-hub-icon">🎰</span>' +
-            '<span class="wond-hub-name">Casino</span>' +
-            '<span class="wond-hub-desc">Bet Cash on games of chance</span>' +
-          '</button>' +
-          '<button type="button" class="wond-hub-tile wond-hub-arcade" onclick="openWonderArcade()" data-tooltip="Skill games and puzzles — no betting, just Wonderland Passes and prizes.">' +
-            '<span class="wond-hub-icon">🕹️</span>' +
-            '<span class="wond-hub-name">Arcade</span>' +
-            '<span class="wond-hub-desc">Skill games &amp; puzzles</span>' +
-          '</button>' +
-        '</div>' +
-      '</div>';
-  }
+  var WONDER_MAP = {
+    id: 'wonder',
+    title: '🎡 Wonderland',
+    cols: WOND_COLS, rows: WOND_ROWS,
+    bsize: 2,
+    nounPlural: 'booth',
+    // Fairground lawn: a wishing fountain in the casino plaza, and trees down every corridor. Trees
+    // sit only on corridor rows (5/10/15/20) and in the gaps BETWEEN booth columns, so they decorate
+    // the walk without ever narrowing a route — verified by wmapAudit().
+    grid: wmapBuildGrid(WOND_COLS, WOND_ROWS,
+      [[24, 2, 4, 3]],
+      [[6,5],[11,5],[16,5],[21,5],[31,5],
+       [6,10],[11,10],[16,10],[21,10],[26,10],[31,10],
+       [6,15],[11,15],[16,15],[21,15],[26,15],[31,15],
+       [6,20],[26,20]]),
+    spots: [],                                  // filled by wondSpots() on mount
+    spawn: { x: 18, y: 20 },                    // the fairground gate, bottom-centre
+    pos:   { x: 18, y: 20 },
+    facing: 'up',
+    backLabel: '← Back to Earth',
+    backCall: 'wonderBackToMap()',
+    statusHtml: function(){
+      return '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + wonderPassCount() + '</b></span>' +
+        '<span class="wond-hint">Earn passes in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
+        '<button type="button" class="btn btn-secondary wond-rank-btn" onclick="openRanking()" ' +
+        'data-tooltip="See the global leaderboard — top levels and top minigame scores across every player.">🏆 Ranking</button>';
+    },
+    badgeHtml: function(s){ return '<span class="wmap-badge">' + s.cost + ' 🎟️</span>'; },
+    onEnter: function(id){ wondEnterBooth(id); }
+  };
 
-  // ---------- Casino: the 3 gambling games (bet real Cash; entering IS the "play") ----------
-  function wondCasinoHtml(){
-    var passes = wonderPassCount();
-    return '' +
-      '<div class="wond-board">' +
-        '<div class="wond-head-row">' +
-          '<div class="wond-head">' +
-            '<h2 class="wond-title wond-title-sm"><span class="wond-wheel">🎰</span> Casino</h2>' +
-            '<p class="wond-sub">Bet Cash on games of chance!</p>' +
-          '</div>' +
-          '<button type="button" class="btn btn-ghost wond-head-back" onclick="openWonderland()">← Wonderland</button>' +
-        '</div>' +
-        '<div class="wond-passrow">' +
-          '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
-          '<span class="wond-hint">Earn passes by answering questions in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
-        '</div>' +
-        '<div class="wond-grid">' +
-          '<div class="wond-card">' +
-            '<div class="wond-card-icon">🎲</div>' +
-            '<div class="wond-card-name">Hoo Hey How</div>' +
-            '<div class="wond-card-desc">Bet Cash on lucky symbols and roll three dice!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="wonderPlay(\'openHooHey\',2)" data-tooltip="Entry costs 2 Wonderland Passes; then bet Cash on symbols.">Play! (2 🎟️)</button>' +
-          '</div>' +
-          _wondCard('🎰', 'Star Slots', 'Bet Cash and spin the reels — a full centre cross pays a MEGA jackpot!', 'openSlots', true, 2) +
-          _wondCard('🎯', 'Pop-a-Tic-Tac-Toe', 'Roll 4 balls onto the board, FIX the ones you like, reroll the rest — chase the jackpot pattern!', 'openPopTicTacToe', true) +
-        '</div>' +
-      '</div>';
-  }
-
-  // ---------- Arcade: every non-gambling skill game/puzzle ----------
-  function wondArcadeHtml(){
-    var passes = wonderPassCount();
-    // Carnival games (single card = Gone Fishin'; Bullseye & Merry-Go-Round were removed).
-    var carnival =
-      '<div class="wond-card">' +
-        '<div class="wond-card-icon">🎣</div>' +
-        '<div class="wond-card-name">Gone Fishin’</div>' +
-        '<div class="wond-card-desc">Catch only the fish whose number matches the rule! ' + (typeof FISH_MAX_LEVEL !== 'undefined' ? FISH_MAX_LEVEL : 5) + ' levels, rising difficulty.</div>' +
-        '<button type="button" class="btn btn-primary wond-play" onclick="openFishin()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button></div>';
-    return '' +
-      '<div class="wond-board">' +
-        '<div class="wond-head-row">' +
-          '<div class="wond-head">' +
-            '<h2 class="wond-title wond-title-sm"><span class="wond-wheel">🕹️</span> Arcade</h2>' +
-            '<p class="wond-sub">Skill games &amp; puzzles — spend Wonderland Passes, no betting.</p>' +
-          '</div>' +
-          '<button type="button" class="btn btn-ghost wond-head-back" onclick="openWonderland()">← Wonderland</button>' +
-        '</div>' +
-        '<div class="wond-passrow">' +
-          '<span class="wond-passes">🎟️ Wonderland Passes: <b>' + passes + '</b></span>' +
-          '<span class="wond-hint">Earn passes by answering questions in the planet arenas — or in ♾️ Arena Infinity, right next door!</span>' +
-        '</div>' +
-        '<div class="wond-grid">' +
-          '<div class="wond-card">' +
-            '<div class="wond-card-icon">🧱</div>' +
-            '<div class="wond-card-name">Tile Ball</div>' +
-            '<div class="wond-card-desc">Bounce the ball and smash every tile! ' + WOND_LEVELS.length + ' levels of rising difficulty.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="wondOpenTileLevels()" data-tooltip="Choose a Tile Ball level. Each play costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
-          '</div>' +
-          '<div class="wond-card">' +
-            '<div class="wond-card-icon">🧩</div>' +
-            '<div class="wond-card-name">Quantum Block Forge</div>' +
-            '<div class="wond-card-desc">Drag blocks to fill rows &amp; columns — clear lines for combos! ' + QBF_LEVELS.length + ' levels, shrinking board.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openBlockForge()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
-          '</div>' +
-          '<div class="wond-card">' +
-            '<div class="wond-card-icon">🃏</div>' +
-            '<div class="wond-card-name">Star Match</div>' +
-            '<div class="wond-card-desc">Memorise the board, then match every cosmic pair! ' + MEM_LEVELS.length + ' levels, less preview time each round.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openMemory()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
-          '</div>' +
-          '<div class="wond-card">' +
-            '<div class="wond-card-icon">🔢</div>' +
-            '<div class="wond-card-name">Mini Sudoku</div>' +
-            '<div class="wond-card-desc">Drag numbered tiles so every row, column &amp; box is complete. ' + SUD_LEVELS.length + ' levels — grows from a 4×4 warm-up to a full 9×9!</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openSudoku()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
-          '</div>' +
-          _wondCard('📦', 'Cargo Bay', 'Push every crate onto its ring through dense pillar mazes! ' + CARGO_DIFFS.length + ' freshly-generated levels, harder and harder.', 'openCargo') +
-          _wondCard('❄️', 'Glacier Push', 'Ice blocks SLIDE until they hit something. Plan your pushes! ' + GLACIER_DIFFS.length + ' fresh levels every run, harder and harder.', 'openGlacier') +
-          _wondCard('🏯', 'Forbidden City', 'Slide matching spirit tiles together to cancel them — beware the same-color decoys! ' + SHIK_DIFFS.length + ' fresh chambers every run.', 'openShikinjou') +
-          '<div class="wond-card">' +
-            '<div class="wond-card-icon">🗼</div>' +
-            '<div class="wond-card-name">Sky Stacker</div>' +
-            '<div class="wond-card-desc">Stack the swinging blocks! Clear all ' + STK_LEVELS.length + ' levels one by one — each tower taller than the last.</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openStacker()" data-tooltip="One run through all levels. Costs 1 Wonderland Pass.">Play! (1 🎟️)</button>' +
-          '</div>' +
-          '<div class="wond-card">' +
-            '<div class="wond-card-icon">🟦</div>' +
-            '<div class="wond-card-name">Astro Drop</div>' +
-            '<div class="wond-card-desc">Falling blocks! Fill whole lines to clear them — speed rises every 10 lines. An endless run — how far can you push it?</div>' +
-            '<button type="button" class="btn btn-primary wond-play" onclick="openAstroDrop()" data-tooltip="View the leaderboard — Play there costs 1 Wonderland Pass.">View / Play (1 🎟️)</button>' +
-          '</div>' +
-          _wondCard('💊', 'Virus Lab', 'Drop 2-color capsules; match 4 in a line to zap every virus! ' + VL_LEVELS.length + ' labs, more infected each time.', 'openVirusLab') +
-          _wondCard('🔗', 'Circuit Loop', 'Rotate the wires so the power core lights every bulb!', 'openCircuit') +
-          _wondCard('👾', 'Comet Muncher', 'Munch every star in the maze — dodge the UFOs!', 'openComet') +
-          _wondCard('💣', 'Blast Bot', 'Bomb the crates and zap the drones — mind the blast! ' + BB_LEVELS.length + ' levels.', 'openBlastBot') +
-          _wondCard('🫧', 'Bubble Blast', 'Trap gremlins in bubbles, then pop them platform-style! ' + BU_LEVELS.length + ' levels.', 'openBubble') +
-          _wondCard('🎳', 'Star Lanes Bowling', 'A full 10-frame game — stop the marker to set your aim, power & spin. Strikes pay +100 Gold!', 'openBowling') +
-          _wondCard('🎵', 'Cosmic Rhythm', 'Hit the falling notes on the beat — ' + RHY_LEVELS.length + ' levels, faster and denser as you climb!', 'openRhythm') +
-          _wondCard('🐍', 'Snake', 'Steer the classic snake — eat food to grow, avoid the walls and your own tail! ' + SN_LEVELS.length + ' levels, faster each time.', 'openSnake') +
-          _wondCard('💎', 'Crystal Cascade', 'Drop columns of 3 gems, cycle their colors, and chain cascading matches for huge combos!', 'openCrystal') +
-          _wondCard('☁️', 'Cloudberry Squadron', 'Ten stages of homing-missile mayhem! Shoot down smart missiles, collect power-ups, and face an escalating final boss.', 'openCloudberry') +
-          _wondCard('✈️', 'Sky Squadron 194X', 'A 10-level 194X island campaign! Break enemy formations, grab power-ups, and defeat a different boss commander every mission.', 'openSkySquadron') +
-          carnival +
-        '</div>' +
-      '</div>';
+  // Walking into a booth does exactly what its old lobby-card button did — nothing about the pass
+  // economy or any game's own flow changes, only how you get there.
+  function wondEnterBooth(id){
+    var s = wondSpots().filter(function(b){ return b.id === id; })[0];
+    if (!s) return;
+    if (s.gambling){ wonderPlay(s.launch, s.cost); return; }   // charges up front, then launches
+    var fn = window[s.launch];
+    if (typeof fn === 'function'){
+      if (typeof playSfx === 'function') playSfx('ui-click');
+      fn();
+      return;
+    }
+    if (typeof showToast === 'function') showToast(s.emoji + ' ' + s.name + ' — opening soon!');
   }
 
   // ---------- Global Ranking (leaderboard) ----------
