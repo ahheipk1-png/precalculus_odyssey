@@ -163,11 +163,16 @@
     top: calc(100% + 2px);
     left: 50%;
     transform: translateX(-50%);
-    font-size: 11px;
+    /* Scales with the tile rather than sitting at a fixed 11px (player, 2026-08-05: "make those text
+       larger for stores in wonderland and in earth hub"). Tied to --wmap-tile so the label keeps the
+       same visual weight whether the camera is showing chunky 96px tiles or a phone's 52px ones; the
+       clamp stops it going illegible at the small end or cartoonish at the large one. */
+    font-size: clamp(15px, calc(var(--wmap-tile) * 0.30), 23px);
     font-weight: 700;
     color: var(--chalk);
     white-space: nowrap;
-    text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 6px rgba(0,0,0,.7);
+    /* Heavier halo: bigger glyphs sit over more grass//artwork detail than the old 11px ones did. */
+    text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 8px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.9);
     pointer-events: none;
   }
   .wmap-badge{
@@ -425,7 +430,8 @@
     .wmap-head{ flex-direction: column; align-items: flex-start; gap: 6px; }
     .wmap-world{ --wmap-tile: 48px; }
     .wmap-viewport{ height: clamp(260px, 42vh, 360px); }
-    .wmap-bname{ font-size: 10px; }
+    /* No font-size override here any more — the clamp in .wmap-bname already floors phones at 15px,
+       and the old 10px was the smallest text on the map. */
     .wmap-badge{ font-size: 11px; padding: 1px 5px; }
     .wmap-chip{ font-size: 15px; padding: 4px 9px; }
     .wmap-dpad{ grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(2, 54px); }
